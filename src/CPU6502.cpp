@@ -4,63 +4,83 @@
 #include <algorithm>
 #include <iostream>
 #include <cstring>
+#include <cassert>
 
 
 CPU6502::CPU6502() : 
-	mem(0xFFFF, 0)
+	mem(new u8[mem_size])
 {
-	ins.resize(256, [this](const u8 opcode) {
+	memset(mem, 0, mem_size);
+
+	instrs.resize(256, [this](const u8 opcode) {
 		unknownOpcode(opcode);
 	});
 
 	const auto ADC = [this](const u8 opcode) {
-		opcodeADC(opcode);
+		instrADC(opcode);
 	};
-	ins[0x69] = ins[0x65] = ins[0x75] = ins[0x6D] = ADC;
-	ins[0x7D] = ins[0x79] = ins[0x61] = ins[0x71] = ADC;
+	instrs[0x69] = instrs[0x65] = instrs[0x75] = instrs[0x6D] = ADC;
+	instrs[0x7D] = instrs[0x79] = instrs[0x61] = instrs[0x71] = ADC;
+
+	const auto AND = [this](const u8 opcode) {
+		instrAND(opcode);
+	};
+	instrs[0x29] = instrs[0x25] = instrs[0x35] = instrs[0x2D] = AND;
+	instrs[0x3D] = instrs[0x39] = instrs[0x21] = instrs[0x31] = AND;
+
+	const auto ASL = [this](const u8 opcode) {
+		instrASL(opcode);
+	};
+	instrs[0x0A] = instrs[0x06] = ASL;
+	instrs[0x16] = instrs[0x0E] = instrs[0x1E] = ASL;
+}
+
+CPU6502::~CPU6502()
+{
+	delete[] mem;
 }
 
 void CPU6502::update()
 {
 	const u8 opcode = getByteFromPC();
-	ins[opcode](opcode);
+	instrs[opcode](opcode);
 }
 
-void CPU6502::opcodeADC(const u8 opcode)
+void CPU6502::instrADC(const u8 opcode)
 {
-	u8 result = 0;
+	u16 addr = 0;
 	switch (opcode)
 	{
 	case 0x69:
-		result = ADCImmediate(getByteFromPC());
+		addr = immediateAddr();
 		break;
 	
 	case 0x65:
-		result = ADCZeroPage(getByteFromPC(), 0);
+		addr = zeroPageAddr();
 		break;
 
 	case 0x75:
-		result = ADCZeroPage(getByteFromPC(), reg.X);
+		addr = zeroPageAddr(reg.X);
 		break;
 
 	case 0x6D:
-		result = ADCAbsolute(getTwoBytesFromPC(), 0);
+		addr = absoluteAddr();
 		break;
 
 	case 0x7D:
-		result = ADCAbsolute(getTwoBytesFromPC(), reg.X);
+		addr = absoluteAddr(reg.X);
 		break;
 
 	case 0x79:
-		result = ADCAbsolute(getTwoBytesFromPC(), reg.Y);
+		addr = absoluteAddr(reg.Y);
 		break;
 
 	case 0x61:
-		result = ADCIndexedIndirect(getByteFromPC());
+		addr = indexedIndirectAddr();
 		break;
 
 	case 0x71:
-		result = ADCIndirectIndexed(getByteFromPC());
+		addr = indirectIndexedAddr();
 		break;
 
 	default:
@@ -68,46 +88,139 @@ void CPU6502::opcodeADC(const u8 opcode)
 		return;
 	}
 
+	u8 result = reg.A + mem[addr] + getCarryFlag();
+
 	setCarryFlag(result < reg.A);
-	setOverflowFlag(getBitN(result, 7) != getBitN(reg.A, 7)); // if the sign bit is incorrect
+	setOverflowFlag(getBitN(result, 7) != getBitN(reg.A, 7));
 	setZeroFlag(result == 0);
 	setNegativeResultFlag(getBitN(result, 7));
 
 	reg.A = result;
 }
 
-u8 CPU6502::ADCImmediate(const u8 immediate)
+void CPU6502::instrAND(const u8 opcode)
 {
-	return reg.A + immediate + getCarryFlag();
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0x29:
+		addr = immediateAddr();
+		break;
+	
+	case 0x25:
+		addr = zeroPageAddr();
+		break;
+	
+	case 0x35:
+		addr = zeroPageAddr(reg.X);
+		break;
+
+	case 0x2D:
+		addr = absoluteAddr();
+		break;
+
+	case 0x3D:
+		addr = absoluteAddr(reg.X);
+		break;
+
+	case 0x39:
+		addr = absoluteAddr(reg.Y);
+		break;
+
+	case 0x21:
+		addr = indexedIndirectAddr();
+		break;
+
+	case 0x31:
+		addr = indirectIndexedAddr();
+		break;
+
+	default:
+		unknownOpcode(opcode);
+		return;
+	}
+
+	reg.A = reg.A & mem[addr];
+
+	setZeroFlag(reg.A == 0);
+	setNegativeResultFlag(getBitN(reg.A, 7));
 }
 
-u8 CPU6502::ADCZeroPage(const u8 address, const u8 offset)
+void CPU6502::instrASL(u8 opcode)
 {
-	const u8 mem_loc = address + offset;
-	return reg.A + mem[mem_loc] + getCarryFlag();
+	u8* target = nullptr;
+	switch (opcode)
+	{
+	case 0x0A: 
+		target = &reg.A;
+		break;
+
+	case 0x06:
+	{
+		const u16 addr = zeroPageAddr();
+		target = &mem[addr];
+		break;
+	}
+	case 0x16:
+	{
+		const u16 addr = zeroPageAddr(reg.X);
+		target = &mem[addr];
+		break;
+	}
+	case 0x0E:
+	{
+		const u16 addr = absoluteAddr();
+		target = &mem[addr];
+		break;
+	}
+	case 0x1E:
+	{
+		const u16 addr = absoluteAddr(reg.X);
+		target = &mem[addr];
+		break;
+	}
+	default:
+		unknownOpcode(opcode);
+		return;
+	}
+
+	assert(target);
+	setCarryFlag(getBitN(*target, 7));
+	*target <<= 1;
+	setZeroFlag(*target == 0);
+	setNegativeResultFlag(getBitN(*target, 7));
 }
 
-u8 CPU6502::ADCAbsolute(const u16 address, u8 offset)
+u16 CPU6502::immediateAddr()
 {
-	const u16 mem_loc = address + static_cast<u16>(offset);
-	return reg.A + mem[mem_loc] + getCarryFlag();
+	return getByteFromPC();
 }
 
-u8 CPU6502::ADCIndexedIndirect(const u8 address)
+u16 CPU6502::zeroPageAddr(const u8 offset)
 {
-	const u8 table_loc = address + reg.X;
+	return getByteFromPC() + offset;
+}
+
+u16 CPU6502::absoluteAddr(u8 offset)
+{
+	return getTwoBytesFromPC() + static_cast<u16>(offset);
+}
+
+u16 CPU6502::indexedIndirectAddr()
+{
+	const u8 table_loc = getByteFromPC() + reg.X;
 	u16 mem_loc = mem[table_loc];
 	mem_loc += (mem[table_loc + 1] << 8); 
-	return reg.A + mem[mem_loc] + getCarryFlag();
+	return mem_loc;
 }
 
-u8 CPU6502::ADCIndirectIndexed(const u8 address)
+u16 CPU6502::indirectIndexedAddr()
 {
-	const u8 mem_loc = mem[address];
+	const u8 mem_loc = mem[getByteFromPC()];
 	const u16 base_addr = static_cast<u16>(mem[mem_loc]);
 	const u16 offset = static_cast<u16>(mem[mem_loc + 1]);
 	const u16 final_addr = base_addr + offset + static_cast<u16>(reg.Y);
-	return reg.A + mem[final_addr] + getCarryFlag();
+	return final_addr;
 }
 
 void CPU6502::unknownOpcode(const u8 opcode)

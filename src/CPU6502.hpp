@@ -2,7 +2,6 @@
 
 #include "common/type.hpp"
 #include <bitset>
-#include <array>
 #include <functional>
 #include <vector>
 
@@ -10,17 +9,20 @@ class CPU6502
 {
 public:
 	CPU6502();
+	~CPU6502();
 
 	void update();
 
 private:
-	void opcodeADC(u8 opcode);
-	u8 ADCImmediate(u8 immediate);
-	u8 ADCZeroPage(u8 address, u8 offset);
-	u8 ADCAbsolute(u16 address, u8 offset);
-	u8 ADCIndexedIndirect(u8 address);
-	u8 ADCIndirectIndexed(u8 address);
+	void instrADC(u8 opcode);
+	void instrAND(u8 opcode);
+	void instrASL(u8 opcode);
 
+	u16 immediateAddr();
+	u16 zeroPageAddr(u8 offset = 0);
+	u16 absoluteAddr(u8 offset = 0);
+	u16 indexedIndirectAddr();
+	u16 indirectIndexedAddr();
 	void unknownOpcode(u8 opcode);
 
 	u8 getByteFromPC();
@@ -33,7 +35,6 @@ private:
 	u8 getBreakFlag() const;
 	u8 getOverflowFlag() const;
 	u8 getNegativeResultFlag() const;
-
 
 	void setCarryFlag(bool set);
 	void setZeroFlag(bool set);
@@ -54,6 +55,8 @@ private:
 		std::bitset<8> status{};
 	} reg;
 
-	std::vector<std::function<void(u8)>> ins;
-	std::vector<u8> mem;
+	std::vector<std::function<void(u8)>> instrs;
+	u8* mem;
+
+	static constexpr std::size_t mem_size = 0xFFFF;
 };

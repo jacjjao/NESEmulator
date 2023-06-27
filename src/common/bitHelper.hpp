@@ -1,7 +1,7 @@
 #pragma once
 
 template<typename T>
-constexpr T getBitN(T var, unsigned pos)
+constexpr T getBitN(const T var, const unsigned pos)
 {
 	return var >> pos;
 }
