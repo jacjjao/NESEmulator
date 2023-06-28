@@ -12,6 +12,8 @@ CPU6502::CPU6502() :
 {
 	memset(mem, 0, mem_size);
 
+	reg.SP = &mem[stack_begin];
+
 	instrs.resize(instrs_size, [this](const u8 opcode) {
 		unknownOpcode(opcode);
 	});
@@ -464,6 +466,68 @@ void CPU6502::instrEOR(const u8 opcode)
 	setNegativeResultFlag(getBitN(reg.A, 7));
 }
 
+void CPU6502::instrINC(u8 opcode)
+{
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0xE6:
+		addr = zeroPageAddr();
+		break;
+
+	case 0xF6:
+		addr = zeroPageAddr(reg.X);
+		break;
+
+	case 0xEE:
+		addr = absoluteAddr();
+		break;
+
+	case 0xFE:
+		addr = absoluteAddr(reg.X);
+		break;
+	}
+
+	++mem[addr];
+	setZeroFlag(mem[addr] == 0);
+	setNegativeResultFlag(getBitN(mem[addr], 7));
+}
+
+void CPU6502::instrINX(u8)
+{
+	++reg.X;
+	setZeroFlag(reg.X == 0);
+	setNegativeResultFlag(getBitN(reg.X, 7));
+}
+
+void CPU6502::instrINY(u8)
+{
+	++reg.Y;
+	setZeroFlag(reg.Y == 0);
+	setNegativeResultFlag(getBitN(reg.Y, 7));
+}
+
+void CPU6502::instrJMP(const u8 opcode)
+{
+	switch (opcode)
+	{
+	case 0x4C:
+		reg.PC = absoluteAddr();
+		break;
+
+	case 0x6C:
+		reg.PC = indirectAddr();
+		break;
+	}
+}
+
+void CPU6502::instrJSR(u8)
+{
+	const u16 destination = absoluteAddr();
+	pushStack(reg.PC);
+	reg.PC = destination;
+}
+
 u16 CPU6502::immediateAddr()
 {
 	return getByteFromPC();
@@ -474,9 +538,14 @@ u16 CPU6502::zeroPageAddr(const u8 offset)
 	return getByteFromPC() + offset;
 }
 
-u16 CPU6502::absoluteAddr(u8 offset)
+u16 CPU6502::absoluteAddr(const u8 offset)
 {
 	return getTwoBytesFromPC() + static_cast<u16>(offset);
+}
+
+u16 CPU6502::indirectAddr()
+{
+	return mem[getTwoBytesFromPC()];
 }
 
 u16 CPU6502::indexedIndirectAddr()
@@ -487,8 +556,8 @@ u16 CPU6502::indexedIndirectAddr()
 
 u16 CPU6502::indirectIndexedAddr()
 {
-	const u8 mem_loc = getByteFromPC();
-	return getTwoBytesFromZP(mem_loc) + static_cast<u16>(reg.Y);
+	const u8 table_loc = getByteFromPC();
+	return getTwoBytesFromZP(table_loc) + static_cast<u16>(reg.Y);
 }
 
 void CPU6502::unknownOpcode(const u8 opcode)
@@ -591,4 +660,22 @@ void CPU6502::setOverflowFlag(const bool set)
 void CPU6502::setNegativeResultFlag(const bool set)
 {
 	reg.status.set(7, set);
+}
+
+void CPU6502::pushStack(const u16 addr)
+{
+	assert(reg.SP - 2 >= &mem[stack_end]);
+	const u8 msb = static_cast<u8>(addr >> 8);
+	const u8 lsb = static_cast<u8>(addr);
+	*reg.SP = msb;
+	--reg.SP;
+	*reg.SP = lsb;
+	--reg.SP;
+}
+
+u8 CPU6502::popStack()
+{
+	assert(reg.SP != &mem[stack_begin]);
+	++reg.SP;
+	return *reg.SP;
 }

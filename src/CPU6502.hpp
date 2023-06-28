@@ -38,10 +38,16 @@ private:
 	void instrDEX(u8 opcode);
 	void instrDEY(u8 opcode);
 	void instrEOR(u8 opcode);
+	void instrINC(u8 opcode);
+	void instrINX(u8 opcode);
+	void instrINY(u8 opcode);
+	void instrJMP(u8 opcode);
+	void instrJSR(u8 opcode);
 
 	u16 immediateAddr();
 	u16 zeroPageAddr(u8 offset = 0);
 	u16 absoluteAddr(u8 offset = 0);
+	u16 indirectAddr();
 	u16 indexedIndirectAddr();
 	u16 indirectIndexedAddr();
 	void unknownOpcode(u8 opcode);
@@ -67,20 +73,25 @@ private:
 	void setOverflowFlag(bool set);
 	void setNegativeResultFlag(bool set);
 
+	void pushStack(u16 addr);
+	u8 popStack();
+
 	struct
 	{
 		u8 A = 0;
 		u8 X = 0;
 		u8 Y = 0;
-		u8 S = 0;
+		u8* SP = nullptr;
 		u16 PC = 0;
-		u8 P = 0;
 		std::bitset<8> status{};
 	} reg;
 
 	std::vector<std::function<void(u8)>> instrs;
 	u8* mem;
 
-	static constexpr std::size_t mem_size = 0xFFFF + 1;
+	static constexpr std::size_t mem_size    = 0xFFFF + 1;
 	static constexpr std::size_t instrs_size = 0xFF + 1;
+
+	static constexpr u16 stack_begin = 0x01FF;
+	static constexpr u16 stack_end   = 0x00FF;
 };
