@@ -17,6 +17,27 @@ private:
 	void instrADC(u8 opcode);
 	void instrAND(u8 opcode);
 	void instrASL(u8 opcode);
+	void instrBBC(u8 opcode);
+	void instrBCS(u8 opcode);
+	void instrBEQ(u8 opcode);
+	void instrBIT(u8 opcode);
+	void instrBMI(u8 opcode);
+	void instrBNE(u8 opcode);
+	void instrBPL(u8 opcode);
+	void instrBRK(u8 opcode);
+	void instrBVC(u8 opcode);
+	void instrBVS(u8 opcode);
+	void instrCLC(u8 opcode);
+	void instrCLD(u8 opcode);
+	void instrCLI(u8 opcode);
+	void instrCLV(u8 opcode);
+	void instrCMP(u8 opcode);
+	void instrCPX(u8 opcode);
+	void instrCPY(u8 opcode);
+	void instrDEC(u8 opcode);
+	void instrDEX(u8 opcode);
+	void instrDEY(u8 opcode);
+	void instrEOR(u8 opcode);
 
 	u16 immediateAddr();
 	u16 zeroPageAddr(u8 offset = 0);
@@ -27,6 +48,8 @@ private:
 
 	u8 getByteFromPC();
 	u16 getTwoBytesFromPC();
+	u16 getTwoBytesFromZP(u8 loc);
+	u16 getTwoBytesFromMem(u16 loc);
 
 	u8 getCarryFlag() const;
 	u8 getZeroFlag() const;
@@ -58,5 +81,6 @@ private:
 	std::vector<std::function<void(u8)>> instrs;
 	u8* mem;
 
-	static constexpr std::size_t mem_size = 0xFFFF;
+	static constexpr std::size_t mem_size = 0xFFFF + 1;
+	static constexpr std::size_t instrs_size = 0xFF + 1;
 };
