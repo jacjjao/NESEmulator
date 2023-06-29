@@ -66,12 +66,12 @@ private:
 	u8 getNegativeResultFlag() const;
 
 	void setCarryFlag(bool set);
-	void setZeroFlag(bool set);
+	void setZeroFlag(u8 result);
 	void setInterruptDisableFlag(bool set);
 	void setDecimalModeFlag(bool set);
 	void setBreakFlag(bool set);
 	void setOverflowFlag(bool set);
-	void setNegativeResultFlag(bool set);
+	void setNegativeResultFlag(u8 result);
 
 	void pushStack(u16 addr);
 	u8 popStack();

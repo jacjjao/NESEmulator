@@ -1,5 +1,6 @@
 #include "CPU6502.hpp"
 #include "common/bitHelper.hpp"
+#include "common/utility.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -86,12 +87,15 @@ void CPU6502::instrADC(const u8 opcode)
 		break;
 	}
 
-	u8 result = reg.A + mem[addr] + getCarryFlag();
+	const u8 M = mem[addr];
+	const u8 C = getCarryFlag();
+	const u8 result = reg.A + M + C;
 
 	setCarryFlag(result < reg.A);
-	setOverflowFlag(getBitN(result, 7) != getBitN(reg.A, 7));
-	setZeroFlag(result == 0);
-	setNegativeResultFlag(getBitN(result, 7));
+	setZeroFlag(result);
+	setNegativeResultFlag(result);
+
+	setOverflowFlag(willAddOverflow(reg.A, M, C));
 
 	reg.A = result;
 }
@@ -136,8 +140,8 @@ void CPU6502::instrAND(const u8 opcode)
 
 	reg.A = reg.A & mem[addr];
 
-	setZeroFlag(reg.A == 0);
-	setNegativeResultFlag(getBitN(reg.A, 7));
+	setZeroFlag(reg.A);
+	setNegativeResultFlag(reg.A);
 }
 
 void CPU6502::instrASL(u8 opcode)
@@ -178,8 +182,8 @@ void CPU6502::instrASL(u8 opcode)
 	assert(target);
 	setCarryFlag(getBitN(*target, 7));
 	*target <<= 1;
-	setZeroFlag(*target == 0);
-	setNegativeResultFlag(getBitN(*target, 7));
+	setZeroFlag(*target);
+	setNegativeResultFlag(*target);
 }
 
 void CPU6502::instrBBC(u8)
@@ -220,9 +224,9 @@ void CPU6502::instrBIT(const u8 opcode)
 		break;
 	}
 	const u8 M = mem[addr];
-	setZeroFlag((reg.A & M) == 0);
+	setZeroFlag(reg.A & M);
 	setOverflowFlag(getBitN(M, 6));
-	setNegativeResultFlag(getBitN(M, 7));
+	setNegativeResultFlag(M);
 }
 
 void CPU6502::instrBMI(u8)
@@ -329,9 +333,11 @@ void CPU6502::instrCMP(const u8 opcode)
 	}
 
 	const u8 M = mem[addr];
+	const u8 result = reg.A - M;
+
 	setCarryFlag(reg.A >= M);
-	setZeroFlag(reg.A == M);
-	setNegativeResultFlag(getBitN(reg.A - M, 7));
+	setZeroFlag(result);
+	setNegativeResultFlag(result);
 }
 
 void CPU6502::instrCPX(const u8 opcode)
@@ -353,9 +359,11 @@ void CPU6502::instrCPX(const u8 opcode)
 	}
 
 	const u8 M = mem[addr];
+	const u8 result = reg.X - M;
+
 	setCarryFlag(reg.X >= M);
-	setZeroFlag(reg.X == M);
-	setNegativeResultFlag(getBitN(reg.X - M, 7));
+	setZeroFlag(result);
+	setNegativeResultFlag(result);
 }
 
 void CPU6502::instrCPY(const u8 opcode)
@@ -377,9 +385,11 @@ void CPU6502::instrCPY(const u8 opcode)
 	}
 
 	const u8 M = mem[addr];
+	const u8 result = reg.Y - M;
+
 	setCarryFlag(reg.Y >= M);
-	setZeroFlag(reg.Y == M);
-	setNegativeResultFlag(getBitN(reg.Y - M, 7));
+	setZeroFlag(result);
+	setNegativeResultFlag(result);
 }
 
 void CPU6502::instrDEC(const u8 opcode)
@@ -405,22 +415,22 @@ void CPU6502::instrDEC(const u8 opcode)
 	}
 
 	--mem[addr];
-	setZeroFlag(mem[addr] == 0);
-	setNegativeResultFlag(getBitN(mem[addr], 7));
+	setZeroFlag(mem[addr]);
+	setNegativeResultFlag(mem[addr]);
 }
 
 void CPU6502::instrDEX(u8)
 {
 	--reg.X;
-	setZeroFlag(reg.X == 0);
-	setNegativeResultFlag(getBitN(reg.X, 7));
+	setZeroFlag(reg.X);
+	setNegativeResultFlag(reg.X);
 }
 
 void CPU6502::instrDEY(u8)
 {
 	--reg.Y;
-	setZeroFlag(reg.Y == 0);
-	setNegativeResultFlag(getBitN(reg.Y, 7));
+	setZeroFlag(reg.Y);
+	setNegativeResultFlag(reg.Y);
 }
 
 void CPU6502::instrEOR(const u8 opcode)
@@ -462,8 +472,8 @@ void CPU6502::instrEOR(const u8 opcode)
 	}
 
 	reg.A = reg.A ^ mem[addr];
-	setZeroFlag(reg.A == 0);
-	setNegativeResultFlag(getBitN(reg.A, 7));
+	setZeroFlag(reg.A);
+	setNegativeResultFlag(reg.A);
 }
 
 void CPU6502::instrINC(u8 opcode)
@@ -489,22 +499,22 @@ void CPU6502::instrINC(u8 opcode)
 	}
 
 	++mem[addr];
-	setZeroFlag(mem[addr] == 0);
-	setNegativeResultFlag(getBitN(mem[addr], 7));
+	setZeroFlag(mem[addr]);
+	setNegativeResultFlag(mem[addr]);
 }
 
 void CPU6502::instrINX(u8)
 {
 	++reg.X;
-	setZeroFlag(reg.X == 0);
-	setNegativeResultFlag(getBitN(reg.X, 7));
+	setZeroFlag(reg.X);
+	setNegativeResultFlag(reg.X);
 }
 
 void CPU6502::instrINY(u8)
 {
 	++reg.Y;
-	setZeroFlag(reg.Y == 0);
-	setNegativeResultFlag(getBitN(reg.Y, 7));
+	setZeroFlag(reg.Y);
+	setNegativeResultFlag(reg.Y);
 }
 
 void CPU6502::instrJMP(const u8 opcode)
@@ -632,9 +642,9 @@ void CPU6502::setCarryFlag(const bool set)
 	reg.status.set(0, set);
 }
 
-void CPU6502::setZeroFlag(const bool set)
+void CPU6502::setZeroFlag(const u8 result)
 {
-	reg.status.set(1, set);
+	reg.status.set(1, (result == 0));
 }
 
 void CPU6502::setInterruptDisableFlag(const bool set)
@@ -657,9 +667,9 @@ void CPU6502::setOverflowFlag(const bool set)
 	reg.status.set(6, set);
 }
 
-void CPU6502::setNegativeResultFlag(const bool set)
+void CPU6502::setNegativeResultFlag(const u8 result)
 {
-	reg.status.set(7, set);
+	reg.status.set(7, getBitN(result, 7));
 }
 
 void CPU6502::pushStack(const u16 addr)

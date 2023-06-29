@@ -1,13 +1,36 @@
 cmake_minimum_required(VERSION 3.15)
 project(NESEmulator)
 
-add_executable(${PROJECT_NAME} src/main.cpp "src/CPU6502.cpp" )
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(SDL2 REQUIRED)
+
+find_package(GTest CONFIG REQUIRED)
+if (WIN32)
+	# For Windows: Prevent overriding the parent project's compiler/linker settings
+	set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+endif()
+enable_testing()
+
+file(GLOB SOURCES
+    src/*.hpp
+	src/*.cpp 
+	src/common/*.hpp
+	src/common/*.cpp
+)
+
+file(GLOB TEST_SOURCES
+	tests/*.cpp
+)
+
+add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(the_tests src/common/utility.cpp ${TEST_SOURCES})
 
 if(MSVC)
 	target_compile_options(${PROJECT_NAME} 
 		PRIVATE 
 			"/analyze"
-			"/std:c++20"
 			"/W4"	
 			"/MP"
 	)
@@ -33,8 +56,6 @@ else()
 	message("Gotta update the CMakeList.txt to support this compiler")
 endif()
 
-find_package(SDL2 REQUIRED)
-
 target_compile_definitions(${PROJECT_NAME} 
 	PRIVATE 
 		SDL_MAIN_HANDLED
@@ -49,3 +70,11 @@ target_link_libraries(${PROJECT_NAME}
 	PRIVATE 
 		SDL2::SDL2
 )
+
+target_link_libraries(the_tests 
+	PRIVATE 
+		GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(the_tests)
