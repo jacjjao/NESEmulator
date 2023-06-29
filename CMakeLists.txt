@@ -41,14 +41,12 @@ if(MSVC)
 				"/MDd"
 				"/Od"
 		)
-		message("Debug build")
 	elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 		target_compile_options(${PROJECT_NAME} 
 			PRIVATE 
 				"/MD"
 				"/O2"
 		)
-		message("Release build")
 	else() 
 		message("Yet to configure build type")
 	endif()

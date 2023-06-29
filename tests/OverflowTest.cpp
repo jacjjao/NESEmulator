@@ -27,5 +27,13 @@ TEST(HelloTest, BasicAssertions) {
 	y = *reinterpret_cast<const u8*>(&b);
 	EXPECT_EQ(false, willAddOverflow(x, y, c));
 	EXPECT_EQ(false, willAddOverflow(y, x, c));
+
+	a = std::numeric_limits<u8>::min() + 5;
+	b = -6;
+	c = 1;
+	x = *reinterpret_cast<const u8*>(&a);
+	y = *reinterpret_cast<const u8*>(&b);
+	EXPECT_EQ(false, willAddOverflow(x, y, c));
+	EXPECT_EQ(false, willAddOverflow(y, x, c));
 }
 
