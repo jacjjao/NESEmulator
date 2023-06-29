@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common/type.hpp"
-#include <bitset>
 #include <functional>
 #include <vector>
 
@@ -43,6 +42,22 @@ private:
 	void instrINY(u8 opcode);
 	void instrJMP(u8 opcode);
 	void instrJSR(u8 opcode);
+	void instrLDA(u8 opcode);
+	void instrLDX(u8 opcode);
+	void instrLDY(u8 opcode);
+	void instrLSR(u8 opcode);
+	void instrNOP(u8 opcode);
+	void instrORA(u8 opcode);
+	void instrPHA(u8 opcode);
+	void instrPHP(u8 opcode);
+	void instrPLA(u8 opcode);
+	void instrPLP(u8 opcode);
+	void instrROL(u8 opcode);
+	void instrROR(u8 opcode);
+	void instrRTI(u8 opcode);
+	void instrRTS(u8 opcode);
+
+	void unknownOpcode(u8 opcode);
 
 	u16 immediateAddr();
 	u16 zeroPageAddr(u8 offset = 0);
@@ -50,7 +65,6 @@ private:
 	u16 indirectAddr();
 	u16 indexedIndirectAddr();
 	u16 indirectIndexedAddr();
-	void unknownOpcode(u8 opcode);
 
 	u8 getByteFromPC();
 	u16 getTwoBytesFromPC();
@@ -73,17 +87,19 @@ private:
 	void setOverflowFlag(bool set);
 	void setNegativeResultFlag(u8 result);
 
-	void pushStack(u16 addr);
+	void pushStack(u8 val);
+	void pushStack(u16 val);
 	u8 popStack();
+	u16 popStackTwoBytes();
 
 	struct
 	{
 		u8 A = 0;
 		u8 X = 0;
 		u8 Y = 0;
+		u8 Status = 0;
 		u8* SP = nullptr;
 		u16 PC = 0;
-		std::bitset<8> status{};
 	} reg;
 
 	std::vector<std::function<void(u8)>> instrs;

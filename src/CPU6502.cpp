@@ -538,6 +538,293 @@ void CPU6502::instrJSR(u8)
 	reg.PC = destination;
 }
 
+void CPU6502::instrLDA(const u8 opcode)
+{
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0xA9:
+		addr = immediateAddr();
+		break;
+
+	case 0xA5:
+		addr = zeroPageAddr();
+		break;
+
+	case 0xB5:
+		addr = zeroPageAddr(reg.X);
+		break;
+
+	case 0xAD:
+		addr = absoluteAddr();
+		break;
+
+	case 0xBD:
+		addr = absoluteAddr(reg.X);
+		break;
+
+	case 0xB9:
+		addr = absoluteAddr(reg.Y);
+		break;
+
+	case 0xA1:
+		addr = indexedIndirectAddr();
+		break;
+
+	case 0xB1:
+		addr = indirectIndexedAddr();
+		break;
+	}
+
+	reg.A = mem[addr];
+	setZeroFlag(reg.A);
+	setNegativeResultFlag(reg.A);
+}
+
+void CPU6502::instrLDX(const u8 opcode)
+{
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0xA2:
+		addr = immediateAddr();
+		break;
+
+	case 0xA6:
+		addr = zeroPageAddr();
+		break;
+
+	case 0xB6:
+		addr = zeroPageAddr(reg.Y);
+		break;
+
+	case 0xAE:
+		addr = absoluteAddr();
+		break;
+
+	case 0xBE:
+		addr = absoluteAddr(reg.Y);
+		break;
+	}
+
+	reg.X = mem[addr];
+	setZeroFlag(reg.X);
+	setNegativeResultFlag(reg.X);
+}
+
+void CPU6502::instrLDY(const u8 opcode)
+{
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0xA0:
+		addr = immediateAddr();
+		break;
+
+	case 0xA4:
+		addr = zeroPageAddr();
+		break;
+
+	case 0xB4:
+		addr = zeroPageAddr(reg.X);
+		break;
+
+	case 0xAC:
+		addr = absoluteAddr();
+		break;
+
+	case 0xBC:
+		addr = absoluteAddr(reg.X);
+		break;
+	}
+
+	reg.Y = mem[addr];
+	setZeroFlag(reg.Y);
+	setNegativeResultFlag(reg.Y);
+}
+
+void CPU6502::instrLSR(const u8 opcode)
+{
+	u8* target = nullptr;
+	switch (opcode)
+	{
+	case 0x4A:
+		target = &reg.A;
+		break;
+
+	case 0x46:
+		target = &mem[zeroPageAddr()];
+		break;
+
+	case 0x56:
+		target = &mem[zeroPageAddr(reg.X)];
+		break;
+
+	case 0x4E:
+		target = &mem[absoluteAddr()];
+		break;
+
+	case 0x5E:
+		target = &mem[absoluteAddr(reg.X)];
+		break;
+	}
+
+	assert(target);
+	setCarryFlag(getBitN(*target, 0));
+	*target >>= 1;
+	setNegativeResultFlag(*target);
+}
+
+void CPU6502::instrNOP(u8)
+{
+	// nop
+}
+
+void CPU6502::instrORA(const u8 opcode)
+{
+	u16 addr = 0;
+	switch (opcode)
+	{
+	case 0x09:
+		addr = immediateAddr();
+		break;
+
+	case 0x05:
+		addr = zeroPageAddr();
+		break;
+
+	case 0x15:
+		addr = zeroPageAddr(reg.X);
+		break;
+
+	case 0x0D:
+		addr = absoluteAddr();
+		break;
+
+	case 0x1D:
+		addr = absoluteAddr(reg.X);
+		break;
+
+	case 0x19:
+		addr = absoluteAddr(reg.Y);
+		break;
+
+	case 0x01:
+		addr = indexedIndirectAddr();
+		break;
+
+	case 0x11:
+		addr = indirectIndexedAddr();
+		break;
+	}
+
+	const u8 M = mem[addr];
+	reg.A = reg.A | M;
+	setZeroFlag(reg.A);
+	setNegativeResultFlag(reg.A);
+}
+
+void CPU6502::instrPHA(u8)
+{
+	pushStack(reg.A);
+}
+
+void CPU6502::instrPHP(u8)
+{
+	pushStack(reg.Status);
+}
+
+void CPU6502::instrPLA(u8)
+{
+	reg.A = popStack();
+	setZeroFlag(reg.A);
+	setNegativeResultFlag(reg.A);
+}
+
+void CPU6502::instrPLP(u8)
+{
+	reg.Status = popStack();
+}
+
+void CPU6502::instrROL(const u8 opcode)
+{
+	u8* target = nullptr;
+	switch (opcode)
+	{
+	case 0x2A:
+		target = &reg.A;
+		break;
+
+	case 0x26:
+		target = &mem[zeroPageAddr()];
+		break;
+
+	case 0x36:
+		target = &mem[zeroPageAddr(reg.X)];
+		break;
+
+	case 0x2E:
+		target = &mem[absoluteAddr()];
+		break;
+
+	case 0x3E:
+		target = &mem[absoluteAddr(reg.X)];
+		break;
+	}
+
+	assert(target);
+	const u8 new_bit0 = getCarryFlag();
+	setCarryFlag(getBitN(*target, 7));
+	*target <<= 1;
+	setBitN(*target, new_bit0, 0);
+	setNegativeResultFlag(*target);
+}
+
+void CPU6502::instrROR(const u8 opcode)
+{
+	u8* target = nullptr;
+	switch (opcode)
+	{
+	case 0x6A:
+		target = &reg.A;
+		break;
+
+	case 0x66:
+		target = &mem[zeroPageAddr()];
+		break;
+
+	case 0x76:
+		target = &mem[zeroPageAddr(reg.X)];
+		break;
+
+	case 0x6E:
+		target = &mem[absoluteAddr()];
+		break;
+
+	case 0x7E:
+		target = &mem[absoluteAddr(reg.X)];
+		break;
+	}
+
+	assert(target);
+	const u8 new_bit7 = getCarryFlag();
+	setCarryFlag(getBitN(*target, 0));
+	*target >>= 1;
+	setBitN(*target, new_bit7, 7);
+	setNegativeResultFlag(*target);
+}
+
+void CPU6502::instrRTI(u8)
+{
+	reg.Status = popStack();
+	reg.PC = popStackTwoBytes();
+}
+
+void CPU6502::instrRTS(u8)
+{
+	reg.PC = popStackTwoBytes();
+}
+
 u16 CPU6502::immediateAddr()
 {
 	return getByteFromPC();
@@ -603,89 +890,100 @@ u16 CPU6502::getTwoBytesFromMem(const u16 loc)
 
 u8 CPU6502::getCarryFlag() const
 {
-	return static_cast<u8>(reg.status[0]);
+	return getBitN(reg.Status, 0);
 }
 
 u8 CPU6502::getZeroFlag() const
 {
-	return static_cast<u8>(reg.status[1]);
+	return getBitN(reg.Status, 1);
 }
 
 u8 CPU6502::getInterruptDisableFlag() const
 {
-	return static_cast<u8>(reg.status[2]);
+	return getBitN(reg.Status, 2);
 }
 
 u8 CPU6502::getDecimalModeFlag() const
 {
-	return static_cast<u8>(reg.status[3]);
+	return getBitN(reg.Status, 3);
 }
 
 u8 CPU6502::getBreakFlag() const
 {
-	return static_cast<u8>(reg.status[4]);
+	return getBitN(reg.Status, 4);
 }
 
 u8 CPU6502::getOverflowFlag() const
 {
-	return static_cast<u8>(reg.status[6]);
+	return getBitN(reg.Status, 6);
 }
 
 u8 CPU6502::getNegativeResultFlag() const
 {
-	return static_cast<u8>(reg.status[7]);
+	return getBitN(reg.Status, 7);
 }
 
 
 void CPU6502::setCarryFlag(const bool set)
 {
-	reg.status.set(0, set);
+	setBitN(reg.Status, set, 0);
 }
 
 void CPU6502::setZeroFlag(const u8 result)
 {
-	reg.status.set(1, (result == 0));
+	setBitN(reg.Status, (result == 0), 1);
 }
 
 void CPU6502::setInterruptDisableFlag(const bool set)
 {
-	reg.status.set(2, set);
+	setBitN(reg.Status, set, 2);
 }
 
 void CPU6502::setDecimalModeFlag(const bool set)
 {
-	reg.status.set(3, set);
+	setBitN(reg.Status, set, 3);
 }
 
 void CPU6502::setBreakFlag(const bool set)
 {
-	reg.status.set(4, set);
+	setBitN(reg.Status, set, 4);
 }
 
 void CPU6502::setOverflowFlag(const bool set)
 {
-	reg.status.set(6, set);
+	setBitN(reg.Status, set, 6);
 }
 
 void CPU6502::setNegativeResultFlag(const u8 result)
 {
-	reg.status.set(7, getBitN(result, 7));
+	setBitN(reg.Status, getBitN(result, 7), 7);
 }
 
-void CPU6502::pushStack(const u16 addr)
+void CPU6502::pushStack(const u8 val)
 {
-	assert(reg.SP - 2 >= &mem[stack_end]);
-	const u8 msb = static_cast<u8>(addr >> 8);
-	const u8 lsb = static_cast<u8>(addr);
-	*reg.SP = msb;
+	assert(reg.SP > &mem[stack_end]);
+	*reg.SP = val;
 	--reg.SP;
-	*reg.SP = lsb;
-	--reg.SP;
+}
+
+void CPU6502::pushStack(const u16 val)
+{
+	const u8 msb = static_cast<u8>(val >> 8);
+	const u8 lsb = static_cast<u8>(val);
+	pushStack(msb);
+	pushStack(lsb);
 }
 
 u8 CPU6502::popStack()
 {
-	assert(reg.SP != &mem[stack_begin]);
+	assert(reg.SP < &mem[stack_begin]);
 	++reg.SP;
 	return *reg.SP;
+}
+
+u16 CPU6502::popStackTwoBytes()
+{
+	u16 result = popStack();
+	result += (static_cast<u16>(popStack()) << 8);
+	return result;
 }
