@@ -582,7 +582,10 @@ void CPU6502::instrBPL(u8)
 
 void CPU6502::instrBRK(u8)
 {
-	// !TODO
+	pushStack(reg.PC);
+	pushStack(reg.Status);
+	reg.PC = getTwoBytesFromMem(0xFFFE);
+	setBreakFlag(true);
 }
 
 void CPU6502::instrBVC(u8)
