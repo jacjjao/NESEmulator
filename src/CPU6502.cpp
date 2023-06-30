@@ -776,7 +776,7 @@ void CPU6502::instrROL(const u8 opcode)
 	const u8 new_bit0 = getCarryFlag();
 	setCarryFlag(getBitN(*target, 7));
 	*target <<= 1;
-	setBitN(*target, new_bit0, 0);
+	setBitN(*target, 0, new_bit0);
 	setNegativeResultFlag(*target);
 }
 
@@ -810,7 +810,7 @@ void CPU6502::instrROR(const u8 opcode)
 	const u8 new_bit7 = getCarryFlag();
 	setCarryFlag(getBitN(*target, 0));
 	*target >>= 1;
-	setBitN(*target, new_bit7, 7);
+	setBitN(*target, 7, new_bit7);
 	setNegativeResultFlag(*target);
 }
 
@@ -926,37 +926,37 @@ u8 CPU6502::getNegativeResultFlag() const
 
 void CPU6502::setCarryFlag(const bool set)
 {
-	setBitN(reg.Status, set, 0);
+	setBitN(reg.Status, 0, set);
 }
 
 void CPU6502::setZeroFlag(const u8 result)
 {
-	setBitN(reg.Status, (result == 0), 1);
+	setBitN(reg.Status, 1, (result == 0));
 }
 
 void CPU6502::setInterruptDisableFlag(const bool set)
 {
-	setBitN(reg.Status, set, 2);
+	setBitN(reg.Status, 2, set);
 }
 
 void CPU6502::setDecimalModeFlag(const bool set)
 {
-	setBitN(reg.Status, set, 3);
+	setBitN(reg.Status, 3, set);
 }
 
 void CPU6502::setBreakFlag(const bool set)
 {
-	setBitN(reg.Status, set, 4);
+	setBitN(reg.Status, 4, set);
 }
 
 void CPU6502::setOverflowFlag(const bool set)
 {
-	setBitN(reg.Status, set, 6);
+	setBitN(reg.Status, 6, set);
 }
 
 void CPU6502::setNegativeResultFlag(const u8 result)
 {
-	setBitN(reg.Status, getBitN(result, 7), 7);
+	setBitN(reg.Status, 7, getBitN(result, 7));
 }
 
 void CPU6502::pushStack(const u8 val)

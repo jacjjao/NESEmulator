@@ -7,7 +7,7 @@ constexpr T getBitN(const T var, const unsigned pos)
 }
 
 template<typename T>
-constexpr void setBitN(T& var, const bool val, const unsigned pos)
+constexpr void setBitN(T& var, const unsigned pos, const bool val)
 {
 	if (val)
 	{
