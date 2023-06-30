@@ -13,7 +13,7 @@ public:
 	void update();
 
 private:
-	void instrADC(u8 opcode);
+	void instrADC(u8 opcode); // carry, overflow ??
 	void instrAND(u8 opcode);
 	void instrASL(u8 opcode);
 	void instrBBC(u8 opcode);
@@ -56,6 +56,19 @@ private:
 	void instrROR(u8 opcode);
 	void instrRTI(u8 opcode);
 	void instrRTS(u8 opcode);
+	void instrSBC(u8 opcode); // carry, overflow ??
+	void instrSEC(u8 opcode);
+	void instrSED(u8 opcode);
+	void instrSEI(u8 opcode);
+	void instrSTA(u8 opcode);
+	void instrSTX(u8 opcode);
+	void instrSTY(u8 opcode);
+	void instrTAX(u8 opcode);
+	void instrTAY(u8 opcode);
+	void instrTSX(u8 opcode); // ?????
+	void instrTXA(u8 opcode);
+	void instrTXS(u8 opcode);
+	void instrTYA(u8 opcode);
 
 	void unknownOpcode(u8 opcode);
 
@@ -98,7 +111,7 @@ private:
 		u8 X = 0;
 		u8 Y = 0;
 		u8 Status = 0;
-		u8* SP = nullptr;
+		u8 SP = 0;
 		u16 PC = 0;
 	} reg;
 
@@ -109,5 +122,4 @@ private:
 	static constexpr std::size_t instrs_size = 0xFF + 1;
 
 	static constexpr u16 stack_begin = 0x01FF;
-	static constexpr u16 stack_end   = 0x00FF;
 };
