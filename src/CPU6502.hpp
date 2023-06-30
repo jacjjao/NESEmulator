@@ -16,7 +16,7 @@ private:
 	void instrADC(u8 opcode); // carry, overflow ??
 	void instrAND(u8 opcode);
 	void instrASL(u8 opcode);
-	void instrBBC(u8 opcode);
+	void instrBCC(u8 opcode);
 	void instrBCS(u8 opcode);
 	void instrBEQ(u8 opcode);
 	void instrBIT(u8 opcode);
