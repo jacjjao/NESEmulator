@@ -8,6 +8,29 @@
 #include <cassert>
 #include <iomanip>
 
+#include <fstream>
+
+
+// debug fucntion
+void CPU6502::print(u16 length)
+{
+	static std::ofstream file{"output.txt"};
+
+	length += 1;
+	u16 pc = reg.PC - length;
+	file << std::uppercase << std::hex << (int)pc << ' ';
+	for (pc; pc < reg.PC; ++pc) {
+		file << ' ' << (int)mem[pc];
+		// std::cout << std::uppercase << std::hex << (int)pc
+	}
+	file << "\n    ";
+	file << "A:" << (int)reg.A;
+	file << " X:" << (int)reg.X;
+	file << " Y:" << (int)reg.Y;
+	file << " P:" << (int)reg.Status;
+	file << " SP:" << (int)reg.SP;
+	file << "\n" << std::endl;
+}
 
 CPU6502::CPU6502() : 
 	mem(new u8[mem_size])
@@ -372,65 +395,57 @@ CPU6502::~CPU6502()
 }
 
 void CPU6502::update()
-{
-	static u16 prev_pc = reg.PC;
-	prev_pc = reg.PC;
-
+{	
 	const u8 opcode = getByteFromPC();
 	instrs[opcode](opcode);
-
-	if (std::abs((int)reg.PC - (int)prev_pc) > 3) // it's a branch 
-		return;
-	std::cout << std::hex << (int)prev_pc << ' ';
-	for (u8* it = &mem[prev_pc]; it < &mem[reg.PC]; ++it)
-		std::cout << ' ' << std::hex << (int)*it;
-	std::cout << '\n';
-	std::cout << "A:" << std::hex << (int)reg.A;
-	std::cout << " X:" << std::hex << (int)reg.X;
-	std::cout << " Y:" << std::hex << (int)reg.Y;
-	std::cout << " P:" << std::hex << (int)reg.Status;
-	std::cout << " SP:" << std::hex << (int)reg.SP << "\n\n";
 }
 
 void CPU6502::instrADC(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0x69:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 	
 	case 0x65:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x75:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x6D:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x7D:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0x79:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0x61:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0x71:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
-
-	const u8 M = mem[addr];
+		
 	const u8 C = getCarryFlag();
 	const u8 result = reg.A + M + C;
 
@@ -445,43 +460,51 @@ void CPU6502::instrADC(const u8 opcode)
 
 void CPU6502::instrAND(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0x29:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 	
 	case 0x25:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 	
 	case 0x35:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x2D:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x3D:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0x39:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0x21:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0x31:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
 
-	reg.A = reg.A & mem[addr];
+	reg.A = reg.A & M;
 
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
@@ -494,30 +517,35 @@ void CPU6502::instrASL(u8 opcode)
 	{
 	case 0x0A: 
 		target = &reg.A;
+		print(0);
 		break;
 
 	case 0x06:
 	{
 		const u16 addr = zeroPageAddr();
 		target = &mem[addr];
+		print(1);
 		break;
 	}
 	case 0x16:
 	{
 		const u16 addr = zeroPageAddr(reg.X);
 		target = &mem[addr];
+		print(1);
 		break;
 	}
 	case 0x0E:
 	{
 		const u16 addr = absoluteAddr();
 		target = &mem[addr];
+		print(2);
 		break;
 	}
 	case 0x1E:
 	{
 		const u16 addr = absoluteAddr(reg.X);
 		target = &mem[addr];
+		print(2);
 		break;
 	}
 	}
@@ -531,14 +559,16 @@ void CPU6502::instrASL(u8 opcode)
 
 void CPU6502::instrBCC(u8)
 {
-	const u8 displacement = getByteFromPC(); // get the byte no matter it will branch or not
+	const u8 displacement = getByteFromPC(); 
 	if (!getCarryFlag())
 		reg.PC += displacement;
+	print(1);
 }
 
 void CPU6502::instrBCS(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (getCarryFlag())
 		reg.PC += displacement;
 }
@@ -546,6 +576,7 @@ void CPU6502::instrBCS(u8)
 void CPU6502::instrBEQ(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (getZeroFlag())
 		reg.PC += displacement;
 }
@@ -557,10 +588,12 @@ void CPU6502::instrBIT(const u8 opcode)
 	{
 	case 0x24:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0x2C:
 		addr = absoluteAddr();
+		print(2);
 		break;
 	}
 	const u8 M = mem[addr];
@@ -572,6 +605,7 @@ void CPU6502::instrBIT(const u8 opcode)
 void CPU6502::instrBMI(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (getNegativeResultFlag())
 		reg.PC += displacement;
 }
@@ -579,6 +613,7 @@ void CPU6502::instrBMI(u8)
 void CPU6502::instrBNE(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (!getZeroFlag())
 		reg.PC += displacement;
 }
@@ -586,12 +621,14 @@ void CPU6502::instrBNE(u8)
 void CPU6502::instrBPL(u8)
 {
 	const u8 displacement = getByteFromPC();
-	if (getZeroFlag())
+	print(1);
+	if (!getNegativeResultFlag())
 		reg.PC += displacement;
 }
 
 void CPU6502::instrBRK(u8)
 {
+	std::cout << "--------BRK-------\n";
 	pushStack(reg.PC);
 	pushStack(reg.Status);
 	reg.PC = getTwoBytesFromMem(0xFFFE);
@@ -601,6 +638,7 @@ void CPU6502::instrBRK(u8)
 void CPU6502::instrBVC(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (!getOverflowFlag())
 		reg.PC += displacement;
 }
@@ -608,71 +646,82 @@ void CPU6502::instrBVC(u8)
 void CPU6502::instrBVS(u8)
 {
 	const u8 displacement = getByteFromPC();
+	print(1);
 	if (getOverflowFlag())
 		reg.PC += displacement;
 }
 
 void CPU6502::instrCLC(u8)
 {
+	print(0);
 	setCarryFlag(false);
 }
 
 void CPU6502::instrCLD(u8)
 {
+	print(0);
 	setDecimalModeFlag(false);
 }
 
 void CPU6502::instrCLI(u8)
 {
+	print(0);
 	setInterruptDisableFlag(false);
 }
 
 void CPU6502::instrCLV(u8)
 {
+	print(0);
 	setOverflowFlag(false);
 }
 
 void CPU6502::instrCMP(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xC9:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 
 	case 0xC5:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xD5:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0xCD:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 	
 	case 0xDD:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0xD9:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0xC1:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0xD1:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
 
-	const u8 M = mem[addr];
 	const u8 result = reg.A - M;
-
 	setCarryFlag(reg.A >= M);
 	setZeroFlag(result);
 	setNegativeResultFlag(result);
@@ -680,25 +729,26 @@ void CPU6502::instrCMP(const u8 opcode)
 
 void CPU6502::instrCPX(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xE0:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 	
 	case 0xE4:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xEC:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 	}
 
-	const u8 M = mem[addr];
 	const u8 result = reg.X - M;
-
 	setCarryFlag(reg.X >= M);
 	setZeroFlag(result);
 	setNegativeResultFlag(result);
@@ -706,25 +756,26 @@ void CPU6502::instrCPX(const u8 opcode)
 
 void CPU6502::instrCPY(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xC0:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 
 	case 0xC4:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xCC:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 	}
 
-	const u8 M = mem[addr];
 	const u8 result = reg.Y - M;
-
 	setCarryFlag(reg.Y >= M);
 	setZeroFlag(result);
 	setNegativeResultFlag(result);
@@ -737,18 +788,22 @@ void CPU6502::instrDEC(const u8 opcode)
 	{
 	case 0xC6:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0xD6:
 		addr = zeroPageAddr(reg.X);
+		print(1);
 		break;
 
 	case 0xCE:
 		addr = absoluteAddr();
+		print(2);
 		break;
 
 	case 0xDE:
 		addr = absoluteAddr(reg.X);
+		print(2);
 		break;
 	}
 
@@ -759,6 +814,7 @@ void CPU6502::instrDEC(const u8 opcode)
 
 void CPU6502::instrDEX(u8)
 {
+	print(0);
 	--reg.X;
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
@@ -766,6 +822,7 @@ void CPU6502::instrDEX(u8)
 
 void CPU6502::instrDEY(u8)
 {
+	print(0);
 	--reg.Y;
 	setZeroFlag(reg.Y);
 	setNegativeResultFlag(reg.Y);
@@ -773,43 +830,51 @@ void CPU6502::instrDEY(u8)
 
 void CPU6502::instrEOR(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0x49:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 
 	case 0x45:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x55:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x4D:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x5D:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0x59:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0x41:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0x51:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
 
-	reg.A = reg.A ^ mem[addr];
+	reg.A = reg.A ^ M;
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
 }
@@ -821,18 +886,22 @@ void CPU6502::instrINC(u8 opcode)
 	{
 	case 0xE6:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0xF6:
 		addr = zeroPageAddr(reg.X);
+		print(1);
 		break;
 
 	case 0xEE:
 		addr = absoluteAddr();
+		print(2);
 		break;
 
 	case 0xFE:
 		addr = absoluteAddr(reg.X);
+		print(2);
 		break;
 	}
 
@@ -843,6 +912,7 @@ void CPU6502::instrINC(u8 opcode)
 
 void CPU6502::instrINX(u8)
 {
+	print(0);
 	++reg.X;
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
@@ -850,6 +920,7 @@ void CPU6502::instrINX(u8)
 
 void CPU6502::instrINY(u8)
 {
+	print(0);
 	++reg.Y;
 	setZeroFlag(reg.Y);
 	setNegativeResultFlag(reg.Y);
@@ -860,115 +931,146 @@ void CPU6502::instrJMP(const u8 opcode)
 	switch (opcode)
 	{
 	case 0x4C:
-		reg.PC = absoluteAddr();
+	{
+		u16 addr = absoluteAddr();
+		print(2);
+		reg.PC = addr;
 		break;
-
+	}
 	case 0x6C:
-		reg.PC = indirectAddr();
+	{
+		u16 addr = indirectAddr();
+		print(2);
+		reg.PC = addr;
 		break;
+	}
 	}
 }
 
 void CPU6502::instrJSR(u8)
 {
 	const u16 destination = absoluteAddr();
-	pushStack(reg.PC);
+	print(2);
+	pushStack(--reg.PC);
 	reg.PC = destination;
 }
 
 void CPU6502::instrLDA(const u8 opcode)
 {
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xA9:
-		reg.A = immediateAddr();
+		M = static_cast<u8>(immediateAddr());
+		print(1);
 		break;
 
 	case 0xA5:
-		reg.A = mem[zeroPageAddr()];
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xB5:
-		reg.A = mem[zeroPageAddr(reg.X)];
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0xAD:
-		reg.A = mem[absoluteAddr()];
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0xBD:
-		reg.A = mem[absoluteAddr(reg.X)];
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0xB9:
-		reg.A = mem[absoluteAddr(reg.Y)];
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0xA1:
-		reg.A = mem[indexedIndirectAddr()];
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0xB1:
-		reg.A = mem[indirectIndexedAddr()];
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
+	reg.A = M;
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
 }
 
 void CPU6502::instrLDX(const u8 opcode)
 {
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xA2:
-		reg.X = immediateAddr();
+		M = static_cast<u8>(immediateAddr());
+		print(1);
 		break;
 
 	case 0xA6:
-		reg.X = mem[zeroPageAddr()];
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xB6:
-		reg.X = mem[zeroPageAddr(reg.Y)];
+		M = mem[zeroPageAddr(reg.Y)];
+		print(1);
 		break;
 
 	case 0xAE:
-		reg.X = mem[absoluteAddr()];
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0xBE:
-		reg.X = mem[absoluteAddr(reg.Y)];
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 	}
+	reg.X = M;
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
 }
 
 void CPU6502::instrLDY(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xA0:
-		addr = immediateAddr();
+		M = static_cast<u8>(immediateAddr());
+		print(1);
 		break;
 
 	case 0xA4:
-		reg.Y = mem[zeroPageAddr()];
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xB4:
-		reg.Y = mem[zeroPageAddr(reg.X)];
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0xAC:
-		reg.Y = mem[absoluteAddr()];
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0xBC:
-		reg.Y = mem[absoluteAddr(reg.X)];
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 	}
+	reg.Y = M;
 	setZeroFlag(reg.Y);
 	setNegativeResultFlag(reg.Y);
 }
@@ -980,22 +1082,27 @@ void CPU6502::instrLSR(const u8 opcode)
 	{
 	case 0x4A:
 		target = &reg.A;
+		print(0);
 		break;
 
 	case 0x46:
 		target = &mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x56:
 		target = &mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x4E:
 		target = &mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x5E:
 		target = &mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 	}
 
@@ -1008,47 +1115,55 @@ void CPU6502::instrLSR(const u8 opcode)
 void CPU6502::instrNOP(u8)
 {
 	// nop
+	print(0);
 }
 
 void CPU6502::instrORA(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0x09:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 
 	case 0x05:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x15:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x0D:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x1D:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0x19:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0x01:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0x11:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
 
-	const u8 M = mem[addr];
 	reg.A = reg.A | M;
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
@@ -1056,16 +1171,19 @@ void CPU6502::instrORA(const u8 opcode)
 
 void CPU6502::instrPHA(u8)
 {
+	print(0);
 	pushStack(reg.A);
 }
 
 void CPU6502::instrPHP(u8)
 {
+	print(0);
 	pushStack(reg.Status);
 }
 
 void CPU6502::instrPLA(u8)
 {
+	print(0);
 	reg.A = popStack();
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
@@ -1073,6 +1191,7 @@ void CPU6502::instrPLA(u8)
 
 void CPU6502::instrPLP(u8)
 {
+	print(0);
 	reg.Status = popStack();
 }
 
@@ -1083,22 +1202,27 @@ void CPU6502::instrROL(const u8 opcode)
 	{
 	case 0x2A:
 		target = &reg.A;
+		print(0);
 		break;
 
 	case 0x26:
 		target = &mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x36:
 		target = &mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x2E:
 		target = &mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x3E:
 		target = &mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 	}
 
@@ -1121,18 +1245,22 @@ void CPU6502::instrROR(const u8 opcode)
 
 	case 0x66:
 		target = &mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0x76:
 		target = &mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0x6E:
 		target = &mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0x7E:
 		target = &mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 	}
 
@@ -1146,54 +1274,65 @@ void CPU6502::instrROR(const u8 opcode)
 
 void CPU6502::instrRTI(u8)
 {
+	print(0);
 	reg.Status = popStack();
 	reg.PC = popStackTwoBytes();
 }
 
 void CPU6502::instrRTS(u8)
 {
+	print(0);
 	reg.PC = popStackTwoBytes();
+	++reg.PC;
 }
 
 void CPU6502::instrSBC(const u8 opcode)
 {
-	u16 addr = 0;
+	u8 M = 0;
 	switch (opcode)
 	{
 	case 0xE9:
-		addr = immediateAddr();
+		M = immediateAddr();
+		print(1);
 		break;
 
 	case 0xE5:
-		addr = zeroPageAddr();
+		M = mem[zeroPageAddr()];
+		print(1);
 		break;
 
 	case 0xF5:
-		addr = zeroPageAddr(reg.X);
+		M = mem[zeroPageAddr(reg.X)];
+		print(1);
 		break;
 
 	case 0xED:
-		addr = absoluteAddr();
+		M = mem[absoluteAddr()];
+		print(2);
 		break;
 
 	case 0xFD:
-		addr = absoluteAddr(reg.X);
+		M = mem[absoluteAddr(reg.X)];
+		print(2);
 		break;
 
 	case 0xF9:
-		addr = absoluteAddr(reg.Y);
+		M = mem[absoluteAddr(reg.Y)];
+		print(2);
 		break;
 
 	case 0xE1:
-		addr = indexedIndirectAddr();
+		M = mem[indexedIndirectAddr()];
+		print(1);
 		break;
 
 	case 0xF1:
-		addr = indirectIndexedAddr();
+		M = mem[indirectIndexedAddr()];
+		print(1);
 		break;
 	}
 
-	const u8 M = mem[addr], C = getCarryFlag();
+	const u8 C = getCarryFlag();
 	const u8 result = reg.A - M - (static_cast<u8>(1) - C);
 
 	setZeroFlag(result);
@@ -1207,16 +1346,19 @@ void CPU6502::instrSBC(const u8 opcode)
 
 void CPU6502::instrSEC(u8)
 {
+	print(0);
 	setCarryFlag(true);
 }
 
 void CPU6502::instrSED(u8)
 {
+	print(0);
 	setDecimalModeFlag(true);
 }
 
 void CPU6502::instrSEI(u8)
 {
+	print(0);
 	setInterruptDisableFlag(true);
 }
 
@@ -1227,30 +1369,37 @@ void CPU6502::instrSTA(const u8 opcode)
 	{
 	case 0x85:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0x95:
 		addr = zeroPageAddr(reg.X);
+		print(1);
 		break;
 
 	case 0x8D:
 		addr = absoluteAddr();
+		print(2);
 		break;
 
 	case 0x9D:
 		addr = absoluteAddr(reg.X);
+		print(2);
 		break;
 
 	case 0x99:
 		addr = absoluteAddr(reg.Y);
+		print(2);
 		break;
 
 	case 0x81:
 		addr = indexedIndirectAddr();	
+		print(1);
 		break;
 
 	case 0x91:
 		addr = indirectIndexedAddr();
+		print(1);
 		break;
 	}
 
@@ -1264,14 +1413,17 @@ void CPU6502::instrSTX(const u8 opcode)
 	{
 	case 0x86:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0x96:
 		addr = zeroPageAddr(reg.Y);
+		print(1);
 		break;
 
 	case 0x8E:
 		addr = absoluteAddr();
+		print(2);
 		break;
 	}
 
@@ -1285,14 +1437,17 @@ void CPU6502::instrSTY(u8 opcode)
 	{
 	case 0x84:
 		addr = zeroPageAddr();
+		print(1);
 		break;
 
 	case 0x94:
 		addr = zeroPageAddr(reg.X);
+		print(1);
 		break;
 
 	case 0x8C:
 		addr = absoluteAddr();
+		print(2);
 		break;
 	}
 
@@ -1301,6 +1456,7 @@ void CPU6502::instrSTY(u8 opcode)
 
 void CPU6502::instrTAX(u8)
 {
+	print(0);
 	reg.X = reg.A;
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
@@ -1308,6 +1464,7 @@ void CPU6502::instrTAX(u8)
 
 void CPU6502::instrTAY(u8)
 {
+	print(0);
 	reg.Y = reg.A;
 	setZeroFlag(reg.Y);
 	setNegativeResultFlag(reg.Y);
@@ -1315,6 +1472,7 @@ void CPU6502::instrTAY(u8)
 
 void CPU6502::instrTSX(u8)
 {
+	print(0);
 	reg.X = reg.SP;	
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
@@ -1322,18 +1480,21 @@ void CPU6502::instrTSX(u8)
 
 void CPU6502::instrTXA(u8)
 {
-	reg.A = reg.SP;
+	print(0);
+	reg.A = reg.X;
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
 }
 
 void CPU6502::instrTXS(u8)
 {
+	print(0);
 	reg.SP = reg.X;
 }
 
 void CPU6502::instrTYA(u8)
 {
+	print(0);
 	reg.A = reg.Y;
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
@@ -1356,7 +1517,7 @@ u16 CPU6502::absoluteAddr(const u8 offset)
 
 u16 CPU6502::indirectAddr()
 {
-	return mem[getTwoBytesFromPC()];
+	return getTwoBytesFromMem(getTwoBytesFromPC());
 }
 
 u16 CPU6502::indexedIndirectAddr()
@@ -1393,14 +1554,14 @@ u16 CPU6502::getTwoBytesFromPC()
 u16 CPU6502::getTwoBytesFromZP(const u8 loc)
 {
 	u16 result = mem[loc];
-	result += (mem[loc + 1] << 8);
+	result += (static_cast<u16>(mem[loc + 1]) << 8);
 	return result;
 }
 
 u16 CPU6502::getTwoBytesFromMem(const u16 loc)
 {
 	u16 result = mem[loc];
-	result += (mem[loc + 1] << 8);
+	result += (static_cast<u16>(mem[loc + 1]) << 8);
 	return result;
 }
 
@@ -1500,6 +1661,6 @@ u8 CPU6502::popStack()
 u16 CPU6502::popStackTwoBytes()
 {
 	u16 result = popStack();
-	result += (static_cast<u16>(popStack()) << 8);
+	result |= (static_cast<u16>(popStack()) << 8);
 	return result;
 }

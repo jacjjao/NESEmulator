@@ -105,12 +105,14 @@ public:
 	u8 popStack();
 	u16 popStackTwoBytes();
 
+	void print(u16 length); // for debug
+
 	struct
 	{
 		u8 A = 0;
 		u8 X = 0;
 		u8 Y = 0;
-		u8 Status = 0x24;
+		u8 Status = 0x34;
 		u8 SP = 0xFD;
 		u16 PC = 0;
 	} reg;
