@@ -12,7 +12,7 @@ public:
 
 	void update();
 
-private:
+// private:
 	void instrADC(u8 opcode); // carry, overflow ??
 	void instrAND(u8 opcode);
 	void instrASL(u8 opcode);
@@ -110,8 +110,8 @@ private:
 		u8 A = 0;
 		u8 X = 0;
 		u8 Y = 0;
-		u8 Status = 0;
-		u8 SP = 0;
+		u8 Status = 0x24;
+		u8 SP = 0xFD;
 		u16 PC = 0;
 	} reg;
 
@@ -121,5 +121,5 @@ private:
 	static constexpr std::size_t mem_size    = 0xFFFF + 1;
 	static constexpr std::size_t instrs_size = 0xFF + 1;
 
-	static constexpr u16 stack_begin = 0x01FF;
+	static constexpr u16 stack_low = 0x0100;
 };

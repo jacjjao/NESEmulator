@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cstring>
 #include <cassert>
+#include <iomanip>
 
 
 CPU6502::CPU6502() : 
@@ -372,8 +373,23 @@ CPU6502::~CPU6502()
 
 void CPU6502::update()
 {
+	static u16 prev_pc = reg.PC;
+	prev_pc = reg.PC;
+
 	const u8 opcode = getByteFromPC();
 	instrs[opcode](opcode);
+
+	if (std::abs((int)reg.PC - (int)prev_pc) > 3) // it's a branch 
+		return;
+	std::cout << std::hex << (int)prev_pc << ' ';
+	for (u8* it = &mem[prev_pc]; it < &mem[reg.PC]; ++it)
+		std::cout << ' ' << std::hex << (int)*it;
+	std::cout << '\n';
+	std::cout << "A:" << std::hex << (int)reg.A;
+	std::cout << " X:" << std::hex << (int)reg.X;
+	std::cout << " Y:" << std::hex << (int)reg.Y;
+	std::cout << " P:" << std::hex << (int)reg.Status;
+	std::cout << " SP:" << std::hex << (int)reg.SP << "\n\n";
 }
 
 void CPU6502::instrADC(const u8 opcode)
@@ -515,26 +531,23 @@ void CPU6502::instrASL(u8 opcode)
 
 void CPU6502::instrBCC(u8)
 {
-	if (getCarryFlag())
-		return;
-	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	const u8 displacement = getByteFromPC(); // get the byte no matter it will branch or not
+	if (!getCarryFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBCS(u8)
 {
-	if (!getCarryFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (getCarryFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBEQ(u8)
 {
-	if (!getZeroFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (getZeroFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBIT(const u8 opcode)
@@ -558,26 +571,23 @@ void CPU6502::instrBIT(const u8 opcode)
 
 void CPU6502::instrBMI(u8)
 {
-	if (!getNegativeResultFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (getNegativeResultFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBNE(u8)
 {
-	if (getZeroFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (!getZeroFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBPL(u8)
 {
-	if (!getZeroFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (getZeroFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBRK(u8)
@@ -590,18 +600,16 @@ void CPU6502::instrBRK(u8)
 
 void CPU6502::instrBVC(u8)
 {
-	if (getOverflowFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (!getOverflowFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrBVS(u8)
 {
-	if (!getOverflowFlag())
-		return;
 	const u8 displacement = getByteFromPC();
-	reg.PC += displacement;
+	if (getOverflowFlag())
+		reg.PC += displacement;
 }
 
 void CPU6502::instrCLC(u8)
@@ -870,74 +878,68 @@ void CPU6502::instrJSR(u8)
 
 void CPU6502::instrLDA(const u8 opcode)
 {
-	u16 addr = 0;
 	switch (opcode)
 	{
 	case 0xA9:
-		addr = immediateAddr();
+		reg.A = immediateAddr();
 		break;
 
 	case 0xA5:
-		addr = zeroPageAddr();
+		reg.A = mem[zeroPageAddr()];
 		break;
 
 	case 0xB5:
-		addr = zeroPageAddr(reg.X);
+		reg.A = mem[zeroPageAddr(reg.X)];
 		break;
 
 	case 0xAD:
-		addr = absoluteAddr();
+		reg.A = mem[absoluteAddr()];
 		break;
 
 	case 0xBD:
-		addr = absoluteAddr(reg.X);
+		reg.A = mem[absoluteAddr(reg.X)];
 		break;
 
 	case 0xB9:
-		addr = absoluteAddr(reg.Y);
+		reg.A = mem[absoluteAddr(reg.Y)];
 		break;
 
 	case 0xA1:
-		addr = indexedIndirectAddr();
+		reg.A = mem[indexedIndirectAddr()];
 		break;
 
 	case 0xB1:
-		addr = indirectIndexedAddr();
+		reg.A = mem[indirectIndexedAddr()];
 		break;
 	}
-
-	reg.A = mem[addr];
 	setZeroFlag(reg.A);
 	setNegativeResultFlag(reg.A);
 }
 
 void CPU6502::instrLDX(const u8 opcode)
 {
-	u16 addr = 0;
 	switch (opcode)
 	{
 	case 0xA2:
-		addr = immediateAddr();
+		reg.X = immediateAddr();
 		break;
 
 	case 0xA6:
-		addr = zeroPageAddr();
+		reg.X = mem[zeroPageAddr()];
 		break;
 
 	case 0xB6:
-		addr = zeroPageAddr(reg.Y);
+		reg.X = mem[zeroPageAddr(reg.Y)];
 		break;
 
 	case 0xAE:
-		addr = absoluteAddr();
+		reg.X = mem[absoluteAddr()];
 		break;
 
 	case 0xBE:
-		addr = absoluteAddr(reg.Y);
+		reg.X = mem[absoluteAddr(reg.Y)];
 		break;
 	}
-
-	reg.X = mem[addr];
 	setZeroFlag(reg.X);
 	setNegativeResultFlag(reg.X);
 }
@@ -952,23 +954,21 @@ void CPU6502::instrLDY(const u8 opcode)
 		break;
 
 	case 0xA4:
-		addr = zeroPageAddr();
+		reg.Y = mem[zeroPageAddr()];
 		break;
 
 	case 0xB4:
-		addr = zeroPageAddr(reg.X);
+		reg.Y = mem[zeroPageAddr(reg.X)];
 		break;
 
 	case 0xAC:
-		addr = absoluteAddr();
+		reg.Y = mem[absoluteAddr()];
 		break;
 
 	case 0xBC:
-		addr = absoluteAddr(reg.X);
+		reg.Y = mem[absoluteAddr(reg.X)];
 		break;
 	}
-
-	reg.Y = mem[addr];
 	setZeroFlag(reg.Y);
 	setNegativeResultFlag(reg.Y);
 }
@@ -1373,7 +1373,9 @@ u16 CPU6502::indirectIndexedAddr()
 
 void CPU6502::unknownOpcode(const u8 opcode)
 {
-	std::cerr << "Unknown opcode " << opcode << '\n';
+	std::cerr << "Unknown opcode: " << std::hex << (int)opcode << '\n'; 
+	std::cerr << "PC: " << std::hex << (int)reg.PC << '\n';
+	throw std::runtime_error{""};
 }
 
 u8 CPU6502::getByteFromPC()
@@ -1475,9 +1477,9 @@ void CPU6502::setNegativeResultFlag(const u8 result)
 
 void CPU6502::pushStack(const u8 val)
 {
-	assert(reg.SP < 255);
-	mem[stack_begin - reg.SP] = val;
-	++reg.SP;
+	assert(reg.SP > 0);
+	mem[stack_low + reg.SP] = val;
+	--reg.SP;
 }
 
 void CPU6502::pushStack(const u16 val)
@@ -1490,9 +1492,9 @@ void CPU6502::pushStack(const u16 val)
 
 u8 CPU6502::popStack()
 {
-	assert(reg.SP > 0);
-	--reg.SP;
-	return mem[stack_begin - reg.SP];
+	assert(reg.SP < 255);
+	++reg.SP;
+	return mem[stack_low + reg.SP];
 }
 
 u16 CPU6502::popStackTwoBytes()
