@@ -72,7 +72,7 @@ public:
 
 	void unknownOpcode(u8 opcode);
 
-	u16 immediateAddr();
+	u8 immediateAddr();
 	u16 zeroPageAddr(u8 offset = 0);
 	u16 absoluteAddr(u8 offset = 0);
 	u16 indirectAddr();

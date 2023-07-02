@@ -575,10 +575,18 @@ void CPU6502::instrBCS(u8)
 
 void CPU6502::instrBEQ(u8)
 {
-	const u8 displacement = getByteFromPC();
+	u8 displacement = getByteFromPC();
 	print(1);
 	if (getZeroFlag())
-		reg.PC += displacement;
+	{
+		if (getBitN(displacement, 7)) // is negative
+		{
+			displacement = ~displacement + static_cast<u8>(1);
+			reg.PC -= displacement;
+		}
+		else
+			reg.PC += displacement;
+	}
 }
 
 void CPU6502::instrBIT(const u8 opcode)
@@ -612,10 +620,18 @@ void CPU6502::instrBMI(u8)
 
 void CPU6502::instrBNE(u8)
 {
-	const u8 displacement = getByteFromPC();
+	u8 displacement = getByteFromPC();
 	print(1);
 	if (!getZeroFlag())
-		reg.PC += displacement;
+	{
+		if (getBitN(displacement, 7)) // is negative
+		{
+			displacement = ~displacement + static_cast<u8>(1);
+			reg.PC -= displacement;
+		}
+		else 
+			reg.PC += displacement;
+	}
 }
 
 void CPU6502::instrBPL(u8)
@@ -961,7 +977,7 @@ void CPU6502::instrLDA(const u8 opcode)
 	switch (opcode)
 	{
 	case 0xA9:
-		M = static_cast<u8>(immediateAddr());
+		M = immediateAddr();
 		print(1);
 		break;
 
@@ -1011,7 +1027,7 @@ void CPU6502::instrLDX(const u8 opcode)
 	switch (opcode)
 	{
 	case 0xA2:
-		M = static_cast<u8>(immediateAddr());
+		M = immediateAddr();
 		print(1);
 		break;
 
@@ -1046,7 +1062,7 @@ void CPU6502::instrLDY(const u8 opcode)
 	switch (opcode)
 	{
 	case 0xA0:
-		M = static_cast<u8>(immediateAddr());
+		M = immediateAddr();
 		print(1);
 		break;
 
@@ -1500,7 +1516,7 @@ void CPU6502::instrTYA(u8)
 	setNegativeResultFlag(reg.A);
 }
 
-u16 CPU6502::immediateAddr()
+u8 CPU6502::immediateAddr()
 {
 	return getByteFromPC();
 }
@@ -1517,7 +1533,15 @@ u16 CPU6502::absoluteAddr(const u8 offset)
 
 u16 CPU6502::indirectAddr()
 {
-	return getTwoBytesFromMem(getTwoBytesFromPC());
+	const u16 addr = getTwoBytesFromPC();
+	if (static_cast<u8>(addr) == 0xFF) // the LSB == 0xFF, the hardware bug will trigger
+	{
+		u16 result = static_cast<u16>(mem[addr]);
+		u16 msb_loc = addr & 0xFF00;
+		result |= (static_cast<u16>(mem[msb_loc]) << 8);
+		return result;
+	}
+	return getTwoBytesFromMem(addr);
 }
 
 u16 CPU6502::indexedIndirectAddr()
@@ -1547,21 +1571,21 @@ u8 CPU6502::getByteFromPC()
 u16 CPU6502::getTwoBytesFromPC()
 {
 	u16 result = mem[reg.PC++];
-	result += (static_cast<u16>(mem[reg.PC++]) << 8);
+	result |= (static_cast<u16>(mem[reg.PC++]) << 8);
 	return result;
 }
 
 u16 CPU6502::getTwoBytesFromZP(const u8 loc)
 {
 	u16 result = mem[loc];
-	result += (static_cast<u16>(mem[loc + 1]) << 8);
+	result |= (static_cast<u16>(mem[loc + 1]) << 8);
 	return result;
 }
 
 u16 CPU6502::getTwoBytesFromMem(const u16 loc)
 {
 	u16 result = mem[loc];
-	result += (static_cast<u16>(mem[loc + 1]) << 8);
+	result |= (static_cast<u16>(mem[loc + 1]) << 8);
 	return result;
 }
 

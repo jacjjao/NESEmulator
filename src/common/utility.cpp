@@ -1,4 +1,5 @@
 #include "utility.hpp"
+#include <limits>
 #include <cassert>
 
 bool willAddOverflow(const u8 a, const u8 b, const u8 c)
@@ -12,6 +13,13 @@ bool willAddOverflow(const u8 a, const u8 b, const u8 c)
 	const i8 z = static_cast<i8>(c);
 
 	i8 sum = 0;
-	sum = x + (y + z); // if x+y overflow x+y+z the result will be wrong
+	if (y < std::numeric_limits<i8>::max())
+	{
+		sum = x + (y + z);
+	}
+	else
+	{
+		sum = (x + z) + y;
+	}
 	return (x > 0 && y > 0 && sum <= 0) || (x < 0 && y < 0 && sum >= 0);
 }
