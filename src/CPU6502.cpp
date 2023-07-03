@@ -395,8 +395,10 @@ void CPU6502::update()
 	log_addr_mode = AddrMode::Implicit;
 #endif
 
+	cycles_ = 0;
 	const u8 opcode = getByteFromPC();
 	instrs_[opcode](opcode);
+	setBitN(reg_.Status, 5, true);
 
 #ifdef EMUCPULOG
 	switch (log_addr_mode)
@@ -432,6 +434,26 @@ u8 CPU6502::read(const u16 addr)
 	return bus_->read(addr);
 }
 
+void CPU6502::irq()
+{
+	if (getInterruptDisableFlag())
+		return;
+	pushStack(reg_.PC);
+	pushStack(reg_.Status);
+	reg_.PC = getTwoBytesFromMem(0xFFFE);
+	setInterruptDisableFlag(true);
+	cycles_ = 7;
+}
+
+void CPU6502::nmi()
+{
+	pushStack(reg_.PC);
+	pushStack(reg_.Status);
+	reg_.PC = getTwoBytesFromMem(0xFFFA);
+	setInterruptDisableFlag(true);
+	cycles_ = 7;
+}
+
 void CPU6502::instrADC(const u8 opcode)
 {
 	u8 M = 0;
@@ -439,34 +461,42 @@ void CPU6502::instrADC(const u8 opcode)
 	{
 	case 0x69:
 		M = immediateAddr();
+		cycles_ += 2;
 		break;
 	
 	case 0x65:
 		M = read(zeroPageAddr());
+		cycles_ += 3;
 		break;
 
 	case 0x75:
 		M = read(zeroPageAddr(reg_.X));
+		cycles_ += 4;
 		break;
 
 	case 0x6D:
 		M = read(absoluteAddr());
+		cycles_ += 4;
 		break;
 
 	case 0x7D:
 		M = read(absoluteAddr(reg_.X));
+		cycles_ += 4;
 		break;
 
 	case 0x79:
 		M = read(absoluteAddr(reg_.Y));
+		cycles_ += 4;
 		break;
 
 	case 0x61:
 		M = read(indexedIndirectAddr());
+		cycles_ += 6;
 		break;
 
 	case 0x71:
 		M = read(indirectIndexedAddr());
+		cycles_ += 5;
 		break;
 	}
 		
@@ -1103,6 +1133,8 @@ void CPU6502::instrPHA(u8)
 
 void CPU6502::instrPHP(u8)
 {
+	setBreakFlag(true);
+	setBitN(reg_.Status, 5, true);
 	pushStack(reg_.Status);
 }
 
@@ -1116,6 +1148,7 @@ void CPU6502::instrPLA(u8)
 void CPU6502::instrPLP(u8)
 {
 	reg_.Status = popStack();
+	setBreakFlag(true);
 }
 
 void CPU6502::instrROL(const u8 opcode)
@@ -1451,6 +1484,11 @@ u16 CPU6502::absoluteAddr(const u8 offset)
 #ifdef EMUCPULOG
 	log_addr_mode = AddrMode::Abs;
 #endif
+	const u16 off = static_cast<u16>(offset);
+	const u16 addr = getTwoBytesFromPC();
+	const u16 abs_addr = addr + off;
+	if ((abs_addr & 0xFF00) != (addr & 0xFF00))
+		++cycles_;
 	return getTwoBytesFromPC() + static_cast<u16>(offset);
 }
 
@@ -1485,7 +1523,12 @@ u16 CPU6502::indirectIndexedAddr()
 	log_addr_mode = AddrMode::IndirectIndexed;
 #endif
 	const u8 table_loc = getByteFromPC();
-	return getTwoBytesFromZP(table_loc) + static_cast<u16>(reg_.Y);
+	const u16 addr = getTwoBytesFromZP(table_loc);
+	const u16 offset = static_cast<u16>(reg_.Y);
+	const u16 abs_addr = addr + offset;
+	if ((abs_addr & 0xFF00) != (addr & 0xFF00))
+		++cycles_;
+	return abs_addr;
 }
 
 u8 CPU6502::getByteFromPC()

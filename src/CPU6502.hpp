@@ -20,6 +20,9 @@ public:
 	void write(u16 addr, u8 data);
 	u8 read(u16 addr);
 
+	void irq();
+	void nmi();
+
 // private:
 	void instrADC(u8 opcode);
 	void instrAND(u8 opcode);
@@ -146,7 +149,7 @@ public:
 	static constexpr std::size_t instrs_size = 256;
 
 	std::array<std::function<void(u8)>, instrs_size> instrs_;
-	u64 cycle_ = 0;
+	u8 cycles_ = 0;
 
 	Bus* bus_ = nullptr;
 

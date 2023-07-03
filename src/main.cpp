@@ -23,7 +23,7 @@ int main()
     int i = 0;
     for (auto it = data.cbegin() + 16; i < 16384; ++i, ++it)
         bus.cpu.write(0xC000 + i, *it);
-    std::cout << "Hi\n";
+
     bus.cpu.reg_.PC = 0xC000;
     bus.cpu.reg_.Status = 0x24;
 
