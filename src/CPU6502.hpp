@@ -2,17 +2,23 @@
 
 #include "common/type.hpp"
 #include <functional>
-#include <vector>
+#include <array>
 
 #define EMUCPULOG
+
+class Bus;
 
 class CPU6502
 {
 public:
 	CPU6502();
-	~CPU6502();
 
 	void update();
+
+	void connectToBus(Bus* bus);
+
+	void write(u16 addr, u8 data);
+	u8 read(u16 addr);
 
 // private:
 	void instrADC(u8 opcode);
@@ -118,7 +124,7 @@ public:
 		u8 Status = 0x34;
 		u8 SP = 0xFD;
 		u16 PC = 0;
-	} reg;
+	} reg_;
 
 #ifdef EMUCPULOG
 	enum class AddrMode
@@ -137,11 +143,12 @@ public:
 	void print(unsigned length); 
 #endif
 
-	std::vector<std::function<void(u8)>> instrs;
-	u8* mem;
+	static constexpr std::size_t instrs_size = 256;
 
-	static constexpr std::size_t mem_size    = 0xFFFF + 1;
-	static constexpr std::size_t instrs_size = 0xFF + 1;
+	std::array<std::function<void(u8)>, instrs_size> instrs_;
+	u64 cycle_ = 0;
+
+	Bus* bus_ = nullptr;
 
 	static constexpr u16 stack_low = 0x0100;
 };
