@@ -27,6 +27,8 @@ int main()
     );
     cpu.reg.PC = 0xC000;
     cpu.reg.Status = 0x24;
+    cpu.mem[0x02] = 0;
+    cpu.mem[0x03] = 0;
 
     while (true)
     {

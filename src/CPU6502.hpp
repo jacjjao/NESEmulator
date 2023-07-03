@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+#define EMUCPULOG
+
 class CPU6502
 {
 public:
@@ -13,7 +15,7 @@ public:
 	void update();
 
 // private:
-	void instrADC(u8 opcode); // carry, overflow ??
+	void instrADC(u8 opcode);
 	void instrAND(u8 opcode);
 	void instrASL(u8 opcode);
 	void instrBCC(u8 opcode);
@@ -56,7 +58,7 @@ public:
 	void instrROR(u8 opcode);
 	void instrRTI(u8 opcode);
 	void instrRTS(u8 opcode);
-	void instrSBC(u8 opcode); // carry, overflow ??
+	void instrSBC(u8 opcode); 
 	void instrSEC(u8 opcode);
 	void instrSED(u8 opcode);
 	void instrSEI(u8 opcode);
@@ -65,14 +67,17 @@ public:
 	void instrSTY(u8 opcode);
 	void instrTAX(u8 opcode);
 	void instrTAY(u8 opcode);
-	void instrTSX(u8 opcode); // ?????
+	void instrTSX(u8 opcode); 
 	void instrTXA(u8 opcode);
 	void instrTXS(u8 opcode);
 	void instrTYA(u8 opcode);
 
 	void unknownOpcode(u8 opcode);
 
+	void relativeDisplace(u8 displacement);
+
 	u8 immediateAddr();
+	u8 relativeAddr();
 	u16 zeroPageAddr(u8 offset = 0);
 	u16 absoluteAddr(u8 offset = 0);
 	u16 indirectAddr();
@@ -93,21 +98,19 @@ public:
 	u8 getNegativeResultFlag() const;
 
 	void setCarryFlag(bool set);
-	void setZeroFlag(u8 result);
+	void setZeroFlag(bool set);
 	void setInterruptDisableFlag(bool set);
 	void setDecimalModeFlag(bool set);
 	void setBreakFlag(bool set);
 	void setOverflowFlag(bool set);
-	void setNegativeResultFlag(u8 result);
+	void setNegativeResultFlag(bool set);
 
 	void pushStack(u8 val);
 	void pushStack(u16 val);
 	u8 popStack();
 	u16 popStackTwoBytes();
 
-	void print(u16 length); // for debug
-
-	struct
+	struct Registers
 	{
 		u8 A = 0;
 		u8 X = 0;
@@ -116,6 +119,23 @@ public:
 		u8 SP = 0xFD;
 		u16 PC = 0;
 	} reg;
+
+#ifdef EMUCPULOG
+	enum class AddrMode
+	{
+		Implicit,
+		Imme,
+		ZP,
+		Relative,
+		Abs,
+		Indirect,
+		IndexedIndirect,
+		IndirectIndexed
+	};
+	AddrMode log_addr_mode = AddrMode::Implicit;
+	Registers log_regs;
+	void print(unsigned length); 
+#endif
 
 	std::vector<std::function<void(u8)>> instrs;
 	u8* mem;
