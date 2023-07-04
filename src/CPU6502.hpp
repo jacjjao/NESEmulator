@@ -88,7 +88,7 @@ public:
 	u8 immediateAddr();
 	u8 relativeAddr();
 	u16 zeroPageAddr(u8 offset = 0);
-	u16 absoluteAddr(u8 offset = 0);
+	u16 absoluteAddr(u8 offset = 0, bool additional_cycles = true);
 	u16 indirectAddr();
 	u16 indexedIndirectAddr();
 	u16 indirectIndexedAddr();
@@ -150,6 +150,7 @@ public:
 
 	std::array<std::function<void(u8)>, instrs_size> instrs_;
 	u8 cycles_ = 0;
+	u64 total_cycles_ = 0;
 
 	Bus* bus_ = nullptr;
 

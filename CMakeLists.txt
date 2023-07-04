@@ -25,7 +25,7 @@ file(GLOB TEST_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-add_executable(the_tests src/common/utility.cpp ${TEST_SOURCES})
+add_executable(the_tests ${TEST_SOURCES})
 
 if(MSVC)
 	target_compile_options(${PROJECT_NAME} 
