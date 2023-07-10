@@ -615,10 +615,7 @@ void CPU6502::instrBCC(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (!getCarryFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBCS(u8)
@@ -626,10 +623,7 @@ void CPU6502::instrBCS(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (getCarryFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBEQ(u8)
@@ -637,10 +631,7 @@ void CPU6502::instrBEQ(u8)
 	u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (getZeroFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBIT(const u8 opcode)
@@ -668,10 +659,7 @@ void CPU6502::instrBMI(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (getNegativeResultFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBNE(u8)
@@ -679,10 +667,7 @@ void CPU6502::instrBNE(u8)
 	u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (!getZeroFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBPL(u8)
@@ -690,10 +675,7 @@ void CPU6502::instrBPL(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (!getNegativeResultFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBRK(u8)
@@ -710,10 +692,7 @@ void CPU6502::instrBVC(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (!getOverflowFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrBVS(u8)
@@ -721,10 +700,7 @@ void CPU6502::instrBVS(u8)
 	const u8 displacement = relativeAddr();
 	cycles_ += 2;
 	if (getOverflowFlag())
-	{
-		++cycles_;
 		relativeDisplace(displacement);
-	}
 }
 
 void CPU6502::instrCLC(u8)
@@ -1613,6 +1589,7 @@ void CPU6502::unknownOpcode(const u8 opcode)
 
 void CPU6502::relativeDisplace(u8 displacement)
 {
+	++cycles_;
 	const u16 old_pc = reg_.PC;
 	const bool is_negative = getBitN(displacement, 7);
 	if (is_negative)
