@@ -27,397 +27,313 @@ void CPU6502::print(const unsigned length)
 	file << " Y:"  << std::setw(2) << (int)log_regs.Y;
 	file << " P:"  << std::setw(2) << (int)log_regs.Status;
 	file << " SP:" << std::setw(2) << (int)log_regs.SP;
-	file << " CYC:" << std::dec << total_cycles_ - cycles_ + 7;
+	file << " CYC:" << std::dec << log_cycles + 7;
 	file << std::endl;
 }
 #endif
 
 CPU6502::CPU6502()
 {
-	const auto unknown = [this](const u8 opcode) {
-		unknownOpcode(opcode);
-	};
+	const auto unknown = [this]() { unknownOpcode(); };
+	const auto none    = [this]() { this->none(); };
+	const auto imm     = [this]() { this->imm(); };
+	const auto zp      = [this]() { this->zp(); };
+	const auto zpx     = [this]() { this->zpx(); };
+	const auto zpy     = [this]() { this->zpy(); };
+	const auto rel     = [this]() { this->rel(); };
+	const auto ind     = [this]() { this->ind(); };
+	const auto abs     = [this]() { this->abs(); };
+	const auto abx     = [this]() { this->abx(); };
+	const auto aby     = [this]() { this->aby(); };
+	const auto idxInd  = [this]() { this->idxInd(); };
+	const auto indIdx  = [this]() { this->indIdx(); };
+
 	for (auto& instr : instrs_)
-		instr = unknown;
+		instr = { none, unknown, 0, 0 };
 
-	const auto ADC = [this](const u8 opcode) {
-		instrADC(opcode);
-	};
-	instrs_[0x69] = instrs_[0x65] = instrs_[0x75] = instrs_[0x6D] = ADC;
-	instrs_[0x7D] = instrs_[0x79] = instrs_[0x61] = instrs_[0x71] = ADC;
+	const auto ADC = [this]() { this->ADC(); };
+	instrs_[0x69] = { imm,    ADC, 2, 0 };
+	instrs_[0x65] = { zp ,    ADC, 3, 0 };
+	instrs_[0x75] = { zpx,    ADC, 4, 0 };
+	instrs_[0x6D] = { abs,    ADC, 4, 0 };
+	instrs_[0x7D] = { abx,    ADC, 4, 1 };
+	instrs_[0x79] = { aby,    ADC, 4, 1 };
+	instrs_[0x61] = { idxInd, ADC, 6, 0 };
+	instrs_[0x71] = { indIdx, ADC, 5, 1 };
 
-	const auto AND = [this](const u8 opcode) {
-		instrAND(opcode);
-	};
-	instrs_[0x29] = instrs_[0x25] = instrs_[0x35] = instrs_[0x2D] = AND;
-	instrs_[0x3D] = instrs_[0x39] = instrs_[0x21] = instrs_[0x31] = AND;
+	const auto AND = [this]() { this->AND(); };
+	instrs_[0x29] = { imm,    AND, 2, 0 };
+	instrs_[0x25] = { zp ,    AND, 3, 0 };
+	instrs_[0x35] = { zpx,    AND, 4, 0 };
+	instrs_[0x2D] = { abs,    AND, 4, 0 };
+	instrs_[0x3D] = { abx,    AND, 4, 1 };
+	instrs_[0x39] = { aby,    AND, 4, 1 };
+	instrs_[0x21] = { idxInd, AND, 6, 0 };
+	instrs_[0x31] = { indIdx, AND, 5, 1 };
 
-	const auto ASL = [this](const u8 opcode) {
-		instrASL(opcode);
-	};
-	instrs_[0x0A] = instrs_[0x06] = ASL;
-	instrs_[0x16] = instrs_[0x0E] = instrs_[0x1E] = ASL;
+	const auto ASL = [this]() { this->ASL(); };
+	instrs_[0x0A] = { none, ASL, 2, 0 };
+	instrs_[0x06] = { zp  , ASL, 5, 0 };
+	instrs_[0x16] = { zpx , ASL, 6, 0 };
+	instrs_[0x0E] = { abs , ASL, 6, 0 };
+	instrs_[0x1E] = { abx , ASL, 7, 0 };
 
-	// BCC - Branch if Carry Clear
-	const auto BCC = [this](const u8 opcode) {
-		instrBCC(opcode);
-	};
-	instrs_[0x90] = BCC;
+	const auto BCC = [this]() { this->BCC(); };
+	instrs_[0x90] = { rel, BCC, 2, 2 };
 
-	// BCS - Branch if Carry Set
-	const auto BCS = [this](const u8 opcode) {
-		instrBCS(opcode);
-	};
-	instrs_[0xB0] = BCS;
+	const auto BCS = [this]() { this->BCS(); };
+	instrs_[0xB0] = { rel, BCS, 2, 2 };
 
-	// BEQ - Branch if Equal
-	const auto BEQ = [this](const u8 opcode) {
-		instrBEQ(opcode);
-	};
-	instrs_[0xF0] = BEQ;
+	const auto BEQ = [this]() { this->BEQ(); };
+	instrs_[0xF0] = { rel, BEQ, 2, 2 };
 
-	// BIT - Bit Test
-	const auto BIT = [this](const u8 opcode) {
-		instrBIT(opcode);
-	};
-	instrs_[0x24] = instrs_[0x2C] = BIT;
+	const auto BIT = [this]() { this->BIT(); };
+	instrs_[0x24] = { zp , BIT, 3, 0 };
+	instrs_[0x2C] = { abs, BIT, 4, 0 };
 
-	// BMI - Branch if Minus
-	const auto BMI = [this](const u8 opcode) {
-		instrBMI(opcode);
-	};
-	instrs_[0x30] = BMI;
+	const auto BMI = [this]() { this->BMI(); };
+	instrs_[0x30] = { rel, BMI, 2, 2 };
 
-	// BNE - Branch if Not Equal
-	const auto BNE = [this](const u8 opcode) {
-		instrBNE(opcode);
-	};
-	instrs_[0xD0] = BNE;
+	const auto BNE = [this]() { this->BNE(); };
+	instrs_[0xD0] = { rel, BNE, 2, 2 };
 
-	// BPL - Branch if Positive
-	const auto BPL = [this](const u8 opcode) {
-		instrBPL(opcode);
-	};
-	instrs_[0x10] = BPL;
+	const auto BPL = [this]() { this->BPL(); };
+	instrs_[0x10] = { rel, BPL, 2, 2 };
 
-	// BRK - Break
-	const auto BRK = [this](const u8 opcode) {
-		instrBRK(opcode);
-	};
-	instrs_[0x00] = BRK;
+	const auto BRK = [this]() { this->BRK(); };
+	instrs_[0x00] = { none, BRK, 7, 0 };
 
-	// BVC - Branch if Overflow Clear
-	const auto BVC = [this](const u8 opcode) {
-		instrBVC(opcode);
-	};
-	instrs_[0x50] = BVC;
+	const auto BVC = [this]() { this->BVC(); };
+	instrs_[0x50] = { rel, BVC, 2, 2 };
 
-	// BVS - Branch if Overflow Set
-	const auto BVS = [this](const u8 opcode) {
-		instrBVS(opcode);
-	};
-	instrs_[0x70] = BVS;
+	const auto BVS = [this]() { this->BVS(); };
+	instrs_[0x70] = { rel, BVS, 2, 2 };
 
-	// CLC - Clear Carry Flag
-	const auto CLC = [this](const u8 opcode) {
-		instrCLC(opcode);
-	};
-	instrs_[0x18] = CLC;
+	const auto CLC = [this]() { this->CLC(); };
+	instrs_[0x18] = { none, CLC, 2, 0 };
 
-	// CLD - Clear Decimal Mode
-	const auto CLD = [this](const u8 opcode) {
-		instrCLD(opcode);
-	};
-	instrs_[0xD8] = CLD;
+	const auto CLD = [this]() { this->CLD(); };
+	instrs_[0xD8] = { none, CLD, 2, 0 };
 
-	// CLI - Clear Interrupt Disable
-	const auto CLI = [this](const u8 opcode) {
-		instrCLI(opcode);
-	};
-	instrs_[0x58] = CLI;
+	const auto CLI = [this]() { this->CLI(); };
+	instrs_[0x58] = { none, CLI, 2, 0 };
 
-	// CLV - Clear Overflow Flag
-	const auto CLV = [this](const u8 opcode) {
-		instrCLV(opcode);
-	};
-	instrs_[0xB8] = CLV;
+	const auto CLV = [this]() { this->CLV(); };
+	instrs_[0xB8] = { none, CLV, 2, 0 };
 
-	// CMP - Compare Accumulator with Memory
-	const auto CMP = [this](const u8 opcode) {
-		instrCMP(opcode);
-	};
-	instrs_[0xC9] = instrs_[0xC5] = instrs_[0xD5] = instrs_[0xCD] = CMP;
-	instrs_[0xDD] = instrs_[0xD9] = instrs_[0xC1] = instrs_[0xD1] = CMP;
+	const auto CMP = [this]() { this->CMP(); };
+	instrs_[0xC9] = { imm   , CMP, 2, 0 };
+	instrs_[0xC5] = { zp    , CMP, 3, 0 };
+	instrs_[0xD5] = { zpx   , CMP, 4, 0 };
+	instrs_[0xCD] = { abs   , CMP, 4, 0 };
+	instrs_[0xDD] = { abx   , CMP, 4, 1 };
+	instrs_[0xD9] = { aby   , CMP, 4, 1 };
+	instrs_[0xC1] = { idxInd, CMP, 6, 0 };
+	instrs_[0xD1] = { indIdx, CMP, 5, 1 };
 
-	// CPX - Compare X Register with Memory
-	const auto CPX = [this](const u8 opcode) {
-		instrCPX(opcode);
-	};
-	instrs_[0xE0] = instrs_[0xE4] = instrs_[0xEC] = CPX;
+	const auto CPX = [this]() { this->CPX(); };
+	instrs_[0xE0] = { imm, CPX, 2, 0 };
+	instrs_[0xE4] = { zp , CPX, 3, 0 };
+	instrs_[0xEC] = { abs, CPX, 4, 0 };
 
-	// CPY - Compare Y Register with Memory
-	const auto CPY = [this](const u8 opcode) {
-		instrCPY(opcode);
-	};
-	instrs_[0xC0] = instrs_[0xC4] = instrs_[0xCC] = CPY;
+	const auto CPY = [this]() { this->CPY(); };
+	instrs_[0xC0] = { imm, CPY, 2, 0 }; 
+	instrs_[0xC4] = { zp , CPY, 3, 0 }; 
+	instrs_[0xCC] = { abs, CPY, 4, 0 };
 
-	// DEC - Decrement Memory by One
-	const auto DEC = [this](const u8 opcode) {
-		instrDEC(opcode);
-	};
-	instrs_[0xC6] = instrs_[0xD6] = instrs_[0xCE] = instrs_[0xDE] = DEC;
+	const auto DEC = [this]() { this->DEC(); };
+	instrs_[0xC6] = { zp , DEC, 5, 0 };
+	instrs_[0xD6] = { zpx, DEC, 6, 0 };
+	instrs_[0xCE] = { abs, DEC, 6, 0 };
+	instrs_[0xDE] = { abx, DEC, 7, 0 };
 
-	// DEX - Decrement X Register by One
-	const auto DEX = [this](const u8 opcode) {
-		instrDEX(opcode);
-	};
-	instrs_[0xCA] = DEX;
+	const auto DEX = [this]() { this->DEX(); };
+	instrs_[0xCA] = { none, DEX, 2, 0 };
 
-	// DEY - Decrement Y Register by One
-	const auto DEY = [this](const u8 opcode) {
-		instrDEY(opcode);
-	};
-	instrs_[0x88] = DEY;
+	const auto DEY = [this]() { this->DEY(); };
+	instrs_[0x88] = { none, DEY, 2, 0 };
+	
+	const auto EOR = [this]() { this->EOR(); };
+	instrs_[0x49] = { imm   , EOR, 2, 0 };
+	instrs_[0x45] = { zp    , EOR, 3, 0 };
+	instrs_[0x55] = { zpx   , EOR, 4, 0 };
+	instrs_[0x4D] = { abs   , EOR, 4, 0 };
+	instrs_[0x5D] = { abx   , EOR, 4, 1 };
+	instrs_[0x59] = { aby   , EOR, 4, 1 };
+	instrs_[0x41] = { idxInd, EOR, 6, 0 };
+	instrs_[0x51] = { indIdx, EOR, 5, 1 };
 
-	// EOR - Exclusive OR Memory with Accumulator
-	const auto EOR = [this](const u8 opcode) {
-		instrEOR(opcode);
-	};
-	instrs_[0x49] = instrs_[0x45] = instrs_[0x55] = instrs_[0x4D] = EOR;
-	instrs_[0x5D] = instrs_[0x59] = instrs_[0x41] = instrs_[0x51] = EOR;
+	const auto INC = [this]() { this->INC(); };
+	instrs_[0xE6] = { zp , INC, 5, 0 };
+	instrs_[0xF6] = { zpx, INC, 6, 0 };
+	instrs_[0xEE] = { abs, INC, 6, 0 };
+	instrs_[0xFE] = { abx, INC, 7, 0 };
 
-	// INC - Increment Memory by One
-	const auto INC = [this](const u8 opcode) {
-		instrINC(opcode);
-	};
-	instrs_[0xE6] = instrs_[0xF6] = instrs_[0xEE] = instrs_[0xFE] = INC;
+	const auto INX = [this]() { this->INX(); };
+	instrs_[0xE8] = { none, INX, 2, 0 };
 
-	// INX - Increment X Register by One
-	const auto INX = [this](const u8 opcode) {
-		instrINX(opcode);
-	};
-	instrs_[0xE8] = INX;
+	const auto INY = [this]() { this->INY(); };
+	instrs_[0xC8] = { none, INY, 2, 0 };
 
-	// INY - Increment Y Register by One
-	const auto INY = [this](const u8 opcode) {
-		instrINY(opcode);
-	};
-	instrs_[0xC8] = INY;
+	const auto JMP = [this]() { this->JMP(); };
+	instrs_[0x4C] = { abs, JMP, 3, 0 };
+	instrs_[0x6C] = { ind, JMP, 5, 0 };
 
-	// JMP - Jump to New Location
-	const auto JMP = [this](const u8 opcode) {
-		instrJMP(opcode);
-	};
-	instrs_[0x4C] = instrs_[0x6C] = JMP;
+	const auto JSR = [this]() { this->JSR(); };
+	instrs_[0x20] = { abs, JSR, 6, 0 };
 
-	// JSR - Jump to New Location Saving Return Address
-	const auto JSR = [this](const u8 opcode) {
-		instrJSR(opcode);
-	};
-	instrs_[0x20] = JSR;
+	const auto LDA = [this]() { this->LDA(); };
+	instrs_[0xA9] = { imm   , LDA, 2, 0 }; 
+	instrs_[0xA5] = { zp    , LDA, 3, 0 }; 
+	instrs_[0xB5] = { zpx   , LDA, 4, 0 }; 
+	instrs_[0xAD] = { abs   , LDA, 4, 0 };
+	instrs_[0xBD] = { abx   , LDA, 4, 1 }; 
+	instrs_[0xB9] = { aby   , LDA, 4, 1 }; 
+	instrs_[0xA1] = { idxInd, LDA, 6, 0 }; 
+	instrs_[0xB1] = { indIdx, LDA, 5, 1 };;
 
-	// LDA - Load Accumulator with Memory
-	const auto LDA = [this](const u8 opcode) {
-		instrLDA(opcode);
-	};
-	instrs_[0xA9] = instrs_[0xA5] = instrs_[0xB5] = instrs_[0xAD] = LDA;
-	instrs_[0xBD] = instrs_[0xB9] = instrs_[0xA1] = instrs_[0xB1] = LDA;
+	const auto LDX = [this]() { this->LDX(); };
+	instrs_[0xA2] = { imm, LDX, 2, 0 }; 
+	instrs_[0xA6] = { zp , LDX, 3, 0 }; 
+	instrs_[0xB6] = { zpy, LDX, 4, 0 }; 
+	instrs_[0xAE] = { abs, LDX, 4, 0 };
+	instrs_[0xBE] = { aby, LDX, 4, 1 };
 
-	// LDX - Load X Register with Memory
-	const auto LDX = [this](const u8 opcode) {
-		instrLDX(opcode);
-	};
-	instrs_[0xA2] = instrs_[0xA6] = instrs_[0xB6] = instrs_[0xAE] = LDX;
-	instrs_[0xBE] = LDX;
+	const auto LDY = [this]() { this->LDY(); };
+	instrs_[0xA0] = { imm, LDY, 2, 0 }; 
+	instrs_[0xA4] = { zp , LDY, 3, 0 }; 
+	instrs_[0xB4] = { zpx, LDY, 4, 0 }; 
+	instrs_[0xAC] = { abs, LDY, 4, 0 };
+	instrs_[0xBC] = { abx, LDY, 4, 1 };
 
-	// LDY - Load Y Register with Memory
-	const auto LDY = [this](const u8 opcode) {
-		instrLDY(opcode);
-	};
-	instrs_[0xA0] = instrs_[0xA4] = instrs_[0xB4] = instrs_[0xAC] = LDY;
-	instrs_[0xBC] = LDY;
+	const auto LSR = [this]() { this->LSR(); };
+	instrs_[0x4A] = { none, LSR, 2, 0 }; 
+	instrs_[0x46] = { zp  , LSR, 5, 0 };
+	instrs_[0x56] = { zpx , LSR, 6, 0 }; 
+	instrs_[0x4E] = { abs , LSR, 6, 0 }; 
+	instrs_[0x5E] = { abx , LSR, 7, 0 };
 
-	// LSR - Logical Shift Right
-	const auto LSR = [this](const u8 opcode) {
-		instrLSR(opcode);
-	};
-	instrs_[0x4A] = instrs_[0x46] = LSR;
-	instrs_[0x56] = instrs_[0x4E] = instrs_[0x5E] = LSR;
+	const auto NOP = [this]() { this->NOP(); };
+	instrs_[0xEA] = { none , NOP, 2, 0 };
 
-	// NOP - No Operation
-	const auto NOP = [this](const u8 opcode) {
-		instrNOP(opcode);
-	};
-	instrs_[0xEA] = NOP;
+	const auto ORA = [this]() { this->ORA(); };
+	instrs_[0x09] = { imm   , ORA, 2, 0 }; 
+	instrs_[0x05] = { zp    , ORA, 3, 0 }; 
+	instrs_[0x15] = { zpx   , ORA, 4, 0 }; 
+	instrs_[0x0D] = { abs   , ORA, 4, 0 };
+	instrs_[0x1D] = { abx   , ORA, 4, 1 }; 
+	instrs_[0x19] = { aby   , ORA, 4, 1 }; 
+	instrs_[0x01] = { idxInd, ORA, 6, 0 }; 
+	instrs_[0x11] = { indIdx, ORA, 5, 1 };
 
-	// ORA - Logical OR Memory with Accumulator
-	const auto ORA = [this](const u8 opcode) {
-		instrORA(opcode);
-	};
-	instrs_[0x09] = instrs_[0x05] = instrs_[0x15] = instrs_[0x0D] = ORA;
-	instrs_[0x1D] = instrs_[0x19] = instrs_[0x01] = instrs_[0x11] = ORA;
+	const auto PHA = [this]() { this->PHA(); };
+	instrs_[0x48] = { none, PHA, 3, 0 };
 
-	// PHA - Push Accumulator on Stack
-	const auto PHA = [this](const u8 opcode) {
-		instrPHA(opcode);
-	};
-	instrs_[0x48] = PHA;
+	const auto PHP = [this]() { this->PHP(); };
+	instrs_[0x08] = { none, PHP, 3, 0 };
 
-	// PHP - Push Processor Status on Stack
-	const auto PHP = [this](const u8 opcode) {
-		instrPHP(opcode);
-	};
-	instrs_[0x08] = PHP;
+	const auto PLA = [this]() { this->PLA(); };
+	instrs_[0x68] = { none, PLA, 4, 0 };
 
-	// PLA - Pull Accumulator from Stack
-	const auto PLA = [this](const u8 opcode) {
-		instrPLA(opcode);
-	};
-	instrs_[0x68] = PLA;
+	const auto PLP = [this]() { this->PLP(); };
+	instrs_[0x28] = { none, PLP, 4, 0 };
 
-	// PLP - Pull Processor Status from Stack
-	const auto PLP = [this](const u8 opcode) {
-		instrPLP(opcode);
-	};
-	instrs_[0x28] = PLP;
+	const auto ROL = [this]() { this->ROL(); };
+	instrs_[0x2A] = { none, ROL, 2, 0 }; 
+	instrs_[0x26] = { zp  , ROL, 5, 0 };
+	instrs_[0x36] = { zpx , ROL, 6, 0 }; 
+	instrs_[0x2E] = { abs , ROL, 6, 0 }; 
+	instrs_[0x3E] = { abx , ROL, 7, 0 };
 
-	// ROL - Rotate Left
-	const auto ROL = [this](const u8 opcode) {
-		instrROL(opcode);
-	};
-	instrs_[0x2A] = instrs_[0x26] = ROL;
-	instrs_[0x36] = instrs_[0x2E] = instrs_[0x3E] = ROL;
+	const auto ROR = [this]() { this->ROR(); };
+	instrs_[0x6A] = { none, ROR, 2, 0 }; 
+	instrs_[0x66] = { zp  , ROR, 5, 0 };
+	instrs_[0x76] = { zpx , ROR, 6, 0 }; 
+	instrs_[0x6E] = { abs , ROR, 6, 0 }; 
+	instrs_[0x7E] = { abx , ROR, 7, 0 };
 
-	// ROR - Rotate Right
-	const auto ROR = [this](const u8 opcode) {
-		instrROR(opcode);
-	};
-	instrs_[0x6A] = instrs_[0x66] = ROR;
-	instrs_[0x76] = instrs_[0x6E] = instrs_[0x7E] = ROR;
+	const auto RTI = [this]() { this->RTI(); };
+	instrs_[0x40] = { none, RTI, 6, 0 };
 
-	// RTI - Return from Interrupt
-	const auto RTI = [this](const u8 opcode) {
-		instrRTI(opcode);
-	};
-	instrs_[0x40] = RTI;
+	const auto RTS = [this]() { this->RTS(); };
+	instrs_[0x60] = { none, RTS, 6, 0 };
 
-	// RTS - Return from Subroutine
-	const auto RTS = [this](const u8 opcode) {
-		instrRTS(opcode);
-	};
-	instrs_[0x60] = RTS;
+	const auto SBC = [this]() { this->SBC(); };
+	instrs_[0xE9] = { imm   , SBC, 2, 0 }; 
+	instrs_[0xE5] = { zp    , SBC, 3, 0 }; 
+	instrs_[0xF5] = { zpx   , SBC, 4, 0 }; 
+	instrs_[0xED] = { abs   , SBC, 4, 0 };
+	instrs_[0xFD] = { abx   , SBC, 4, 1 }; 
+	instrs_[0xF9] = { aby   , SBC, 4, 1 }; 
+	instrs_[0xE1] = { idxInd, SBC, 6, 0 }; 
+	instrs_[0xF1] = { indIdx, SBC, 5, 1 };
 
-	// SBC - Subtract with Carry
-	const auto SBC = [this](const u8 opcode) {
-		instrSBC(opcode);
-	};
-	instrs_[0xE9] = instrs_[0xE5] = instrs_[0xF5] = instrs_[0xED] = SBC;
-	instrs_[0xFD] = instrs_[0xF9] = instrs_[0xE1] = instrs_[0xF1] = SBC;
+	const auto SEC = [this]() { this->SEC(); };
+	instrs_[0x38] = { none, SEC, 2, 0 };
 
-	// SEC - Set Carry Flag
-	const auto SEC = [this](const u8 opcode) {
-		instrSEC(opcode);
-	};
-	instrs_[0x38] = SEC;
+	const auto SED = [this]() { this->SED(); };
+	instrs_[0xF8] = { none, SED, 2, 0 };
 
-	// SED - Set Decimal Flag
-	const auto SED = [this](const u8 opcode) {
-		instrSED(opcode);
-	};
-	instrs_[0xF8] = SED;
+	const auto SEI = [this]() { this->SEI(); };
+	instrs_[0x78] = { none, SEI, 2, 0 };
 
-	// SEI - Set Interrupt Disable
-	const auto SEI = [this](const u8 opcode) {
-		instrSEI(opcode);
-	};
-	instrs_[0x78] = SEI;
+	const auto STA = [this]() { this->STA(); };
+	instrs_[0x85] = { zp    , STA, 3, 0 }; 
+	instrs_[0x95] = { zpx   , STA, 4, 0 }; 
+	instrs_[0x8D] = { abs   , STA, 4, 0 };
+	instrs_[0x9D] = { abx   , STA, 5, 0 }; 
+	instrs_[0x99] = { aby   , STA, 5, 0 }; 
+	instrs_[0x81] = { idxInd, STA, 6, 0 }; 
+	instrs_[0x91] = { indIdx, STA, 6, 0 };
 
-	// STA - Store Accumulator in Memory
-	const auto STA = [this](const u8 opcode) {
-		instrSTA(opcode);
-	};
-	instrs_[0x85] = instrs_[0x95] = instrs_[0x8D] = STA;
-	instrs_[0x9D] = instrs_[0x99] = instrs_[0x81] = instrs_[0x91] = STA;
+	const auto STX = [this]() { this->STX(); };
+	instrs_[0x86] = { zp , STX, 3, 0 };
+	instrs_[0x96] = { zpy, STX, 4, 0 }; 
+	instrs_[0x8E] = { abs, STX, 4, 0 };
 
-	// STX - Store X Register in Memory
-	const auto STX = [this](const u8 opcode) {
-		instrSTX(opcode);
-	};
-	instrs_[0x86] = instrs_[0x96] = instrs_[0x8E] = STX;
+	const auto STY = [this]() { this->STY(); };
+	instrs_[0x84] = { zp , STY, 3, 0 }; 
+	instrs_[0x94] = { zpx, STY, 4, 0 }; 
+	instrs_[0x8C] = { abs, STY, 4, 0 };
 
-	// STY - Store Y Register in Memory
-	const auto STY = [this](const u8 opcode) {
-		instrSTY(opcode);
-	};
-	instrs_[0x84] = instrs_[0x94] = instrs_[0x8C] = STY;
+	const auto TAX = [this]() { this->TAX(); };
+	instrs_[0xAA] = { none, TAX, 2, 0 };
 
-	// TAX - Transfer Accumulator to X
-	const auto TAX = [this](const u8 opcode) {
-		instrTAX(opcode);
-	};
-	instrs_[0xAA] = TAX;
+	const auto TAY = [this]() { this->TAY(); };
+	instrs_[0xA8] = { none, TAY, 2, 0 };
 
-	// TAY - Transfer Accumulator to Y
-	const auto TAY = [this](const u8 opcode) {
-		instrTAY(opcode);
-	};
-	instrs_[0xA8] = TAY;
+	const auto TSX = [this]() { this->TSX(); };
+	instrs_[0xBA] = { none, TSX, 2, 0 };
 
-	// TSX - Transfer Stack Pointer to X
-	const auto TSX = [this](const u8 opcode) {
-		instrTSX(opcode);
-	};
-	instrs_[0xBA] = TSX;
+	const auto TXA = [this]() { this->TXA(); };
+	instrs_[0x8A] = { none, TXA, 2, 0 };
 
-	// TXA - Transfer X to Accumulator
-	const auto TXA = [this](const u8 opcode) {
-		instrTXA(opcode);
-	};
-	instrs_[0x8A] = TXA;
+	const auto TXS = [this]() { this->TXS(); };
+	instrs_[0x9A] = { none, TXS, 2, 0 };
 
-	// TXS - Transfer X to Stack Pointer
-	const auto TXS = [this](const u8 opcode) {
-		instrTXS(opcode);
-	};
-	instrs_[0x9A] = TXS;
-
-	// TYA - Transfer Y to Accumulator
-	const auto TYA = [this](const u8 opcode) {
-		instrTYA(opcode);
-	};
-	instrs_[0x98] = TYA;
+	const auto TYA = [this]() { this->TYA(); };
+	instrs_[0x98] = { none, TYA, 2, 0 };;
 }
 
 void CPU6502::update()
 {	
 #ifdef EMUCPULOG
 	log_regs = reg_;
-	log_addr_mode = AddrMode::Implicit;
+	log_cycles = total_cycles_;
 #endif
 
 	cycles_ = 0;
-	const u8 opcode = getByteFromPC();
-	instrs_[opcode](opcode);
-	setBitN(reg_.Status, 5, true);
-	total_cycles_ += cycles_;
+	opcode_ = getByteFromPC();
+	instrs_[opcode_].addr_mode();
 
 #ifdef EMUCPULOG
-	switch (log_addr_mode)
-	{
-	case AddrMode::Implicit:
-		print(1);
-		break;
-
-	case AddrMode::Imme: case AddrMode::ZP: case AddrMode::Relative:
-	case AddrMode::IndexedIndirect: case AddrMode::IndirectIndexed:
-		print(2);
-		break;
-
-	case AddrMode::Abs: case AddrMode::Indirect:
-		print(3);
-		break;
-	}
+	print(reg_.PC - log_regs.PC);
 #endif
+
+	instrs_[opcode_].operate();
+	cycles_ += instrs_[opcode_].cycles;
+	setBitN(reg_.Status, 5, true);
+	total_cycles_ += cycles_;
 }
 
 void CPU6502::connectToBus(Bus* bus)
@@ -455,52 +371,9 @@ void CPU6502::nmi()
 	cycles_ += 7;
 }
 
-void CPU6502::instrADC(const u8 opcode)
+void CPU6502::ADC()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0x69:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-	
-	case 0x65:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0x75:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x6D:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0x7D:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x79:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0x61:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0x71:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-		
+	const u8 M = (opcode_ == 0x69) ? immidiate_ : read(abs_addr_);
 	const u8 C = getCarryFlag();
 	const u8 result = reg_.A + M + C;
 
@@ -512,904 +385,330 @@ void CPU6502::instrADC(const u8 opcode)
 	reg_.A = result;
 }
 
-void CPU6502::instrAND(const u8 opcode)
+void CPU6502::AND()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0x29:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-	
-	case 0x25:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-	
-	case 0x35:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x2D:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0x3D:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x39:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0x21:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0x31:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0x29) ? immidiate_ : read(abs_addr_);
 	reg_.A = reg_.A & M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
-void CPU6502::instrASL(u8 opcode)
+void CPU6502::ASL()
 {
-	u8 val = 0;
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x0A: 
-		val = reg_.A;
-		cycles_ += 2;
-		break;
-
-	case 0x06:
-		addr = zeroPageAddr();
-		val = read(addr);
-		cycles_ += 5;
-		break;
-
-	case 0x16:
-		addr = zeroPageAddr(reg_.X);
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x0E:
-		addr = absoluteAddr();
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x1E:
-		addr = absoluteAddr(reg_.X);
-		val = read(addr);
-		cycles_ += 7;
-		break;
-	}
+	u8 val = (opcode_ == 0x0A) ? reg_.A : read(abs_addr_);
 
 	setCarryFlag(getBitN(val, 7));
 	val <<= 1;
 	setZeroFlag(val == 0);
 	setNegativeResultFlag(getBitN(val, 7));
 
-	if (opcode == 0x0A)
+	if (opcode_ == 0x0A)
 		reg_.A = val;
 	else
-		write(addr, val);
+		write(abs_addr_, val);
 }
 
-void CPU6502::instrBCC(u8)
+void CPU6502::BCC()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (!getCarryFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBCS(u8)
+void CPU6502::BCS()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (getCarryFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBEQ(u8)
+void CPU6502::BEQ()
 {
-	u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (getZeroFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBIT(const u8 opcode)
+void CPU6502::BIT()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0x24:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0x2C:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-	}
+	const u8 M = read(abs_addr_);
 	setZeroFlag((reg_.A & M) == 0);
 	setOverflowFlag(getBitN(M, 6));
 	setNegativeResultFlag(getBitN(M, 7));
 }
 
-void CPU6502::instrBMI(u8)
+void CPU6502::BMI()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (getNegativeResultFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBNE(u8)
+void CPU6502::BNE()
 {
-	u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (!getZeroFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBPL(u8)
+void CPU6502::BPL()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (!getNegativeResultFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBRK(u8)
+void CPU6502::BRK()
 {
 	pushStack(reg_.PC);
 	pushStack(reg_.Status);
 	reg_.PC = getTwoBytesFromMem(0xFFFE);
 	setBreakFlag(true);
-	cycles_ += 7;
 }
 
-void CPU6502::instrBVC(u8)
+void CPU6502::BVC()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (!getOverflowFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrBVS(u8)
+void CPU6502::BVS()
 {
-	const u8 displacement = relativeAddr();
-	cycles_ += 2;
 	if (getOverflowFlag())
-		relativeDisplace(displacement);
+		relativeDisplace();
 }
 
-void CPU6502::instrCLC(u8)
+void CPU6502::CLC()
 {
 	setCarryFlag(false);
-	cycles_ += 2;
 }
 
-void CPU6502::instrCLD(u8)
+void CPU6502::CLD()
 {
 	setDecimalModeFlag(false);
-	cycles_ += 2;
 }
 
-void CPU6502::instrCLI(u8)
+void CPU6502::CLI()
 {
 	setInterruptDisableFlag(false);
-	cycles_ += 2;
 }
 
-void CPU6502::instrCLV(u8)
+void CPU6502::CLV()
 {
 	setOverflowFlag(false);
-	cycles_ += 2;
 }
 
-void CPU6502::instrCMP(const u8 opcode)
+void CPU6502::CMP()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0xC9:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xC5:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xD5:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xCD:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-	
-	case 0xDD:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xD9:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0xC1:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0xD1:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0xC9) ? immidiate_ : read(abs_addr_);
 	const u8 result = reg_.A - M;
 	setCarryFlag(reg_.A >= M);
 	setZeroFlag(reg_.A == M);
 	setNegativeResultFlag(getBitN(result, 7));
 }
 
-void CPU6502::instrCPX(const u8 opcode)
+void CPU6502::CPX()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0xE0:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-	
-	case 0xE4:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xEC:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0xE0) ? immidiate_ : read(abs_addr_);
 	const u8 result = reg_.X - M;
 	setCarryFlag(reg_.X >= M);
 	setZeroFlag(result == 0);
 	setNegativeResultFlag(getBitN(result, 7));
 }
 
-void CPU6502::instrCPY(const u8 opcode)
+void CPU6502::CPY()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0xC0:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xC4:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xCC:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0xC0) ? immidiate_ : read(abs_addr_);
 	const u8 result = reg_.Y - M;
 	setCarryFlag(reg_.Y >= M);
 	setZeroFlag(result == 0);
 	setNegativeResultFlag(getBitN(result, 7));
 }
 
-void CPU6502::instrDEC(const u8 opcode)
+void CPU6502::DEC()
 {
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0xC6:
-		addr = zeroPageAddr();
-		cycles_ += 5;
-		break;
-
-	case 0xD6:
-		addr = zeroPageAddr(reg_.X);
-		cycles_ += 6;
-		break;
-
-	case 0xCE:
-		addr = absoluteAddr();
-		cycles_ += 6;
-		break;
-
-	case 0xDE:
-		addr = absoluteAddr(reg_.X, false);
-		cycles_ += 7;
-		break;
-	}
-
-	u8 val = read(addr);
-	write(addr, --val);
-	setZeroFlag(val == 0);
-	setNegativeResultFlag(getBitN(val, 7));
+	u8 M = read(abs_addr_);
+	--M;
+	write(abs_addr_, M);
+	setZeroFlag(M == 0);
+	setNegativeResultFlag(getBitN(M, 7));
 }
 
-void CPU6502::instrDEX(u8)
+void CPU6502::DEX()
 {
 	--reg_.X;
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrDEY(u8)
+void CPU6502::DEY()
 {
 	--reg_.Y;
 	setZeroFlag(reg_.Y == 0);
 	setNegativeResultFlag(getBitN(reg_.Y, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrEOR(const u8 opcode)
+void CPU6502::EOR()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0x49:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0x45:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0x55:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x4D:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0x5D:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x59:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0x41:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0x51:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0x49) ? immidiate_ : read(abs_addr_);
 	reg_.A = reg_.A ^ M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
-void CPU6502::instrINC(u8 opcode)
+void CPU6502::INC()
 {
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0xE6:
-		addr = zeroPageAddr();
-		cycles_ += 5;
-		break;
-
-	case 0xF6:
-		addr = zeroPageAddr(reg_.X);
-		cycles_ += 6;
-		break;
-
-	case 0xEE:
-		addr = absoluteAddr();
-		cycles_ += 6;
-		break;
-
-	case 0xFE:
-		addr = absoluteAddr(reg_.X, false);
-		cycles_ += 7;
-		break;
-	}
-
-	u8 val = read(addr);
-	write(addr, ++val);
-	setZeroFlag(val == 0);
-	setNegativeResultFlag(getBitN(val, 7));
+	u8 M = read(abs_addr_);
+	++M;
+	write(abs_addr_, M);
+	setZeroFlag(M == 0);
+	setNegativeResultFlag(getBitN(M, 7));
 }
 
-void CPU6502::instrINX(u8)
+void CPU6502::INX()
 {
 	++reg_.X;
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrINY(u8)
+void CPU6502::INY()
 {
 	++reg_.Y;
 	setZeroFlag(reg_.Y == 0);
 	setNegativeResultFlag(getBitN(reg_.Y, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrJMP(const u8 opcode)
+void CPU6502::JMP()
 {
-	switch (opcode)
-	{
-	case 0x4C:
-		reg_.PC = absoluteAddr();
-		cycles_ += 3;
-		break;
-
-	case 0x6C:
-		reg_.PC = indirectAddr();
-		cycles_ += 5;
-		break;
-	}
+	reg_.PC = abs_addr_;
 }
 
-void CPU6502::instrJSR(u8)
+void CPU6502::JSR()
 {
-	const u16 destination = absoluteAddr();
 	pushStack(--reg_.PC);
-	reg_.PC = destination;
-	cycles_ += 6;
+	reg_.PC = abs_addr_;
 }
 
-void CPU6502::instrLDA(const u8 opcode)
+void CPU6502::LDA()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0xA9:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xA5:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xB5:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xAD:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0xBD:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xB9:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0xA1:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0xB1:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
+	const u8 M = (opcode_ == 0xA9) ? immidiate_ : read(abs_addr_);
 	reg_.A = M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
-void CPU6502::instrLDX(const u8 opcode)
+void CPU6502::LDX()
 {
-	switch (opcode)
-	{
-	case 0xA2:
-		reg_.X = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xA6:
-		reg_.X = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xB6:
-		reg_.X = read(zeroPageAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0xAE:
-		reg_.X = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0xBE:
-		reg_.X = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-	}
+	const u8 M = (opcode_ == 0xA2) ? immidiate_ : read(abs_addr_);
+	reg_.X = M;
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
 }
 
-void CPU6502::instrLDY(const u8 opcode)
+void CPU6502::LDY()
 {
-	switch (opcode)
-	{
-	case 0xA0:
-		reg_.Y = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xA4:
-		reg_.Y = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xB4:
-		reg_.Y = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xAC:
-		reg_.Y = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0xBC:
-		reg_.Y = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-	}
+	const u8 M = (opcode_ == 0xA0) ? immidiate_ : read(abs_addr_);
+	reg_.Y = M;
 	setZeroFlag(reg_.Y == 0);
 	setNegativeResultFlag(getBitN(reg_.Y, 7));
 }
 
-void CPU6502::instrLSR(const u8 opcode)
+void CPU6502::LSR()
 {
-	u8 val = 0;
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x4A:
-		val = reg_.A;
-		cycles_ += 2;
-		break;
-
-	case 0x46:
-		addr = zeroPageAddr();
-		val = read(addr);
-		cycles_ += 5;
-		break;
-
-	case 0x56:
-		addr = zeroPageAddr(reg_.X);
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x4E:
-		addr = absoluteAddr();
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x5E:
-		addr = absoluteAddr(reg_.X, false);
-		val = read(addr);
-		cycles_ += 7;
-		break;
-	}
+	u8 val = (opcode_ == 0x4A) ? reg_.A : read(abs_addr_);
 
 	setCarryFlag(getBitN(val, 0));
 	val >>= 1;
 	setZeroFlag(val == 0);
 	setNegativeResultFlag(getBitN(val, 7));
 
-	if (opcode == 0x4A)
+	if (opcode_ == 0x4A)
 		reg_.A = val;
 	else
-		write(addr, val);
+		write(abs_addr_, val);
 }
 
-void CPU6502::instrNOP(u8)
+void CPU6502::NOP()
 {
-	cycles_ += 2;
 }
 
-void CPU6502::instrORA(const u8 opcode)
+void CPU6502::ORA()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0x09:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0x05:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0x15:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x0D:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0x1D:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0x19:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0x01:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0x11:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-
+	const u8 M = (opcode_ == 0x09) ? immidiate_ : read(abs_addr_);
 	reg_.A = reg_.A | M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
-void CPU6502::instrPHA(u8)
+void CPU6502::PHA()
 {
 	pushStack(reg_.A);
-	cycles_ += 3;
 }
 
-void CPU6502::instrPHP(u8)
+void CPU6502::PHP()
 {
 	const bool val = getBreakFlag();
 	setBreakFlag(true);
 	pushStack(reg_.Status);
 	setBreakFlag(val);
-	cycles_ += 3;
 }
 
-void CPU6502::instrPLA(u8)
+void CPU6502::PLA()
 {
 	reg_.A = popStack();
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
-	cycles_ += 4;
 }
 
-void CPU6502::instrPLP(u8)
+void CPU6502::PLP()
 {
 	const bool val = getBreakFlag();
 	reg_.Status = popStack();
 	setBreakFlag(val);
-	cycles_ += 4;
 }
 
-void CPU6502::instrROL(const u8 opcode)
+void CPU6502::ROL()
 {
-	u8 val = 0;
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x2A:
-		val = reg_.A;
-		cycles_ += 2;
-		break;
-
-	case 0x26:
-		addr = zeroPageAddr();
-		val = read(addr);
-		cycles_ += 5;
-		break;
-
-	case 0x36:
-		addr = zeroPageAddr(reg_.X);
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x2E:
-		addr = absoluteAddr();
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x3E:
-		addr = absoluteAddr(reg_.X, false);
-		val = read(addr);
-		cycles_ += 7;
-		break;
-	}
+	u8 M = (opcode_ == 0x2A) ? reg_.A : read(abs_addr_);
 
 	const u8 new_bit0 = getCarryFlag();
-	setCarryFlag(getBitN(val, 7));
-	val <<= 1;
-	setBitN(val, 0, new_bit0);
-	setNegativeResultFlag(getBitN(val, 7));
+	setCarryFlag(getBitN(M, 7));
+	M <<= 1;
+	setBitN(M, 0, new_bit0);
+	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode == 0x2A)
-		reg_.A = val;
+	if (opcode_ == 0x2A)
+		reg_.A = M;
 	else
-		write(addr, val);
+		write(abs_addr_, M);
 }
 
-void CPU6502::instrROR(const u8 opcode)
+void CPU6502::ROR()
 {
-	u8 val = 0;
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x6A:
-		val = reg_.A;
-		cycles_ += 2;
-		break;
-
-	case 0x66:
-		addr = zeroPageAddr();
-		val = read(addr);
-		cycles_ += 5;
-		break;
-
-	case 0x76:
-		addr = zeroPageAddr(reg_.X);
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x6E:
-		addr = absoluteAddr();
-		val = read(addr);
-		cycles_ += 6;
-		break;
-
-	case 0x7E:
-		addr = absoluteAddr(reg_.X, false);
-		val = read(addr);
-		cycles_ += 7;
-		break;
-	}
+	u8 M = (opcode_ == 0x6A) ? reg_.A : read(abs_addr_);
 
 	const u8 new_bit7 = getCarryFlag();
-	setCarryFlag(getBitN(val, 0));
-	val >>= 1;
-	setBitN(val, 7, new_bit7);
-	setNegativeResultFlag(getBitN(val, 7));
+	setCarryFlag(getBitN(M, 0));
+	M >>= 1;
+	setBitN(M, 7, new_bit7);
+	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode == 0x6A)
-		reg_.A = val;
+	if (opcode_ == 0x6A)
+		reg_.A = M;
 	else
-		write(addr, val);
+		write(abs_addr_, M);
 }
 
-void CPU6502::instrRTI(u8)
+void CPU6502::RTI()
 {
 	reg_.Status = popStack();
 	reg_.PC = popStackTwoBytes();
-	cycles_ += 6;
 }
 
-void CPU6502::instrRTS(u8)
+void CPU6502::RTS()
 {
 	reg_.PC = popStackTwoBytes();
 	++reg_.PC;
-	cycles_ += 6;
 }
 
-void CPU6502::instrSBC(const u8 opcode)
+void CPU6502::SBC()
 {
-	u8 M = 0;
-	switch (opcode)
-	{
-	case 0xE9:
-		M = immediateAddr();
-		cycles_ += 2;
-		break;
-
-	case 0xE5:
-		M = read(zeroPageAddr());
-		cycles_ += 3;
-		break;
-
-	case 0xF5:
-		M = read(zeroPageAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xED:
-		M = read(absoluteAddr());
-		cycles_ += 4;
-		break;
-
-	case 0xFD:
-		M = read(absoluteAddr(reg_.X));
-		cycles_ += 4;
-		break;
-
-	case 0xF9:
-		M = read(absoluteAddr(reg_.Y));
-		cycles_ += 4;
-		break;
-
-	case 0xE1:
-		M = read(indexedIndirectAddr());
-		cycles_ += 6;
-		break;
-
-	case 0xF1:
-		M = read(indirectIndexedAddr());
-		cycles_ += 5;
-		break;
-	}
-
+	const u8  M = (opcode_ == 0xE9) ? immidiate_ : read(abs_addr_);
 	const u16 C = getCarryFlag();
 	const u16 value = static_cast<u16>(M) ^ 0x00FF;
 	const u16 A = reg_.A;
@@ -1423,263 +722,176 @@ void CPU6502::instrSBC(const u8 opcode)
 	reg_.A = static_cast<u8>(result);
 }
 
-void CPU6502::instrSEC(u8)
+void CPU6502::SEC()
 {
 	setCarryFlag(true);
-	cycles_ += 2;
 }
 
-void CPU6502::instrSED(u8)
+void CPU6502::SED()
 {
 	setDecimalModeFlag(true);
-	cycles_ += 2;
 }
 
-void CPU6502::instrSEI(u8)
+void CPU6502::SEI()
 {
 	setInterruptDisableFlag(true);
-	cycles_ += 2;
 }
 
-void CPU6502::instrSTA(const u8 opcode)
+void CPU6502::STA()
 {
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x85:
-		addr = zeroPageAddr();
-		cycles_ += 3;
-		break;
-
-	case 0x95:
-		addr = zeroPageAddr(reg_.X);
-		cycles_ += 4;
-		break;
-
-	case 0x8D:
-		addr = absoluteAddr();
-		cycles_ += 4;
-		break;
-
-	case 0x9D:
-		addr = absoluteAddr(reg_.X, false);
-		cycles_ += 5;
-		break;
-
-	case 0x99:
-		addr = absoluteAddr(reg_.Y, false);
-		cycles_ += 5;
-		break;
-
-	case 0x81:
-		addr = indexedIndirectAddr();	
-		cycles_ += 6;
-		break;
-
-	case 0x91:
-		addr = indirectIndexedAddr();
-		cycles_ += 6;
-		break;
-	}
-
-	write(addr, reg_.A);
+	write(abs_addr_, reg_.A);
 }
 
-void CPU6502::instrSTX(const u8 opcode)
+void CPU6502::STX()
 {
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x86:
-		addr = zeroPageAddr();
-		cycles_ += 3;
-		break;
-
-	case 0x96:
-		addr = zeroPageAddr(reg_.Y);
-		cycles_ += 4;
-		break;
-
-	case 0x8E:
-		addr = absoluteAddr();
-		cycles_ += 4;
-		break;
-	}
-
-	write(addr, reg_.X);
+	write(abs_addr_, reg_.X);
 }
 
-void CPU6502::instrSTY(u8 opcode)
+void CPU6502::STY()
 {
-	u16 addr = 0;
-	switch (opcode)
-	{
-	case 0x84:
-		addr = zeroPageAddr();
-		cycles_ += 3;
-		break;
-
-	case 0x94:
-		addr = zeroPageAddr(reg_.X);
-		cycles_ += 4;
-		break;
-
-	case 0x8C:
-		addr = absoluteAddr();
-		cycles_ += 4;
-		break;
-	}
-
-	write(addr, reg_.Y);
+	write(abs_addr_, reg_.Y);
 }
 
-void CPU6502::instrTAX(u8)
+void CPU6502::TAX()
 {
 	reg_.X = reg_.A;
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrTAY(u8)
+void CPU6502::TAY()
 {
 	reg_.Y = reg_.A;
 	setZeroFlag(reg_.Y == 0);
 	setNegativeResultFlag(getBitN(reg_.Y, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrTSX(u8)
+void CPU6502::TSX()
 {
 	reg_.X = reg_.SP;	
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrTXA(u8)
+void CPU6502::TXA()
 {
 	reg_.A = reg_.X;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::instrTXS(u8)
+void CPU6502::TXS()
 {
 	reg_.SP = reg_.X;
-	cycles_ += 2;
 }
 
-void CPU6502::instrTYA(u8)
+void CPU6502::TYA()
 {
 	reg_.A = reg_.Y;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
-	cycles_ += 2;
 }
 
-void CPU6502::unknownOpcode(const u8 opcode)
+void CPU6502::unknownOpcode()
 {
-	//std::stringstream ss;
-	//ss << "Unknown opcode: " << std::hex << (int)opcode << '\n';
-	//ss << "PC: " << std::hex << (int)reg_.PC << '\n';
-	//throw std::runtime_error{ss.str()};
 }
 
-void CPU6502::relativeDisplace(u8 displacement)
+void CPU6502::relativeDisplace()
 {
-	++cycles_;
 	const u16 old_pc = reg_.PC;
+	reg_.PC = abs_addr_;
+	++cycles_; // branch succeeds penalty
+	if (pageCrossed(old_pc, reg_.PC))
+		cycles_ += instrs_[opcode_].penalty;
+}
+
+void CPU6502::none()
+{
+}
+
+void CPU6502::imm()
+{
+	immidiate_ = getByteFromPC();
+}
+
+void CPU6502::rel()
+{
+	u8 displacement = getByteFromPC();
 	const bool is_negative = getBitN(displacement, 7);
 	if (is_negative)
 	{
 		displacement = ~displacement + static_cast<u8>(1);
-		reg_.PC -= displacement;
+		abs_addr_ = reg_.PC - static_cast<u16>(displacement);
 	}
 	else
-		reg_.PC += displacement;
-	const bool crossed_page = (old_pc & 0xFF00) != (reg_.PC & 0xFF00);
-	if (crossed_page)
-		cycles_ += 2;
+		abs_addr_ = reg_.PC + static_cast<u16>(displacement);
 }
 
-u8 CPU6502::immediateAddr()
+void CPU6502::zp()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::Imme;
-#endif
-	return getByteFromPC();
+	abs_addr_ = static_cast<u16>(getByteFromPC());
 }
 
-u8 CPU6502::relativeAddr()
+void CPU6502::zpx()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::Relative;
-#endif
-	return getByteFromPC();
+	const u8 addr = getByteFromPC() + reg_.X;
+	abs_addr_ = static_cast<u16>(addr);
 }
 
-u16 CPU6502::zeroPageAddr(const u8 offset)
+void CPU6502::zpy()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::ZP;
-#endif
-	const u8 addr = getByteFromPC() + offset;
-	return addr;
+	const u8 addr = getByteFromPC() + reg_.Y;
+	abs_addr_ = static_cast<u16>(addr);
 }
 
-u16 CPU6502::absoluteAddr(const u8 offset, const bool additional_cycles)
+void CPU6502::abs()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::Abs;
-#endif
-	const u16 off = static_cast<u16>(offset);
+	abs_addr_ = getTwoBytesFromPC();
+}
+
+void CPU6502::abx()
+{
 	const u16 addr = getTwoBytesFromPC();
-	const u16 abs_addr = addr + off;
-	const u16 msb_plus = (off & 0xFF00) + (addr & 0xFF00);
-	if (additional_cycles && (abs_addr & 0xFF00) != (msb_plus & 0xFF00))
-		++cycles_;
-	return abs_addr;
+	abs_addr_ = addr + static_cast<u16>(reg_.X);
+	if (pageCrossed(addr, abs_addr_))
+		cycles_ += instrs_[opcode_].penalty;
 }
 
-u16 CPU6502::indirectAddr()
+void CPU6502::aby()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::Indirect;
-#endif
+	const u16 addr = getTwoBytesFromPC();
+	abs_addr_ = addr + static_cast<u16>(reg_.Y);
+	if (pageCrossed(addr, abs_addr_))
+		cycles_ += instrs_[opcode_].penalty;
+}
+
+void CPU6502::ind()
+{
 	const u16 addr = getTwoBytesFromPC();
 	if (static_cast<u8>(addr) == 0xFF) // this is a hardware bug
 	{
 		u16 result = static_cast<u16>(read(addr));
-		u16 msb_loc = addr & 0xFF00;
+		const u16 msb_loc = addr & 0xFF00;
 		result |= (static_cast<u16>(read(msb_loc)) << 8);
-		return result;
+		abs_addr_ = result;
 	}
-	return getTwoBytesFromMem(addr);
+	else 
+		abs_addr_ = getTwoBytesFromMem(addr);
 }
 
-u16 CPU6502::indexedIndirectAddr()
+void CPU6502::idxInd()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::IndexedIndirect;
-#endif
 	const u8 table_loc = getByteFromPC() + reg_.X;
-	return getTwoBytesFromZP(table_loc);
+	abs_addr_ = getTwoBytesFromZP(table_loc);
 }
 
-u16 CPU6502::indirectIndexedAddr()
+void CPU6502::indIdx()
 {
-#ifdef EMUCPULOG
-	log_addr_mode = AddrMode::IndirectIndexed;
-#endif
 	const u8 table_loc = getByteFromPC();
 	const u16 addr = getTwoBytesFromZP(table_loc);
-	const u16 offset = static_cast<u16>(reg_.Y);
-	const u16 abs_addr = addr + offset;
-	if ((abs_addr & 0xFF00) != (addr & 0xFF00))
-		++cycles_;
-	return abs_addr;
+	abs_addr_ = addr + static_cast<u16>(reg_.Y);
+	if (pageCrossed(addr, abs_addr_))
+		cycles_ += instrs_[opcode_].penalty;
 }
 
 u8 CPU6502::getByteFromPC()
@@ -1701,10 +913,10 @@ u16 CPU6502::getTwoBytesFromZP(u8 loc)
 	return result;
 }
 
-u16 CPU6502::getTwoBytesFromMem(const u16 loc)
+u16 CPU6502::getTwoBytesFromMem(u16 loc)
 {
-	u16 result = read(loc);
-	result |= (static_cast<u16>(read(loc + 1)) << 8);
+	u16 result = read(loc++);
+	result |= (static_cast<u16>(read(loc)) << 8);
 	return result;
 }
 
@@ -1742,7 +954,6 @@ u8 CPU6502::getNegativeResultFlag() const
 {
 	return getBitN(reg_.Status, 7);
 }
-
 
 void CPU6502::setCarryFlag(const bool set)
 {
@@ -1806,4 +1017,9 @@ u16 CPU6502::popStackTwoBytes()
 	u16 result = popStack();
 	result |= (static_cast<u16>(popStack()) << 8);
 	return result;
+}
+
+bool CPU6502::pageCrossed(u16 addr1, u16 addr2)
+{
+	return (addr1 & 0xFF00) != (addr2 & 0xFF00);
 }

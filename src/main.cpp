@@ -43,16 +43,6 @@ int main()
             std::cout << "Cpu test failed 0x03: " << bus.cpu.read(0x03) << '\n';
             break;
         }
-        if (bus.cpu.reg_.PC == 0xC6BD)
-            bus.cpu.reg_.PC = 0xC6C7;
-        else if (bus.cpu.reg_.PC == 0xC6C9)
-            bus.cpu.reg_.PC = 0xC6D0;
-        else if (bus.cpu.reg_.PC == 0xC6D2)
-            bus.cpu.reg_.PC = 0xC6E2;
-        else if (bus.cpu.reg_.PC == 0xC6E4)
-            bus.cpu.reg_.PC = 0xC6F0;
-        else if (bus.cpu.reg_.PC == 0xC6F2)
-            bus.cpu.reg_.PC = 0xC708;
     }
     
     return EXIT_SUCCESS;

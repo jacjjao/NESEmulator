@@ -6,6 +6,10 @@
 
 #define EMUCPULOG
 
+#ifdef EMUCPULOG
+#include <string>
+#endif
+
 class Bus;
 
 class CPU6502
@@ -24,74 +28,91 @@ public:
 	void nmi();
 
 // private:
-	void instrADC(u8 opcode);
-	void instrAND(u8 opcode);
-	void instrASL(u8 opcode);
-	void instrBCC(u8 opcode);
-	void instrBCS(u8 opcode);
-	void instrBEQ(u8 opcode);
-	void instrBIT(u8 opcode);
-	void instrBMI(u8 opcode);
-	void instrBNE(u8 opcode);
-	void instrBPL(u8 opcode);
-	void instrBRK(u8 opcode);
-	void instrBVC(u8 opcode);
-	void instrBVS(u8 opcode);
-	void instrCLC(u8 opcode);
-	void instrCLD(u8 opcode);
-	void instrCLI(u8 opcode);
-	void instrCLV(u8 opcode);
-	void instrCMP(u8 opcode);
-	void instrCPX(u8 opcode);
-	void instrCPY(u8 opcode);
-	void instrDEC(u8 opcode);
-	void instrDEX(u8 opcode);
-	void instrDEY(u8 opcode);
-	void instrEOR(u8 opcode);
-	void instrINC(u8 opcode);
-	void instrINX(u8 opcode);
-	void instrINY(u8 opcode);
-	void instrJMP(u8 opcode);
-	void instrJSR(u8 opcode);
-	void instrLDA(u8 opcode);
-	void instrLDX(u8 opcode);
-	void instrLDY(u8 opcode);
-	void instrLSR(u8 opcode);
-	void instrNOP(u8 opcode);
-	void instrORA(u8 opcode);
-	void instrPHA(u8 opcode);
-	void instrPHP(u8 opcode);
-	void instrPLA(u8 opcode);
-	void instrPLP(u8 opcode);
-	void instrROL(u8 opcode);
-	void instrROR(u8 opcode);
-	void instrRTI(u8 opcode);
-	void instrRTS(u8 opcode);
-	void instrSBC(u8 opcode); 
-	void instrSEC(u8 opcode);
-	void instrSED(u8 opcode);
-	void instrSEI(u8 opcode);
-	void instrSTA(u8 opcode);
-	void instrSTX(u8 opcode);
-	void instrSTY(u8 opcode);
-	void instrTAX(u8 opcode);
-	void instrTAY(u8 opcode);
-	void instrTSX(u8 opcode); 
-	void instrTXA(u8 opcode);
-	void instrTXS(u8 opcode);
-	void instrTYA(u8 opcode);
+	struct Instruction
+	{
+		std::function<void(void)> addr_mode;
+		std::function<void(void)> operate;
+		u8 cycles;
+		u8 penalty; // page crossed penalty
+	};
 
-	void unknownOpcode(u8 opcode);
+	u8 immidiate_ = 0;
+	u16 abs_addr_ = 0;
+	u8 opcode_ = 0;
 
-	void relativeDisplace(u8 displacement);
+	void ADC();
+	void AND();
+	void ASL();
+	void BCC();
+	void BCS();
+	void BEQ();
+	void BIT();
+	void BMI();
+	void BNE();
+	void BPL();
+	void BRK();
+	void BVC();
+	void BVS();
+	void CLC();
+	void CLD();
+	void CLI();
+	void CLV();
+	void CMP();
+	void CPX();
+	void CPY();
+	void DEC();
+	void DEX();
+	void DEY();
+	void EOR();
+	void INC();
+	void INX();
+	void INY();
+	void JMP();
+	void JSR();
+	void LDA();
+	void LDX();
+	void LDY();
+	void LSR();
+	void NOP();
+	void ORA();
+	void PHA();
+	void PHP();
+	void PLA();
+	void PLP();
+	void ROL();
+	void ROR();
+	void RTI();
+	void RTS();
+	void SBC(); 
+	void SEC();
+	void SED();
+	void SEI();
+	void STA();
+	void STX();
+	void STY();
+	void TAX();
+	void TAY();
+	void TSX(); 
+	void TXA();
+	void TXS();
+	void TYA();
 
-	u8 immediateAddr();
-	u8 relativeAddr();
-	u16 zeroPageAddr(u8 offset = 0);
-	u16 absoluteAddr(u8 offset = 0, bool additional_cycles = true);
-	u16 indirectAddr();
-	u16 indexedIndirectAddr();
-	u16 indirectIndexedAddr();
+	void unknownOpcode();
+
+	void relativeDisplace();
+
+	void none();
+	void imm();
+	void rel();
+	void zp();
+	void zpx();
+	void zpy();
+	void abs();
+	void abx();
+	void aby();
+	void ind();
+	void idxInd();
+	void indIdx();
 
 	u8 getByteFromPC();
 	u16 getTwoBytesFromPC();
@@ -119,6 +140,8 @@ public:
 	u8 popStack();
 	u16 popStackTwoBytes();
 
+	bool pageCrossed(u16 addr1, u16 addr2);
+
 	struct Registers
 	{
 		u8 A = 0;
@@ -130,25 +153,14 @@ public:
 	} reg_;
 
 #ifdef EMUCPULOG
-	enum class AddrMode
-	{
-		Implicit,
-		Imme,
-		ZP,
-		Relative,
-		Abs,
-		Indirect,
-		IndexedIndirect,
-		IndirectIndexed
-	};
-	AddrMode log_addr_mode = AddrMode::Implicit;
 	Registers log_regs;
+	u64 log_cycles = 7;
 	void print(unsigned length); 
 #endif
 
 	static constexpr std::size_t instrs_size = 256;
 
-	std::array<std::function<void(u8)>, instrs_size> instrs_;
+	std::array<Instruction, instrs_size> instrs_;
 	u8 cycles_ = 0;
 	u64 total_cycles_ = 0;
 
