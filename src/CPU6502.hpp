@@ -176,7 +176,7 @@ public:
 #ifdef EMUCPULOG
 	Registers log_regs;
 	u64 log_cycles = 7;
-	void print(unsigned length); 
+	void print(int length); 
 #endif
 
 	static constexpr std::size_t instrs_size = 256;

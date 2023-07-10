@@ -11,7 +11,7 @@
 #include <fstream>
 #include <iomanip>
 
-void CPU6502::print(const unsigned length)
+void CPU6502::print(const int length)
 {
 	static std::ofstream file{"output.txt"};
 
@@ -19,7 +19,7 @@ void CPU6502::print(const unsigned length)
 		file.open("output.txt");
 
 	file << std::uppercase << std::hex << std::setfill('0') << std::setw(4) << (int)log_regs.PC << ' ';
-	for (unsigned i = 0; i < length; ++i, ++log_regs.PC) 
+	for (int i = 0; i < length; ++i, ++log_regs.PC) 
 		file << ' ' << std::setw(2) << (int)read(log_regs.PC);
 	file << "        ";
 	file << " A:"  << std::setw(2) << (int)log_regs.A;
