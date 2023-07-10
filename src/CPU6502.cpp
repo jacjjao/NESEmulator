@@ -79,35 +79,35 @@ CPU6502::CPU6502()
 	instrs_[0x1E] = { abx , ASL, 7, 0 };
 
 	const auto BCC = [this]() { this->BCC(); };
-	instrs_[0x90] = { rel, BCC, 2, 2 };
+	instrs_[0x90] = { rel, BCC, 2, 1 };
 
 	const auto BCS = [this]() { this->BCS(); };
-	instrs_[0xB0] = { rel, BCS, 2, 2 };
+	instrs_[0xB0] = { rel, BCS, 2, 1 };
 
 	const auto BEQ = [this]() { this->BEQ(); };
-	instrs_[0xF0] = { rel, BEQ, 2, 2 };
+	instrs_[0xF0] = { rel, BEQ, 2, 1 };
 
 	const auto BIT = [this]() { this->BIT(); };
 	instrs_[0x24] = { zp , BIT, 3, 0 };
 	instrs_[0x2C] = { abs, BIT, 4, 0 };
 
 	const auto BMI = [this]() { this->BMI(); };
-	instrs_[0x30] = { rel, BMI, 2, 2 };
+	instrs_[0x30] = { rel, BMI, 2, 1 };
 
 	const auto BNE = [this]() { this->BNE(); };
-	instrs_[0xD0] = { rel, BNE, 2, 2 };
+	instrs_[0xD0] = { rel, BNE, 2, 1 };
 
 	const auto BPL = [this]() { this->BPL(); };
-	instrs_[0x10] = { rel, BPL, 2, 2 };
+	instrs_[0x10] = { rel, BPL, 2, 1 };
 
 	const auto BRK = [this]() { this->BRK(); };
 	instrs_[0x00] = { none, BRK, 7, 0 };
 
 	const auto BVC = [this]() { this->BVC(); };
-	instrs_[0x50] = { rel, BVC, 2, 2 };
+	instrs_[0x50] = { rel, BVC, 2, 1 };
 
 	const auto BVS = [this]() { this->BVS(); };
-	instrs_[0x70] = { rel, BVS, 2, 2 };
+	instrs_[0x70] = { rel, BVS, 2, 1 };
 
 	const auto CLC = [this]() { this->CLC(); };
 	instrs_[0x18] = { none, CLC, 2, 0 };
@@ -312,8 +312,114 @@ CPU6502::CPU6502()
 	instrs_[0x9A] = { none, TXS, 2, 0 };
 
 	const auto TYA = [this]() { this->TYA(); };
-	instrs_[0x98] = { none, TYA, 2, 0 };;
-}
+	instrs_[0x98] = { none, TYA, 2, 0 };
+
+	// unofficial instructions
+	const auto LAX = [this]() { this->LAX(); };
+	instrs_[0xA7] = { zp    , LAX, 3, 0 };
+	instrs_[0xB7] = { zpy   , LAX, 4, 0 };
+	instrs_[0xAF] = { abs   , LAX, 4, 0 };
+	instrs_[0xBF] = { aby   , LAX, 4, 1 };
+	instrs_[0xA3] = { idxInd, LAX, 6, 0 };
+	instrs_[0xB3] = { indIdx, LAX, 5, 1 };
+
+	const auto SAX = [this]() { this->SAX(); };
+	instrs_[0x87] = { zp    , SAX, 3, 0 };
+	instrs_[0x97] = { zpy   , SAX, 4, 0 };
+	instrs_[0x8F] = { abs   , SAX, 4, 0 };
+	instrs_[0x83] = { idxInd, SAX, 6, 0 };
+
+	const auto DCP = [this]() { this->DCP(); };
+	instrs_[0xC7] = { zp    , DCP, 5, 0 };
+	instrs_[0xD7] = { zpx   , DCP, 6, 0 };
+	instrs_[0xCF] = { abs   , DCP, 6, 0 };
+	instrs_[0xDF] = { abx   , DCP, 7, 0 };
+	instrs_[0xDB] = { aby   , DCP, 7, 0 };
+	instrs_[0xC3] = { idxInd, DCP, 8, 0 };
+	instrs_[0xD3] = { indIdx, DCP, 8, 0 };
+
+	const auto ISC = [this]() { this->ISC(); };
+	instrs_[0xE7] = { zp    , ISC, 5, 0 };
+	instrs_[0xF7] = { zpx   , ISC, 6, 0 };
+	instrs_[0xEF] = { abs   , ISC, 6, 0 };
+	instrs_[0xFF] = { abx   , ISC, 7, 0 };
+	instrs_[0xFB] = { aby   , ISC, 7, 0 };
+	instrs_[0xE3] = { idxInd, ISC, 8, 0 };
+	instrs_[0xF3] = { indIdx, ISC, 8, 0 };
+
+	const auto RLA = [this]() { this->RLA(); };
+	instrs_[0x27] = { zp    , RLA, 5, 0 };
+	instrs_[0x37] = { zpx   , RLA, 6, 0 };
+	instrs_[0x2F] = { abs   , RLA, 6, 0 };
+	instrs_[0x3F] = { abx   , RLA, 7, 0 };
+	instrs_[0x3B] = { aby   , RLA, 7, 0 };
+	instrs_[0x23] = { idxInd, RLA, 8, 0 };
+	instrs_[0x33] = { indIdx, RLA, 8, 0 };
+
+	const auto RRA = [this]() { this->RRA(); };
+	instrs_[0x67] = { zp    , RRA, 5, 0 };
+	instrs_[0x77] = { zpx   , RRA, 6, 0 };
+	instrs_[0x6F] = { abs   , RRA, 6, 0 };
+	instrs_[0x7F] = { abx   , RRA, 7, 0 };
+	instrs_[0x7B] = { aby   , RRA, 7, 0 };
+	instrs_[0x63] = { idxInd, RRA, 8, 0 };
+	instrs_[0x73] = { indIdx, RRA, 8, 0 };
+
+	const auto SLO = [this]() { this->SLO(); };
+	instrs_[0x07] = { zp    , SLO, 5, 0 };
+	instrs_[0x17] = { zpx   , SLO, 6, 0 };
+	instrs_[0x0F] = { abs   , SLO, 6, 0 };
+	instrs_[0x1F] = { abx   , SLO, 7, 0 };
+	instrs_[0x1B] = { aby   , SLO, 7, 0 };
+	instrs_[0x03] = { idxInd, SLO, 8, 0 };
+	instrs_[0x13] = { indIdx, SLO, 8, 0 };
+
+	const auto SRE = [this]() { this->SRE(); };
+	instrs_[0x47] = { zp    , SRE, 5, 0 };
+	instrs_[0x57] = { zpx   , SRE, 6, 0 };
+	instrs_[0x4F] = { abs   , SRE, 6, 0 };
+	instrs_[0x5F] = { abx   , SRE, 7, 0 };
+	instrs_[0x5B] = { aby   , SRE, 7, 0 };
+	instrs_[0x43] = { idxInd, SRE, 8, 0 };
+	instrs_[0x53] = { indIdx, SRE, 8, 0 };
+
+	// USBC or *SBC
+	instrs_[0xEB] = { imm, SBC, 2, 0 };
+
+	// NOPs
+	instrs_[0x1A] = { none, NOP, 2, 0 };
+	instrs_[0x3A] = { none, NOP, 2, 0 };
+	instrs_[0x5A] = { none, NOP, 2, 0 };
+	instrs_[0x7A] = { none, NOP, 2, 0 };
+	instrs_[0xDA] = { none, NOP, 2, 0 };
+	instrs_[0xFA] = { none, NOP, 2, 0 };
+
+	instrs_[0x80] = { imm , NOP, 2, 0 };
+	instrs_[0x82] = { imm , NOP, 2, 0 };
+	instrs_[0x89] = { imm , NOP, 2, 0 };
+	instrs_[0xC2] = { imm , NOP, 2, 0 };
+	instrs_[0xE2] = { imm , NOP, 2, 0 };
+
+	instrs_[0x0C] = { abs , NOP, 4, 0 };
+
+	instrs_[0x1C] = { abx , NOP, 4, 1 };
+	instrs_[0x3C] = { abx , NOP, 4, 1 };
+	instrs_[0x5C] = { abx , NOP, 4, 1 };
+	instrs_[0x7C] = { abx , NOP, 4, 1 };
+	instrs_[0xDC] = { abx , NOP, 4, 1 };
+	instrs_[0xFC] = { abx , NOP, 4, 1 };
+
+	instrs_[0x04] = { zp  , NOP, 3, 0 };
+	instrs_[0x44] = { zp  , NOP, 3, 0 };
+	instrs_[0x64] = { zp  , NOP, 3, 0 };
+
+	instrs_[0x14] = { zpx , NOP, 4, 0 };
+	instrs_[0x34] = { zpx , NOP, 4, 0 };
+	instrs_[0x54] = { zpx , NOP, 4, 0 };
+	instrs_[0x74] = { zpx , NOP, 4, 0 };
+	instrs_[0xD4] = { zpx , NOP, 4, 0 };
+	instrs_[0xF4] = { zpx , NOP, 4, 0 };
+} 
 
 void CPU6502::update()
 {	
@@ -373,7 +479,7 @@ void CPU6502::nmi()
 
 void CPU6502::ADC()
 {
-	const u8 M = (opcode_ == 0x69) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	const u8 C = getCarryFlag();
 	const u8 result = reg_.A + M + C;
 
@@ -387,7 +493,7 @@ void CPU6502::ADC()
 
 void CPU6502::AND()
 {
-	const u8 M = (opcode_ == 0x29) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.A = reg_.A & M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
@@ -395,17 +501,17 @@ void CPU6502::AND()
 
 void CPU6502::ASL()
 {
-	u8 val = (opcode_ == 0x0A) ? reg_.A : read(abs_addr_);
+	u8 M = fetch();
 
-	setCarryFlag(getBitN(val, 7));
-	val <<= 1;
-	setZeroFlag(val == 0);
-	setNegativeResultFlag(getBitN(val, 7));
+	setCarryFlag(getBitN(M, 7));
+	M <<= 1;
+	setZeroFlag(M == 0);
+	setNegativeResultFlag(getBitN(M, 7));
 
 	if (opcode_ == 0x0A)
-		reg_.A = val;
+		reg_.A = M;
 	else
-		write(abs_addr_, val);
+		write(abs_addr_, M);
 }
 
 void CPU6502::BCC()
@@ -494,7 +600,7 @@ void CPU6502::CLV()
 
 void CPU6502::CMP()
 {
-	const u8 M = (opcode_ == 0xC9) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	const u8 result = reg_.A - M;
 	setCarryFlag(reg_.A >= M);
 	setZeroFlag(reg_.A == M);
@@ -503,7 +609,7 @@ void CPU6502::CMP()
 
 void CPU6502::CPX()
 {
-	const u8 M = (opcode_ == 0xE0) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	const u8 result = reg_.X - M;
 	setCarryFlag(reg_.X >= M);
 	setZeroFlag(result == 0);
@@ -512,7 +618,7 @@ void CPU6502::CPX()
 
 void CPU6502::CPY()
 {
-	const u8 M = (opcode_ == 0xC0) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	const u8 result = reg_.Y - M;
 	setCarryFlag(reg_.Y >= M);
 	setZeroFlag(result == 0);
@@ -544,7 +650,7 @@ void CPU6502::DEY()
 
 void CPU6502::EOR()
 {
-	const u8 M = (opcode_ == 0x49) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.A = reg_.A ^ M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
@@ -586,7 +692,7 @@ void CPU6502::JSR()
 
 void CPU6502::LDA()
 {
-	const u8 M = (opcode_ == 0xA9) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.A = M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
@@ -594,7 +700,7 @@ void CPU6502::LDA()
 
 void CPU6502::LDX()
 {
-	const u8 M = (opcode_ == 0xA2) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.X = M;
 	setZeroFlag(reg_.X == 0);
 	setNegativeResultFlag(getBitN(reg_.X, 7));
@@ -602,7 +708,7 @@ void CPU6502::LDX()
 
 void CPU6502::LDY()
 {
-	const u8 M = (opcode_ == 0xA0) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.Y = M;
 	setZeroFlag(reg_.Y == 0);
 	setNegativeResultFlag(getBitN(reg_.Y, 7));
@@ -610,17 +716,17 @@ void CPU6502::LDY()
 
 void CPU6502::LSR()
 {
-	u8 val = (opcode_ == 0x4A) ? reg_.A : read(abs_addr_);
+	u8 M = fetch();
 
-	setCarryFlag(getBitN(val, 0));
-	val >>= 1;
-	setZeroFlag(val == 0);
-	setNegativeResultFlag(getBitN(val, 7));
+	setCarryFlag(getBitN(M, 0));
+	M >>= 1;
+	setZeroFlag(M == 0);
+	setNegativeResultFlag(getBitN(M, 7));
 
 	if (opcode_ == 0x4A)
-		reg_.A = val;
+		reg_.A = M;
 	else
-		write(abs_addr_, val);
+		write(abs_addr_, M);
 }
 
 void CPU6502::NOP()
@@ -629,7 +735,7 @@ void CPU6502::NOP()
 
 void CPU6502::ORA()
 {
-	const u8 M = (opcode_ == 0x09) ? immidiate_ : read(abs_addr_);
+	const u8 M = fetch();
 	reg_.A = reg_.A | M;
 	setZeroFlag(reg_.A == 0);
 	setNegativeResultFlag(getBitN(reg_.A, 7));
@@ -642,10 +748,10 @@ void CPU6502::PHA()
 
 void CPU6502::PHP()
 {
-	const bool val = getBreakFlag();
+	const bool M = getBreakFlag();
 	setBreakFlag(true);
 	pushStack(reg_.Status);
-	setBreakFlag(val);
+	setBreakFlag(M);
 }
 
 void CPU6502::PLA()
@@ -657,14 +763,14 @@ void CPU6502::PLA()
 
 void CPU6502::PLP()
 {
-	const bool val = getBreakFlag();
+	const bool M = getBreakFlag();
 	reg_.Status = popStack();
-	setBreakFlag(val);
+	setBreakFlag(M);
 }
 
 void CPU6502::ROL()
 {
-	u8 M = (opcode_ == 0x2A) ? reg_.A : read(abs_addr_);
+	u8 M = fetch();
 
 	const u8 new_bit0 = getCarryFlag();
 	setCarryFlag(getBitN(M, 7));
@@ -680,7 +786,7 @@ void CPU6502::ROL()
 
 void CPU6502::ROR()
 {
-	u8 M = (opcode_ == 0x6A) ? reg_.A : read(abs_addr_);
+	u8 M = fetch();
 
 	const u8 new_bit7 = getCarryFlag();
 	setCarryFlag(getBitN(M, 0));
@@ -708,7 +814,7 @@ void CPU6502::RTS()
 
 void CPU6502::SBC()
 {
-	const u8  M = (opcode_ == 0xE9) ? immidiate_ : read(abs_addr_);
+	const u8  M = fetch();
 	const u16 C = getCarryFlag();
 	const u16 value = static_cast<u16>(M) ^ 0x00FF;
 	const u16 A = reg_.A;
@@ -792,6 +898,54 @@ void CPU6502::TYA()
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
+void CPU6502::LAX()
+{
+	LDA();
+	TAX();
+}
+
+void CPU6502::SAX()
+{
+	const u8 M = reg_.X & reg_.A;
+	write(abs_addr_, M);
+}
+
+void CPU6502::DCP()
+{
+	DEC();
+	CMP();
+}
+
+void CPU6502::ISC()
+{
+	INC();
+	SBC();
+}
+
+void CPU6502::RLA()
+{
+	ROL();
+	AND();
+}
+
+void CPU6502::RRA()
+{
+	ROR();
+	ADC();
+}
+
+void CPU6502::SLO()
+{
+	ASL();
+	ORA();
+}
+
+void CPU6502::SRE()
+{
+	LSR();
+	EOR();
+}
+
 void CPU6502::unknownOpcode()
 {
 }
@@ -807,15 +961,18 @@ void CPU6502::relativeDisplace()
 
 void CPU6502::none()
 {
+	addr_mode_ = AddrMode::Imp;
 }
 
 void CPU6502::imm()
 {
+	addr_mode_ = AddrMode::Imm;
 	immidiate_ = getByteFromPC();
 }
 
 void CPU6502::rel()
 {
+	addr_mode_ = AddrMode::Rel;
 	u8 displacement = getByteFromPC();
 	const bool is_negative = getBitN(displacement, 7);
 	if (is_negative)
@@ -829,28 +986,33 @@ void CPU6502::rel()
 
 void CPU6502::zp()
 {
+	addr_mode_ = AddrMode::ZP;
 	abs_addr_ = static_cast<u16>(getByteFromPC());
 }
 
 void CPU6502::zpx()
 {
+	addr_mode_ = AddrMode::ZPX;
 	const u8 addr = getByteFromPC() + reg_.X;
 	abs_addr_ = static_cast<u16>(addr);
 }
 
 void CPU6502::zpy()
 {
+	addr_mode_ = AddrMode::ZPY;
 	const u8 addr = getByteFromPC() + reg_.Y;
 	abs_addr_ = static_cast<u16>(addr);
 }
 
 void CPU6502::abs()
 {
+	addr_mode_ = AddrMode::Abs;
 	abs_addr_ = getTwoBytesFromPC();
 }
 
 void CPU6502::abx()
 {
+	addr_mode_ = AddrMode::Abx;
 	const u16 addr = getTwoBytesFromPC();
 	abs_addr_ = addr + static_cast<u16>(reg_.X);
 	if (pageCrossed(addr, abs_addr_))
@@ -859,6 +1021,7 @@ void CPU6502::abx()
 
 void CPU6502::aby()
 {
+	addr_mode_ = AddrMode::Aby;
 	const u16 addr = getTwoBytesFromPC();
 	abs_addr_ = addr + static_cast<u16>(reg_.Y);
 	if (pageCrossed(addr, abs_addr_))
@@ -867,6 +1030,7 @@ void CPU6502::aby()
 
 void CPU6502::ind()
 {
+	addr_mode_ = AddrMode::Ind;
 	const u16 addr = getTwoBytesFromPC();
 	if (static_cast<u8>(addr) == 0xFF) // this is a hardware bug
 	{
@@ -881,17 +1045,28 @@ void CPU6502::ind()
 
 void CPU6502::idxInd()
 {
+	addr_mode_ = AddrMode::IdxInd;
 	const u8 table_loc = getByteFromPC() + reg_.X;
 	abs_addr_ = getTwoBytesFromZP(table_loc);
 }
 
 void CPU6502::indIdx()
 {
+	addr_mode_ = AddrMode::IndIdx;
 	const u8 table_loc = getByteFromPC();
 	const u16 addr = getTwoBytesFromZP(table_loc);
 	abs_addr_ = addr + static_cast<u16>(reg_.Y);
 	if (pageCrossed(addr, abs_addr_))
 		cycles_ += instrs_[opcode_].penalty;
+}
+
+u8 CPU6502::fetch()
+{
+	if (addr_mode_ == AddrMode::Imm)
+		return immidiate_;
+	if (addr_mode_ == AddrMode::Imp)
+		return reg_.A;
+	return read(abs_addr_);
 }
 
 u8 CPU6502::getByteFromPC()

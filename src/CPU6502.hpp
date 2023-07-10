@@ -97,10 +97,30 @@ public:
 	void TXS();
 	void TYA();
 
+	// unofficial instructions
+	void LAX();
+	void SAX();
+	void DCP();
+	void ISC();
+	void RLA();
+	void RRA();
+	void SLO();
+	void SRE();
+
 	void unknownOpcode();
 
 	void relativeDisplace();
-
+	
+	enum class AddrMode
+	{
+		Imp, 
+		Imm,
+		ZP, ZPX, ZPY,
+		Rel,
+		Abs, Abx, Aby,
+		Ind, IdxInd, IndIdx
+	} addr_mode_;
+	
 	void none();
 	void imm();
 	void rel();
@@ -114,6 +134,7 @@ public:
 	void idxInd();
 	void indIdx();
 
+	u8 fetch();
 	u8 getByteFromPC();
 	u16 getTwoBytesFromPC();
 	u16 getTwoBytesFromZP(u8 loc);
