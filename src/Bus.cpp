@@ -1,10 +1,9 @@
 #include "Bus.hpp"
 
-Bus::Bus()
+Bus::Bus() : 
+	mem_(mem_size, 0)
 {
 	cpu.connectToBus(this);
-	for (auto& i : mem_)
-		i = 0;
 }
 
 void Bus::write(const u16 addr, const u8 data)
@@ -12,7 +11,7 @@ void Bus::write(const u16 addr, const u8 data)
 	mem_[addr] = data;
 }
 
-u8 Bus::read(const u16 addr, bool)
+u8 Bus::cpuRead(const u16 addr)
 {
 	return mem_[addr];
 }

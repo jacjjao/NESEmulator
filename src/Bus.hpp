@@ -3,7 +3,7 @@
 #include "common/type.hpp"
 #include "CPU6502.hpp"
 
-#include <array>
+#include <vector>
 
 
 class Bus
@@ -12,10 +12,11 @@ public:
 	Bus();
 
 	void write(u16 addr, u8 data);
-	u8 read(u16 addr, bool read_only = false);
+	u8 cpuRead(u16 addr);
 
 	CPU6502 cpu;
 
 private:
-	std::array<u8, 0xFFFF + 1> mem_;
+	static constexpr std::size_t mem_size = 0xFFFF + 1;
+	std::vector<u8> mem_;
 };
