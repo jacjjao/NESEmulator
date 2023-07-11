@@ -2,13 +2,9 @@
 
 #include "common/type.hpp"
 #include <functional>
-#include <array>
+#include <vector>
 
 #define EMUCPULOG
-
-#ifdef EMUCPULOG
-#include <string>
-#endif
 
 class Bus;
 
@@ -36,7 +32,6 @@ public:
 		u8 penalty; // page crossed penalty
 	};
 
-	u8 immidiate_ = 0;
 	u16 abs_addr_ = 0;
 	u8 opcode_ = 0;
 
@@ -181,7 +176,7 @@ public:
 
 	static constexpr std::size_t instrs_size = 256;
 
-	std::array<Instruction, instrs_size> instrs_;
+	std::vector<Instruction> instrs_;
 	u8 cycles_ = 0;
 	u64 total_cycles_ = 0;
 

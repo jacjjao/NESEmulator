@@ -48,8 +48,7 @@ CPU6502::CPU6502()
 	const auto idxInd  = [this]() { this->idxInd(); };
 	const auto indIdx  = [this]() { this->indIdx(); };
 
-	for (auto& instr : instrs_)
-		instr = { none, unknown, 0, 0 };
+	instrs_.resize(instrs_size, { none, unknown, 0, 0 });
 
 	const auto ADC = [this]() { this->ADC(); };
 	instrs_[0x69] = { imm,    ADC, 2, 0 };
@@ -454,7 +453,7 @@ void CPU6502::write(const u16 addr, const u8 data)
 
 u8 CPU6502::read(const u16 addr)
 {
-	return bus_->read(addr);
+	return bus_->cpuRead(addr);
 }
 
 void CPU6502::irq()
@@ -508,7 +507,7 @@ void CPU6502::ASL()
 	setZeroFlag(M == 0);
 	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode_ == 0x0A)
+	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
 	else
 		write(abs_addr_, M);
@@ -723,7 +722,7 @@ void CPU6502::LSR()
 	setZeroFlag(M == 0);
 	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode_ == 0x4A)
+	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
 	else
 		write(abs_addr_, M);
@@ -778,7 +777,7 @@ void CPU6502::ROL()
 	setBitN(M, 0, new_bit0);
 	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode_ == 0x2A)
+	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
 	else
 		write(abs_addr_, M);
@@ -794,7 +793,7 @@ void CPU6502::ROR()
 	setBitN(M, 7, new_bit7);
 	setNegativeResultFlag(getBitN(M, 7));
 
-	if (opcode_ == 0x6A)
+	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
 	else
 		write(abs_addr_, M);
@@ -967,7 +966,7 @@ void CPU6502::none()
 void CPU6502::imm()
 {
 	addr_mode_ = AddrMode::Imm;
-	immidiate_ = getByteFromPC();
+	abs_addr_ = getByteFromPC();
 }
 
 void CPU6502::rel()
@@ -1063,7 +1062,7 @@ void CPU6502::indIdx()
 u8 CPU6502::fetch()
 {
 	if (addr_mode_ == AddrMode::Imm)
-		return immidiate_;
+		return static_cast<u8>(abs_addr_);
 	if (addr_mode_ == AddrMode::Imp)
 		return reg_.A;
 	return read(abs_addr_);
