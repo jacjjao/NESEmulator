@@ -448,7 +448,7 @@ void CPU6502::connectToBus(Bus* bus)
 
 void CPU6502::write(const u16 addr, const u8 data)
 {
-	bus_->write(addr, data);
+	bus_->cpuWrite(addr, data);
 }
 
 u8 CPU6502::read(const u16 addr)

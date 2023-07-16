@@ -8,7 +8,7 @@
 class Cartridge
 {
 public:
-	void readiNESFile(const std::filesystem::path& path);
+	bool loadiNESFile(const std::filesystem::path& path);
 	
 private:
 	struct Header
@@ -24,5 +24,6 @@ private:
 		u8 u11, u12, u13, u14, u15; // unused bytes
 	} header_;
 
-	std::vector<u8> data_;
+	std::vector<u8> prg_rom_;
+	std::vector<u8> chr_rom_;
 };

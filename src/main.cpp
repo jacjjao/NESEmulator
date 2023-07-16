@@ -10,13 +10,11 @@
 #include "Bus.hpp"
 
 
-int main()
+void cpu_test()
 {
-    static_assert(std::endian::native == std::endian::little);
-
     std::ifstream test_file { "C:/Users/user/Desktop/hi/C++/NESEmulator/nestest.nes", std::ios::binary };
     if (!test_file.is_open())
-        return EXIT_FAILURE;
+        return;
     Bus bus;
     std::vector<u8> data(std::istreambuf_iterator<char>(test_file), {});
     // 16KB PRG ROM
@@ -44,6 +42,13 @@ int main()
             break;
         }
     }
+}
+
+int main()
+{
+    static_assert(std::endian::native == std::endian::little);
     
+    // cpu_test();
+
     return EXIT_SUCCESS;
 }
