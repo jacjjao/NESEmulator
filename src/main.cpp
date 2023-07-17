@@ -1,11 +1,8 @@
-#include <SDL2/SDL.h>
+#include <SFML/Graphics.hpp>
 
-#include <bit>
 #include <cstdlib>
 #include <fstream>
-#include <algorithm>
 #include <iostream>
-#include <bitset>
 
 #include "Bus.hpp"
 
@@ -48,7 +45,7 @@ int main()
 {
     static_assert(std::endian::native == std::endian::little);
     
-    // cpu_test();
+    
 
     return EXIT_SUCCESS;
 }
