@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "Bus.hpp"
-
+#include "Mapper000.hpp"
 
 void cpu_test()
 {
@@ -41,11 +41,44 @@ void cpu_test()
     }
 }
 
+void cartridge_and_mapper_test()
+{
+    Bus bus;
+
+    auto cartridge = std::make_unique<Cartridge>();
+    cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/nestest.nes");
+    
+    bus.insertCartridge(std::move(cartridge));
+    bus.cpu.reg_.PC = 0xC000;
+    bus.cpu.reg_.Status = 0x24;
+
+    while (true)
+    {
+        bus.cpu.update();
+        if (bus.cpu.read(0x02) > 0)
+        {
+            std::cout << "Cpu test failed 0x02: " << bus.cpu.read(0x02) << '\n';
+            break;
+        }
+        if (bus.cpu.read(0x03) > 0)
+        {
+            std::cout << "Cpu test failed 0x03: " << bus.cpu.read(0x03) << '\n';
+            break;
+        }
+    }
+}
+
 int main()
 {
     static_assert(std::endian::native == std::endian::little);
     
-    
+    /*
+      
+        In each cycle update CPU once and then update PPU three times
+
+    */
+
+    cartridge_and_mapper_test();
 
     return EXIT_SUCCESS;
 }

@@ -2,7 +2,9 @@
 #include <cassert>
 
 
-PPU2C02::PPU2C02() : mem_(mem_size, 0)
+PPU2C02::PPU2C02() : 
+	mem_(mem_size, 0),
+	video_output_(resolution)
 {
 }
 
@@ -47,4 +49,9 @@ u8* PPU2C02::getNameTable(const u16 index)
 	assert(index <= 3);
 	const u16 addr_start = 0x2000 + 0x0400 * index;
 	return &mem_[addr_start];
+}
+
+const std::vector<sf::Vertex>& PPU2C02::getOutput() const
+{
+	return video_output_;
 }

@@ -456,6 +456,13 @@ u8 CPU6502::read(const u16 addr)
 	return bus_->cpuRead(addr);
 }
 
+void CPU6502::reset()
+{
+	reg_.PC = getTwoBytesFromMem(0xFFFC);
+	reg_.SP = 0xFD;
+	setInterruptDisableFlag(true);
+}
+
 void CPU6502::irq()
 {
 	if (getInterruptDisableFlag())

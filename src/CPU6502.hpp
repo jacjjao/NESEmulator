@@ -20,6 +20,8 @@ public:
 	void write(u16 addr, u8 data);
 	u8 read(u16 addr);
 
+	void reset();
+
 	void irq();
 	void nmi();
 

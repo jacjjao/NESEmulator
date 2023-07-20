@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/type.hpp"
+#include "Cartridge.hpp"
 #include "PPU2C02.hpp"
 #include "CPU6502.hpp"
 
@@ -21,12 +22,13 @@ public:
 	PPU2C02 ppu;
 	CPU6502 cpu;
 
+	Mapper* getMapper();
+	void insertCartridge(std::unique_ptr<Cartridge> cartridge);
+
 private:
 	static constexpr std::size_t cpu_mem_size = 64 * 1024; // 64 kB
-	static constexpr std::size_t ppu_mem_size = 16 * 1024; // 16 kB
-	static constexpr std::size_t ppu_oam_size = 64;
 
 	std::vector<u8> cpu_mem_;
-	std::vector<u8> ppu_oam_;
-	std::vector<u8> ppu_mem_;
+
+	std::unique_ptr<Cartridge> cartridge_;
 };
