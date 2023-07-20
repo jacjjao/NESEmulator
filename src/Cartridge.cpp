@@ -9,7 +9,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
 {
 	std::ifstream file{path, std::ios::binary};
 	
-    if (!file) 
+    if (!file.is_open()) 
     {
         std::cerr << "[FAILED] cannot open the file: " << path << '\n';
         return false;

@@ -4,8 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "Bus.hpp"
-#include "Mapper000.hpp"
+#include "NES.hpp"
 
 void cpu_test()
 {
@@ -69,16 +68,34 @@ void cartridge_and_mapper_test()
 }
 
 int main()
-{
-    static_assert(std::endian::native == std::endian::little);
-    
+{  
     /*
-      
-        In each cycle update CPU once and then update PPU three times
+    Bus bus;
 
+    sf::RenderWindow window(sf::VideoMode(256, 240), "SFML works!");
+    window.setSize(sf::Vector2u(1024, 960));
+    window.setVerticalSyncEnabled(true);
+
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                window.close();
+        }
+
+        window.clear();
+
+        auto& video_output = bus.ppu.getOutput();
+        window.draw(video_output.data(), video_output.size(), sf::Quads);
+
+        window.display();
+    }
     */
 
-    cartridge_and_mapper_test();
+    NES nes;
+    nes.run();
 
     return EXIT_SUCCESS;
 }
