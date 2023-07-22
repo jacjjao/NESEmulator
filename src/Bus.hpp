@@ -22,13 +22,12 @@ public:
 	PPU2C02 ppu;
 	CPU6502 cpu;
 
-	Mapper* getMapper();
-	void insertCartridge(std::unique_ptr<Cartridge> cartridge);
+	void insertCartridge(std::shared_ptr<Cartridge> cartridge);
 
 private:
 	static constexpr std::size_t cpu_mem_size = 64 * 1024; // 64 kB
 
 	std::vector<u8> cpu_mem_;
 
-	std::unique_ptr<Cartridge> cartridge_;
+	std::shared_ptr<Cartridge> cart_;
 };

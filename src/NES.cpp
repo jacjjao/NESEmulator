@@ -4,12 +4,17 @@ NES::NES()
 {
 	window_ = new sf::RenderWindow(sf::VideoMode(256 + 150, 240), "NES", sf::Style::Titlebar | sf::Style::Close);
 	window_->setSize(sf::Vector2u(1024 + 600, 960));
-	window_->setVerticalSyncEnabled(true);
 }
 
 NES::~NES()
 {
 	delete window_;
+}
+
+void NES::insertCartridge(std::shared_ptr<Cartridge> cartridge)
+{
+    bus_.insertCartridge(std::move(cartridge));
+    bus_.cpu.reset();
 }
 
 void NES::run()
@@ -22,7 +27,8 @@ void NES::run()
             onEvent();
         }
 
-        onUpdate(system_clock_.getElapsedTime().asSeconds());
+        while (!onUpdate(system_clock_.getElapsedTime().asSeconds()))
+        { }
 
         window_->clear();
         onDraw();
@@ -30,23 +36,22 @@ void NES::run()
     }
 }
 
-void NES::onUpdate(const double elapsed_time)
+bool NES::onUpdate(const float elapsed_time)
 {
-    static double residual_time = 0.0;
+    static constexpr float frame_time_interval = 1.0f / 60.0f;
 
-    residual_time -= elapsed_time;
-    if (residual_time > 0)
-        return;
+    if (elapsed_time < frame_time_interval)
+        return false;
     
-    residual_time += (1.0 / 60.0) - elapsed_time;
-    /*
     bus_.ppu.update();
     if (cycle_count_ % 3 == 0)
     {
         bus_.cpu.update();
-    }*/
+    }
     ++cycle_count_;
     system_clock_.restart();
+
+    return true;
 }
 
 void NES::onDraw()
@@ -73,4 +78,9 @@ void NES::onKeyPressed()
 {
     if (event_.key.code == sf::Keyboard::Escape)
         window_->close();
+}
+
+void NES::dbg_draw_pattern_tb()
+{
+    
 }

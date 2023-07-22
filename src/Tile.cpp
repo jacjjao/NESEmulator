@@ -1,0 +1,91 @@
+#include "Tile.hpp"
+
+Pixel::Pixel(sf::Vertex& vertex)
+{
+	vertex_ = &vertex;
+}
+
+void Pixel::setPixel(sf::Vertex& vertex)
+{
+	vertex_ = &vertex;
+}
+
+void Pixel::setColor(const sf::Color& color)
+{
+	for (std::size_t i = 0; i < 4; ++i)
+		vertex_[i].color = color;
+}
+
+void Pixel::setPosition(const sf::Vector2f pos)
+{
+	vertex_[0].position = pos;
+	vertex_[1].position = { pos.x + 1.0f, pos.y };
+	vertex_[2].position = { pos.x + 1.0f, pos.y + 1.0f };
+	vertex_[3].position = { pos.x       , pos.y + 1.0f };
+}
+
+Tile::Tile(Pixel& pixels)
+{
+	setTile(pixels);
+}
+
+void Tile::setTile(Pixel& pixels)
+{
+	Pixel* pixel = &pixels;
+	for (int row = 0; row < 8; ++row)
+		for (int col = 0; col < 8; ++col)
+			pixels_[row * 8 + col] = &pixel[row * 256 + col];
+}
+
+void Tile::setColor(const sf::Color& color)
+{
+	for (auto& pixel : pixels_)
+		pixel->setColor(color);
+}
+
+PixelArray::PixelArray(const std::size_t size) :
+	pixels_(size),
+	vertices_(size * 4)
+{
+	for (std::size_t i = 0; i < size; ++i)
+		pixels_[i].setPixel(vertices_[i * 4]);
+}
+
+Pixel& PixelArray::operator[](const std::size_t index)
+{
+	return pixels_[index];
+}
+
+std::size_t PixelArray::size() const
+{
+	return pixels_.size();
+}
+
+const std::vector<sf::Vertex>& PixelArray::getVertexArray() const
+{
+	return vertices_;
+}
+
+TileArray::TileArray(const std::size_t size) : 
+	pixel_arr_(size * 8 * 8),
+	tiles_(size)
+{
+	for (std::size_t i = 0, row = 0; row < 240; row += 8)
+		for (std::size_t col = 0; col < 256; col += 8, ++i)
+			tiles_[i].setTile(pixel_arr_[row * 256 + col]);
+}
+
+Tile& TileArray::operator[](const std::size_t index)
+{
+	return tiles_[index];
+}
+
+std::size_t TileArray::size() const
+{
+	return tiles_.size();
+}
+
+const PixelArray& TileArray::getPixelArray() const
+{
+	return pixel_arr_;
+}

@@ -77,7 +77,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     switch (header.mapper1)
     {
     case 0:
-        mapper_.reset(new Mapper000{});
+        mapper_.reset(new Mapper000{ header.prg_rom_size });
         break;
 
     default:
@@ -99,11 +99,6 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     return true;
 }
 
-Mapper* Cartridge::getMapper()
-{
-    return mapper_.get();
-}
-
 const std::vector<u8>& Cartridge::getPRGRom() const
 {
     return prg_rom_;
@@ -112,4 +107,46 @@ const std::vector<u8>& Cartridge::getPRGRom() const
 const std::vector<u8>& Cartridge::getCHRRom() const
 {
     return chr_rom_;
+}
+
+bool Cartridge::cpuWrite(const u16 addr, const u8 data)
+{
+    const auto adr = mapper_->cpuMapRead(addr);
+    if (adr.has_value())
+    {
+        prg_rom_[adr.value()] = data;
+        return true;
+    }
+    return false;
+}
+
+std::optional<u8> Cartridge::cpuRead(const u16 addr)
+{
+    const auto adr = mapper_->cpuMapRead(addr);
+    if (adr.has_value())
+    {
+        return prg_rom_[adr.value()];
+    }
+    return std::nullopt;
+}
+
+bool Cartridge::ppuWrite(const u16 addr, const u8 data)
+{
+    const auto adr = mapper_->ppuMapWrite(addr);
+    if (adr.has_value())
+    {
+        chr_rom_[adr.value()] = data;
+        return true;
+    }
+    return false;
+}
+
+std::optional<u8> Cartridge::ppuRead(const u16 addr)
+{
+    const auto adr = mapper_->ppuMapRead(addr);
+    if (adr.has_value())
+    {
+        return chr_rom_[adr.value()];
+    }
+    return std::nullopt;
 }

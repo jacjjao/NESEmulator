@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+// #define EMUCPULOG
+
 class Bus;
 
 class CPU6502

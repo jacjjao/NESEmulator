@@ -6,20 +6,43 @@
 class Mapper000 : public Mapper
 {
 public:
-	u16 cpuMapWrite(const u16 addr) override
+	Mapper000(int bank) : banks_(bank) {}
+
+	std::optional<u16> cpuMapWrite(const u16 addr) override
 	{
-		if (0xC000 <= addr)
+		if (0x8000 <= addr && addr <= 0xFFFF)
 		{
-			return 0xBFFF & addr;
+			return addr & (banks_ > 1 ? 0x7FFF : 0x3FFF);
 		}
-		return addr;
+		return std::nullopt;
 	}
-	u16 cpuMapRead(const u16 addr) override
+	std::optional<u16> cpuMapRead(const u16 addr) override
 	{
-		if (0xC000 <= addr)
+		if (0x8000 <= addr && addr <= 0xFFFF)
 		{
-			return 0xBFFF & addr;
+			return addr & (banks_ > 1 ? 0x7FFF : 0x3FFF);
 		}
-		return addr;
+		return std::nullopt;
 	}
+
+	std::optional<u16> ppuMapWrite(const u16 addr) override
+	{
+		if (0x0000 <= addr && addr <= 0x1FFF)
+		{
+			return addr;
+		}
+		return std::nullopt;
+	}
+
+	std::optional<u16> ppuMapRead(const u16 addr) override
+	{
+		if (0x0000 <= addr && addr <= 0x1FFF)
+		{
+			return addr;
+		}
+		return std::nullopt;
+	}
+
+private:
+	int banks_;
 };

@@ -6,16 +6,18 @@ Bus::Bus() :
 	cpu.connectToBus(this);
 }
 
-void Bus::cpuWrite(u16 addr, const u8 data)
+void Bus::cpuWrite(const u16 addr, const u8 data)
 {
-	addr = getMapper()->cpuMapWrite(addr);
-	if (0x0800 <= addr && addr <= 0x1FFF)
+	if (cart_->cpuWrite(addr, data))
+	{
+	}
+	else if (0x0800 <= addr && addr <= 0x1FFF)
 	{
 		cpu_mem_[addr & 0x07FF] = data;
 	}
 	else if (0x2000 <= addr && addr <= 0x3FFF)
 	{
-		ppu.reg[addr & 0x0007] = data;
+		ppuWrite(0x2000 + addr & 0x0007, data);
 	}
 	else
 	{
@@ -23,44 +25,35 @@ void Bus::cpuWrite(u16 addr, const u8 data)
 	}
 }
 
-u8 Bus::cpuRead(u16 addr)
+u8 Bus::cpuRead(const u16 addr)
 {
-	addr = getMapper()->cpuMapRead(addr);
-	if (0x0800 <= addr && addr <= 0x1FFF)
+	if (const auto data = cart_->cpuRead(addr); data.has_value())
+	{
+		return data.value();
+	}
+	else if (0x0800 <= addr && addr <= 0x1FFF)
 	{
 		return cpu_mem_[addr & 0x07FF];
 	}
 	else if (0x2000 <= addr && addr <= 0x3FFF)
 	{
-		return ppu.reg[addr & 0x0007];
+		return ppuRead(0x2000 + addr & 0x0007);
 	}
 	return cpu_mem_[addr];
 }
 
 void Bus::ppuWrite(const u16 addr, const u8 data)
 {
-	ppu.write(getMapper()->ppuMapWrite(addr), data);
+	ppu.memWrite(addr, data);
 }
 
 u8 Bus::ppuRead(const u16 addr)
 {
-	return ppu.read(getMapper()->ppuMapRead(addr));
+	return ppu.memRead(addr);
 }
 
-Mapper* Bus::getMapper()
+void Bus::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 {
-	return cartridge_->getMapper();
-}
-
-void Bus::insertCartridge(std::unique_ptr<Cartridge> cartridge)
-{
-	cartridge_ = std::move(cartridge);
-
-	const std::vector<u8>& prg_rom = cartridge_->getPRGRom();
-	for (u16 i = 0; i < prg_rom.size(); ++i)
-		cpuWrite(0x8000 + i, prg_rom[i]);
-
-	const std::vector<u8>& chr_rom = cartridge_->getCHRRom();
-	for (u16 i = 0; i < chr_rom.size(); ++i)
-		ppuWrite(0x0000 + i, chr_rom[i]);
+	ppu.insertCartridge(cartridge);
+	cart_ = std::move(cartridge);
 }

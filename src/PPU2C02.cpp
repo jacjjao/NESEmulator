@@ -1,38 +1,16 @@
 #include "PPU2C02.hpp"
-#include <cassert>
+#include "common/bitHelper.hpp"
 
 #include <cstdlib>
 #include <ctime>
 
-#include <cstdio>
-
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
-	video_output_(resolution * 4),
+	pixels_(resolution),
 	palettes_(palette_size)
 {
-
 	srand(time(nullptr));
-	for (int j = 0, row = 0, col = 0; j < video_output_.size(); j += 4)
-	{
-		video_output_[j + 0].position = sf::Vector2f(static_cast<float>(col)	, static_cast<float>(row));
-		video_output_[j + 1].position = sf::Vector2f(static_cast<float>(col)	, static_cast<float>(row + 1));
-		video_output_[j + 2].position = sf::Vector2f(static_cast<float>(col + 1), static_cast<float>(row + 1));
-		video_output_[j + 3].position = sf::Vector2f(static_cast<float>(col + 1), static_cast<float>(row));
 
-		sf::Color color = rand() % 2 ? sf::Color::White : sf::Color::Blue;
-		video_output_[j + 0].color = color;
-		video_output_[j + 1].color = color;
-		video_output_[j + 2].color = color;
-		video_output_[j + 3].color = color;
-
-		if (++col == 256)
-		{
-			++row;
-			col = 0;
-		}
-	}
-	
 	palettes_[0x00] = sf::Color(84, 84, 84);
 	palettes_[0x01] = sf::Color(0, 30, 116);
 	palettes_[0x02] = sf::Color(8, 16, 144);
@@ -104,11 +82,111 @@ PPU2C02::PPU2C02() :
 
 void PPU2C02::update()
 {
+	static int row = 0, col = 0;
+	static std::size_t i = 0;
+	if (i >= pixels_.size())
+		return;
+
+	pixels_[i].setPosition(sf::Vector2f{static_cast<float>(col), static_cast<float>(row)});
+	pixels_[i].setColor(rand() % 2 ? sf::Color::White : sf::Color::Blue);
+
+	if (++col == 256)
+	{
+		++row;
+		col = 0;
+	}
+	++i;
 }
 
-u8 PPU2C02::read(const u16 addr) const
+void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 {
-	if (0x3000 <= addr && addr <= 0x3EFF)
+	cart_ = std::move(cartridge);
+}
+
+u8 PPU2C02::regRead(u16 addr)
+{
+	addr &= 0x0007;
+
+	u8 data = data_buf_;
+
+	switch (addr)
+	{
+	case 0x00: case 0x01: case 0x03: 
+	case 0x04: case 0x05: case 0x06:
+		break;
+		
+	case 0x02:
+		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
+		PPUSTATUS.vb_start = 0;
+		scroll_latch = addr_latch = 0;
+		data_buf_ = data;
+		break;
+
+	case 0x07:
+		// TODO read from vram
+		break;
+	}
+
+	return data;
+}
+
+void PPU2C02::regWrite(u16 addr, const u8 data)
+{
+	data_buf_ = data;
+
+	addr &= 0x0007;
+
+	switch (addr)
+	{
+	case 0x00:
+		PPUCTRL.reg = data;
+		break;
+
+	case 0x01:
+		PPUMASK.reg = data;
+		break;
+
+	case 0x02:
+		break;
+
+	case 0x03:
+		// TODO
+		break;
+
+	case 0x04:
+		// TODO
+		break;
+
+	case 0x05:
+		// TODO
+		break;
+
+	case 0x06:
+		if (addr_latch == 0)
+		{
+			vram_addr = (static_cast<u16>(data) << 8);
+			addr_latch = 1;
+		}
+		else
+		{
+			vram_addr |= static_cast<u16>(data);
+			addr_latch = 0;
+		}
+		break;
+
+	case 0x07:
+		// TODO
+		break;
+	}
+}
+
+u8 PPU2C02::memRead(const u16 addr) const
+{
+	if (const auto data = cart_->ppuRead(addr); data.has_value())
+	{
+		return data.value();
+	}
+	else if (0x3000 <= addr && addr <= 0x3EFF)
 	{
 		return mem_[addr & 0x2EFF];
 	}
@@ -119,9 +197,15 @@ u8 PPU2C02::read(const u16 addr) const
 	return mem_[addr];
 }
 
-void PPU2C02::write(const u16 addr, const u8 data)
+void PPU2C02::memWrite(const u16 addr, const u8 data)
 {
-	if (0x3000 <= addr && addr <= 0x3EFF)
+	data_buf_ = data;
+
+	if (cart_->ppuWrite(addr, data))
+	{
+
+	}
+	else if (0x3000 <= addr && addr <= 0x3EFF)
 	{
 		mem_[addr & 0x2EFF] = data;
 	}
@@ -135,23 +219,9 @@ void PPU2C02::write(const u16 addr, const u8 data)
 	}
 }
 
-u8* PPU2C02::getPatternTable(const u16 index)
-{
-	assert(index <= 1);
-	const u16 addr_start = (index) ? 0x1000 : 0x0000;
-	return &mem_[addr_start];
-}
-
-u8* PPU2C02::getNameTable(const u16 index)
-{
-	assert(index <= 3);
-	const u16 addr_start = 0x2000 + 0x0400 * index;
-	return &mem_[addr_start];
-}
-
 const std::vector<sf::Vertex>& PPU2C02::getOutput() const
 {
-	return video_output_;
+	return pixels_.getVertexArray();
 }
 
 bool PPU2C02::isFrameComplete() const
