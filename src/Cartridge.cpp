@@ -156,5 +156,5 @@ std::optional<u8> Cartridge::ppuRead(const u16 addr)
 
 MirrorType Cartridge::getMirrorType() const
 {
-    return MirrorType();
+    return mirror_type_;
 }

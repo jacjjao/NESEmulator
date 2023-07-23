@@ -18,12 +18,14 @@ private:
 	void onEvent();
 	void onKeyPressed();
 
-	void dbg_draw_pattern_tb();
-
-	Bus bus_;
+	Bus bus_{};
 	u64 cycle_count_ = 0;
 
-	sf::RenderWindow* window_;
-	sf::Clock system_clock_;
-	sf::Event event_;
+	sf::RenderWindow* window_ = nullptr;
+	sf::Clock system_clock_{};
+	sf::Event event_{};
+
+public: // for debug
+	PixelArray& dbg_draw_pattern_tb(int i, u8 palette);
+	u8 palette_ = 0;
 };

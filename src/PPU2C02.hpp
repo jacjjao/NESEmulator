@@ -13,6 +13,8 @@ class PPU2C02
 public:
 	PPU2C02();
 
+	void reset();
+
 	void update();
 
 	void insertCartridge(std::shared_ptr<Cartridge> cartridge);
@@ -26,6 +28,8 @@ public:
 
 	bool isFrameComplete() const;
 
+	sf::Color getPalette(bool sprite_select, u8 pixel, u8 palette);
+
 private:
 	u8* mirroring(u16 addr);
 
@@ -35,7 +39,7 @@ private:
 
 	union
 	{
-		struct
+		struct Foo
 		{
 			u8 nametb_addr : 2;
 			u8 vram_addr_inc : 1;
@@ -44,14 +48,14 @@ private:
 			u8 sp_size : 1;
 			u8 master_slave_select : 1;
 			u8 gen_nmi : 1;
-		};
+		} bit;
 		u8 reg;
 	} PPUCTRL;
 	static_assert(sizeof(PPUCTRL) == 1);
 
 	union
 	{
-		struct
+		struct Foo
 		{
 			u8 grey_sacle : 1;
 			u8 show_bg_lm_8pixels : 1;
@@ -61,20 +65,20 @@ private:
 			u8 empha_red : 1;
 			u8 empha_green : 1;
 			u8 empha_blue : 1;
-		};
+		} bit;
 		u8 reg;
 	} PPUMASK;
 	static_assert(sizeof(PPUMASK) == 1);
 
 	union
 	{
-		struct
+		struct Foo
 		{
 			u8 open_bus : 5;
 			u8 sp_overflow : 1;
 			u8 sp0_hit : 1;
 			u8 vb_start : 1;
-		};
+		} bit;
 		u8 reg;
 	} PPUSTATUS;
 	static_assert(sizeof(PPUSTATUS) == 1);
@@ -95,7 +99,11 @@ private:
 	std::shared_ptr<Cartridge> cart_;
 
 	bool frame_complete_ = false;
+	bool odd_frame_ = false;
 
 	u8 data_buf_ = 0;
+	u16 tmp_vram_addr_ = 0;
 	u16 vram_addr_ = 0;
+	u16 pattb_shift_reg_[2] = {};
+	u8 palattr_shift_reg_[2] = {};
 };

@@ -80,12 +80,23 @@ PPU2C02::PPU2C02() :
 	palette_map_[0x3F] = sf::Color(0, 0, 0);
 
 	srand(time(nullptr));
+	std::size_t i = 0;
 	for (int row = 0; row < 240; ++row)
-		for (int col = 0; col < 256; ++col)
+		for (int col = 0; col < 256; ++col, ++i)
 		{
-			pixels_[row * 256 + col].setPosition({ static_cast<float>(col), static_cast<float>(row) });
-			pixels_[row * 256 + col].setColor(sf::Color::Black);
+			pixels_[i].setPosition({ static_cast<float>(col), static_cast<float>(row) });
+			pixels_[i].setColor(sf::Color::Black);
 		}
+}
+
+void PPU2C02::reset()
+{
+	PPUCTRL.reg = 0;
+	PPUMASK.reg = 0;
+	scroll_latch = addr_latch = 0;
+	PPUSCROLL = 0;
+	PPUDATA = 0;
+	odd_frame_ = false;
 }
 
 void PPU2C02::update()
@@ -93,7 +104,7 @@ void PPU2C02::update()
 	static std::size_t i = 0;
 	if (i >= pixels_.size())
 		return;
-	pixels_[i++].setColor(rand() % 2 ? sf::Color::White : sf::Color::Blue);
+	pixels_[i++].setColor((rand() % 2) ? sf::Color::White : sf::Color::Blue);
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
@@ -111,7 +122,7 @@ u8 PPU2C02::regRead(const u16 addr)
 	{		
 	case 0x02:
 		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
-		PPUSTATUS.vb_start = 0;
+		PPUSTATUS.bit.vb_start = 0;
 		scroll_latch = addr_latch = 0;
 		break;
 
@@ -124,7 +135,7 @@ u8 PPU2C02::regRead(const u16 addr)
 		data_buf_ = memRead(vram_addr_);
 		if (vram_addr_ >= 0x3F00)
 			data = data_buf_;
-		vram_addr_ += (PPUCTRL.vram_addr_inc ? 32 : 1);
+		vram_addr_ += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
 		break;
 	}
 
@@ -160,19 +171,20 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 	case 0x06:
 		if (addr_latch == 0)
 		{
-			vram_addr_ = (static_cast<u16>(data) << 8);
+			tmp_vram_addr_ = (static_cast<u16>(data & 0x3F) << 8) | (tmp_vram_addr_ & 0x00FF);
 			addr_latch = 1;
 		}
 		else
 		{
-			vram_addr_ |= static_cast<u16>(data);
+			tmp_vram_addr_ = (tmp_vram_addr_ & 0xFF00) | static_cast<u16>(data);
+			vram_addr_ = tmp_vram_addr_;
 			addr_latch = 0;
 		}
 		break;
 
 	case 0x07:
 		memWrite(vram_addr_, data);
-		vram_addr_ += (PPUCTRL.vram_addr_inc ? 32 : 1);
+		vram_addr_ += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
 		break;
 	}
 }
@@ -205,6 +217,16 @@ const std::vector<sf::Vertex>& PPU2C02::getVideoOutput() const
 bool PPU2C02::isFrameComplete() const
 {
 	return frame_complete_;
+}
+
+sf::Color PPU2C02::getPalette(const bool sprite_select, const u8 pixel, const u8 palette)
+{
+	const u16 bg = static_cast<u16>(sprite_select);
+	const u16 px = static_cast<u16>(pixel);
+	const u16 pal = static_cast<u16>(palette);
+	const u16 index = (bg << 5) | (pal << 2) | px;
+	const u16 addr = 0x3F00 + index;
+	return palette_map_[addr & 0x3F];
 }
 
 u8* PPU2C02::mirroring(u16 addr)
