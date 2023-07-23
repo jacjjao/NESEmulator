@@ -2,6 +2,7 @@
 
 #include "common/type.hpp"
 #include "Tile.hpp"
+#include "Palette.hpp"
 #include "Cartridge.hpp"
 #include <SFML/Graphics/Vertex.hpp>
 #include <array>
@@ -32,11 +33,9 @@ public:
 
 private:
 	u8* mirroring(u16 addr);
-	sf::Color paletteMap(u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
 	static constexpr std::size_t resolution = 256 * 240;
-	static constexpr std::size_t palette_size = 64;
 
 	union
 	{
@@ -95,9 +94,8 @@ private:
 	u8 fine_x_scroll_ = 0;
 
 	PixelArray pixels_;
+	Palette palette_;
 	std::vector<u8> mem_;
-	std::vector<u8> palette_ram_;
-	std::vector<sf::Color> palette_map_;
 
 	std::shared_ptr<Cartridge> cart_;
 
