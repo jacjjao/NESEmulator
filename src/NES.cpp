@@ -56,7 +56,7 @@ bool NES::onUpdate(const float elapsed_time)
 
 void NES::onDraw()
 {
-    auto& video_output = bus_.ppu.getOutput();
+    auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
 }
 

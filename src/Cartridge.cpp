@@ -27,11 +27,11 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         u8 cN, cE, cS, cEOF;
         u8 prg_rom_size;
         u8 chr_rom_size;
-        u8 mapper1;
-        u8 mapper2;
-        u8 prg_ram_size;
-        u8 tv_system;
-        u8 tv_system_prg;
+        u8 flag6;
+        u8 flag7;
+        u8 flag8;
+        u8 flag9;
+        u8 flag10;
         u8 u11, u12, u13, u14, u15; // unused bytes
     } header{};
 
@@ -43,13 +43,11 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     header.prg_rom_size = data[4];
     header.chr_rom_size = data[5];
 
-    header.mapper1 = data[6];
-    header.mapper2 = data[7];
-
-    header.prg_ram_size = data[8];
-
-    header.tv_system     = data[9];
-    header.tv_system_prg = data[10];
+    header.flag6  = data[ 6];
+    header.flag7  = data[ 7];
+    header.flag8  = data[ 8];
+    header.flag9  = data[ 9];
+    header.flag10 = data[10];
 
     header.u11 = data[11];
     header.u12 = data[12];
@@ -68,22 +66,26 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
-    if (getBitN(header.mapper1, 3))
+    if (getBitN(header.flag6, 3))
     {
         std::cerr << "[FAILED] trainer contains\n";
         return false;
     }
 
-    switch (header.mapper1)
+
+    const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
+    switch (mapper_type)
     {
-    case 0:
-        mapper_.reset(new Mapper000{ header.prg_rom_size });
+    case 0x00:
+        mapper_.reset(new Mapper000{header.prg_rom_size > 1});
         break;
 
     default:
-        std::cerr << "[FAILED] unsupport mapper\n";
+        std::cerr << "[FALIED] unsupport mapper " << (int)mapper_type << '\n';
         return false;
     }
+
+    mirror_type_ = getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal;
 
     auto it = data.cbegin() + 16;
 
@@ -95,6 +97,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     // load CHR ROM
     std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
     chr_rom_.assign(it, it + chr_rom_size);
+
 
     return true;
 }
@@ -149,4 +152,9 @@ std::optional<u8> Cartridge::ppuRead(const u16 addr)
         return chr_rom_[adr.value()];
     }
     return std::nullopt;
+}
+
+MirrorType Cartridge::getMirrorType() const
+{
+    return MirrorType();
 }

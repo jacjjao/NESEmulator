@@ -19,14 +19,16 @@ public:
 
 	u8 regRead(u16 addr);
 	void regWrite(u16 addr, u8 data);
-	u8 memRead(u16 addr) const;
+	u8 memRead(u16 addr);
 	void memWrite(u16 addr, u8 data);
 
-	const std::vector<sf::Vertex>& getOutput() const;
+	const std::vector<sf::Vertex>& getVideoOutput() const;
 
 	bool isFrameComplete() const;
 
 private:
+	u8* mirroring(u16 addr);
+
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
 	static constexpr std::size_t resolution = 256 * 240;
 	static constexpr std::size_t palette_size = 64;
@@ -87,12 +89,13 @@ private:
 
 	PixelArray pixels_;
 	std::vector<u8> mem_;
-	std::vector<sf::Color> palettes_;
+	std::vector<u8> palette_ram_;
+	std::vector<sf::Color> palette_map_;
 
 	std::shared_ptr<Cartridge> cart_;
 
 	bool frame_complete_ = false;
 
 	u8 data_buf_ = 0;
-	u16 vram_addr = 0;
+	u16 vram_addr_ = 0;
 };

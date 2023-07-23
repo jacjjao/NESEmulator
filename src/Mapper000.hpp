@@ -7,6 +7,7 @@ class Mapper000 : public Mapper
 {
 public:
 	Mapper000(int bank) : banks_(bank) {}
+	~Mapper000() override = default;
 
 	std::optional<u16> cpuMapWrite(const u16 addr) override
 	{

@@ -7,6 +7,8 @@
 class Mapper
 {
 public:
+	virtual ~Mapper() = default;
+
 	virtual std::optional<u16> cpuMapWrite(u16) { return std::nullopt; }
 	virtual std::optional<u16> cpuMapRead(u16) { return std::nullopt; }
 	

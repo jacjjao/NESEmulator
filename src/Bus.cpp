@@ -17,7 +17,7 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	}
 	else if (0x2000 <= addr && addr <= 0x3FFF)
 	{
-		ppuWrite(0x2000 + addr & 0x0007, data);
+		ppu.regWrite(addr & 0x0007, data);
 	}
 	else
 	{
@@ -37,7 +37,7 @@ u8 Bus::cpuRead(const u16 addr)
 	}
 	else if (0x2000 <= addr && addr <= 0x3FFF)
 	{
-		return ppuRead(0x2000 + addr & 0x0007);
+		return ppu.regRead(addr & 0x0007);
 	}
 	return cpu_mem_[addr];
 }
