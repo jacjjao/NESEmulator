@@ -218,13 +218,10 @@ bool PPU2C02::isFrameComplete() const
 
 sf::Color PPU2C02::getPalette(const bool sprite_select, const u8 pixel, const u8 palette)
 {
-	const u16 bg = static_cast<u16>(sprite_select);
-	const u16 px = static_cast<u16>(pixel);
-	const u16 pal = static_cast<u16>(palette);
-	const u16 index = (bg << 5) | (pal << 2) | px;
-	const u16 addr = (0x3F00 + index) & (PPUMASK.bit.grey_sacle ? 0x30 : 0x3F);
+	const u8 index = (sprite_select << 5) | (palette << 2) | pixel;
+	const u8 addr = index & (PPUMASK.bit.grey_sacle ? 0x30 : 0x3F);
 
-	sf::Color color = palette_map_[addr];
+	sf::Color color = paletteMap(addr);
 
 	if (addr == 0x0F)
 		return color;
@@ -271,7 +268,7 @@ u8* PPU2C02::mirroring(u16 addr)
 	}
 	else if (0x3F00 <= addr && addr <= 0x3F1F)
 	{
-		addr &= 0x00FF;
+		addr &= 0x003F;
 
 		if (addr == 0x10) addr = 0x00;
 		if (addr == 0x14) addr = 0x04;
@@ -285,4 +282,16 @@ u8* PPU2C02::mirroring(u16 addr)
 		addr &= 0x3F1F;
 	}
 	return &mem_[addr];
+}
+
+sf::Color PPU2C02::paletteMap(u16 addr)
+{
+	addr &= 0x003F;
+
+	if (addr == 0x10) addr = 0x00;
+	if (addr == 0x14) addr = 0x04;
+	if (addr == 0x18) addr = 0x08;
+	if (addr == 0x1C) addr = 0x0C;
+
+	return palette_map_[addr];
 }

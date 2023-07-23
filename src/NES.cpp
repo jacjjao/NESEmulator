@@ -84,7 +84,9 @@ void NES::onKeyPressed()
     if (event_.key.code == sf::Keyboard::Escape)
         window_->close();
     else if (event_.key.code == sf::Keyboard::Right)
-        ++palette_ &= 0x07;
+        ++palette_;
+    else if (event_.key.code == sf::Keyboard::Left)
+        --palette_;
 }
 
 PixelArray& NES::dbg_draw_pattern_tb(const int index, const u8 palette)
@@ -119,13 +121,12 @@ PixelArray& NES::dbg_draw_pattern_tb(const int index, const u8 palette)
         {
             for (int j = 0; j < 8; ++j)
             {
-                u8 lowerbit = first[i] & 0x01;
-                u8 upperbit = second[i] & 0x01;
+                const u8 lowerbit = first[i] & 0x01;
+                const u8 upperbit = second[i] & 0x01;
+                const u8 pixel = (upperbit << 1) | lowerbit;
 
                 first[i] >>= 1;
                 second[i] >>= 1;
-
-                u8 pixel = (upperbit << 1) | lowerbit;
 
                 sf::Color color = bus_.ppu.getPalette(false, pixel, palette);
                 patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(color);

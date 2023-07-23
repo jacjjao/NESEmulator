@@ -32,6 +32,7 @@ public:
 
 private:
 	u8* mirroring(u16 addr);
+	sf::Color paletteMap(u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
 	static constexpr std::size_t resolution = 256 * 240;
