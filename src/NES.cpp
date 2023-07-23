@@ -84,9 +84,7 @@ void NES::onKeyPressed()
     if (event_.key.code == sf::Keyboard::Escape)
         window_->close();
     else if (event_.key.code == sf::Keyboard::Right)
-        ++palette_;
-    else if (event_.key.code == sf::Keyboard::Left)
-        --palette_;
+        ++palette_ &= 0x07;
 }
 
 PixelArray& NES::dbg_draw_pattern_tb(const int index, const u8 palette)

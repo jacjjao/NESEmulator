@@ -101,10 +101,7 @@ void PPU2C02::reset()
 
 void PPU2C02::update()
 {
-	static std::size_t i = 0;
-	if (i >= pixels_.size())
-		return;
-	pixels_[i++].setColor((rand() % 2) ? sf::Color::White : sf::Color::Blue);
+	
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
@@ -225,8 +222,27 @@ sf::Color PPU2C02::getPalette(const bool sprite_select, const u8 pixel, const u8
 	const u16 px = static_cast<u16>(pixel);
 	const u16 pal = static_cast<u16>(palette);
 	const u16 index = (bg << 5) | (pal << 2) | px;
-	const u16 addr = 0x3F00 + index;
-	return palette_map_[addr & 0x3F];
+	const u16 addr = (0x3F00 + index) & (PPUMASK.bit.grey_sacle ? 0x30 : 0x3F);
+
+	sf::Color color = palette_map_[addr];
+
+	if (addr == 0x0F)
+		return color;
+
+	if (PPUMASK.bit.empha_red)
+	{
+		color.r += (255 - color.r) / 2;
+	}
+	if (PPUMASK.bit.empha_green)
+	{
+		color.g += (255 - color.g) / 2;
+	}
+	if (PPUMASK.bit.empha_blue)
+	{
+		color.b += (255 - color.b) / 2;
+	}
+
+	return color;
 }
 
 u8* PPU2C02::mirroring(u16 addr)

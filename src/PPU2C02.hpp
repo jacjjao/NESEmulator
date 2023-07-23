@@ -91,6 +91,8 @@ private:
 
 	u8 scroll_latch = 0, addr_latch = 0;
 
+	u8 fine_x_scroll_ = 0;
+
 	PixelArray pixels_;
 	std::vector<u8> mem_;
 	std::vector<u8> palette_ram_;
@@ -106,4 +108,7 @@ private:
 	u16 vram_addr_ = 0;
 	u16 pattb_shift_reg_[2] = {};
 	u8 palattr_shift_reg_[2] = {};
+
+	int cycle_ = 0;
+	u64 total_cycle_ = 0;
 };
