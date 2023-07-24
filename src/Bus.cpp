@@ -52,6 +52,12 @@ u8 Bus::ppuRead(const u16 addr)
 	return ppu.memRead(addr);
 }
 
+void Bus::reset()
+{
+	cpu.reset();
+	ppu.reset();
+}
+
 void Bus::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 {
 	ppu.insertCartridge(cartridge);

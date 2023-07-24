@@ -85,5 +85,5 @@ u8& Palette::operator[](u8 addr)
 
 sf::Color Palette::getColor(const u8 index) const
 {
-	return palette_[index & 0x3F];
+	return palette_[index];
 }

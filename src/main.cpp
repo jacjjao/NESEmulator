@@ -65,10 +65,30 @@ void cartridge_and_mapper_test()
     }
 }
 
+void cpu_speed_test()
+{
+    Bus bus;
+
+    auto cartridge = std::make_shared<Cartridge>();
+    cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/nestest.nes");
+
+    bus.insertCartridge(cartridge);
+    bus.reset();
+
+    u64 cycle = 0;
+    while (true)
+    {
+        bus.ppu.update();
+        if (cycle % 3 == 0)
+            bus.cpu.update();
+        ++cycle;
+    }
+}
+
 int main()
 {  
     auto cartridge = std::make_shared<Cartridge>();
-    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/nestest.nes"))
+    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/Super Mario Bros.nes"))
     {
         return EXIT_FAILURE;
     }
@@ -76,6 +96,6 @@ int main()
     NES nes;
     nes.insertCartridge(cartridge);
     nes.run();
-    
+
     return EXIT_SUCCESS;
 }

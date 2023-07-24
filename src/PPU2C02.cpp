@@ -1,22 +1,20 @@
 #include "PPU2C02.hpp"
 #include "common/bitHelper.hpp"
 
-#include <cstdlib>
-#include <ctime>
-#include <cassert>
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
 	pixels_(resolution)
 {
-	srand(time(nullptr));
 	std::size_t i = 0;
 	for (int row = 0; row < 240; ++row)
 		for (int col = 0; col < 256; ++col, ++i)
 		{
 			pixels_[i].setPosition({ static_cast<float>(col), static_cast<float>(row) });
-			pixels_[i].setColor(sf::Color::Black);
+			pixels_[i].setColor(palette_.getColor(0x00));
 		}
+
+	PPUSTATUS.reg = 0xA0;
 }
 
 void PPU2C02::reset()
@@ -31,7 +29,25 @@ void PPU2C02::reset()
 
 void PPU2C02::update()
 {
-	
+	if (cycle_ == -1 || cycle_ == 1)
+	{
+		PPUSTATUS.bit.vb_start = 0;
+	}
+
+	if (cycle_ == 241)
+	{
+		PPUSTATUS.bit.vb_start = 1;
+		nmi_occured = PPUCTRL.bit.gen_nmi;
+	}
+
+	if (cycle_ == 260)
+	{
+		cycle_ = -1;
+		nmi_occured = false;
+		return;
+	}
+
+	++cycle_;
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
@@ -39,9 +55,9 @@ void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 	cart_ = std::move(cartridge);
 }
 
-u8 PPU2C02::regRead(const u16 addr)
+u8 PPU2C02::regRead(u16 addr)
 {
-	assert(addr <= 0x07);
+	addr &= 0x07;
 
 	u8 data = 0;
 
@@ -69,9 +85,9 @@ u8 PPU2C02::regRead(const u16 addr)
 	return data;
 }
 
-void PPU2C02::regWrite(const u16 addr, const u8 data)
+void PPU2C02::regWrite(u16 addr, const u8 data)
 {
-	assert(addr <= 0x07);
+	addr &= 0x07;
 
 	switch (addr)
 	{
@@ -181,7 +197,7 @@ u8* PPU2C02::mirroring(u16 addr)
 	return &mem_[addr];
 }
 
-PixelArray& PPU2C02::dbg_draw_pattern_tb(const int index, const u8 palette)
+PixelArray& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
 {
 	static PixelArray patterntb[2]{ (128 * 128), (128 * 128) };
 	static bool is_init = false;
@@ -208,7 +224,7 @@ PixelArray& PPU2C02::dbg_draw_pattern_tb(const int index, const u8 palette)
 			first[i] = memRead(addr + i);
 			second[i] = memRead(addr + i + 8);
 		}
-
+		
 		for (int i = 0; i < 8; ++i)
 		{
 			for (int j = 0; j < 8; ++j)
@@ -220,8 +236,7 @@ PixelArray& PPU2C02::dbg_draw_pattern_tb(const int index, const u8 palette)
 				first[i] >>= 1;
 				second[i] >>= 1;
 
-				sf::Color color = getPalette(false, pixel, palette);
-				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(color);
+				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(dbgGetColor(palette, pixel));
 			}
 		}
 
@@ -237,29 +252,63 @@ PixelArray& PPU2C02::dbg_draw_pattern_tb(const int index, const u8 palette)
 	return patterntb[index];
 }
 
-sf::Color PPU2C02::getPalette(const bool sprite_select, const u8 pixel, const u8 palette)
+sf::Color PPU2C02::dbgGetColor(const u16 palette, const u16 pixel)
 {
-	const u8 sprite_sel = static_cast<u8>(sprite_select);
-	const u8 index = (sprite_sel << 5) | (palette << 2) | pixel;
-	// index &= (PPUMASK.bit.grey_sacle ? 0x30 : 0x3F);
+	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
+}
 
-	sf::Color color = palette_.getColor(index);
-	/*
-	if (index == 0x0F)
-		return color;
+void PPU2C02::dbgDrawNametb()
+{
+	for (int row = 0; row < 30; ++row)
+	{
+		for (int col = 0; col < 32; ++col)
+		{
+			const u8 tile = memRead(row * 32 + col);
+			
+		}
+	}
+}
 
-	if (PPUMASK.bit.empha_red)
+std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
+{
+	static std::vector<sf::Vertex> frame_palette[8];
+	static bool init = false;
+	static float size = 7.5f;
+
+	if (!init)
 	{
-		color.r += (255 - color.r) / 2;
+		sf::Vector2f pos{ 50.0f, 250.0f };
+		for (int i = 0; i < 8; ++i)
+		{
+			frame_palette[i].resize(16);
+			for (int j = 0; j < 4; ++j)
+			{
+				frame_palette[i][j * 4 + 0].position = pos;
+				frame_palette[i][j * 4 + 1].position = { pos.x + size, pos.y };
+				frame_palette[i][j * 4 + 2].position = { pos.x + size, pos.y + size };
+				frame_palette[i][j * 4 + 3].position = { pos.x, pos.y + size };
+				pos.x += size;
+			}
+
+			pos.x += size;
+			if (i == 3)
+			{
+				pos.y += size * 2;
+				pos.x = 50.0f;
+			}
+		}
+		init = true;
 	}
-	if (PPUMASK.bit.empha_green)
+
+	u16 addr = 0x3F01 + index * 4;
+	for (int j = 0; j < 4; ++j)
 	{
-		color.g += (255 - color.g) / 2;
+		sf::Color color = dbgGetColor(index, j);
+		frame_palette[index][j * 4].color = color;
+		frame_palette[index][j * 4 + 1].color = color;
+		frame_palette[index][j * 4 + 2].color = color;
+		frame_palette[index][j * 4 + 3].color = color;
 	}
-	if (PPUMASK.bit.empha_blue)
-	{
-		color.b += (255 - color.b) / 2;
-	}
-	*/
-	return color;
+		
+	return frame_palette[index];
 }

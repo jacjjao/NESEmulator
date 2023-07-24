@@ -95,6 +95,8 @@ public:
 	void TYA();
 
 	// unofficial instructions
+	void ALR();
+	void ANC();
 	void LAX();
 	void SAX();
 	void DCP();

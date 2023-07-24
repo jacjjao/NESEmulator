@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <bitset>
+
 
 bool Cartridge::loadiNESFile(const std::filesystem::path& path)
 {
@@ -77,7 +79,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     switch (mapper_type)
     {
     case 0x00:
-        mapper_.reset(new Mapper000{header.prg_rom_size > 1});
+        mapper_.reset(new Mapper000{header.prg_rom_size});
         break;
 
     default:

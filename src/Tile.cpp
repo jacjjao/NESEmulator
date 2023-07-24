@@ -19,6 +19,11 @@ void Pixel::setPosition(const sf::Vector2f pos)
 	vertex_[3].position = { pos.x       , pos.y + 1.0f };
 }
 
+sf::Vertex& Pixel::getVertex()
+{
+	return *vertex_;
+}
+
 PixelArray::PixelArray(const std::size_t size) :
 	vertices_(size * 4),
 	size_(size)
@@ -41,17 +46,14 @@ const std::vector<sf::Vertex>& PixelArray::getVertexArray() const
 }
 
 /*
-Tile::Tile(Pixel& pixels)
+Tile::Tile(const std::array<Pixel, 8> pixels)
 {
-	setTile(pixels);
-}
-
-void Tile::setTile(Pixel& pixels)
-{
-	Pixel* pixel = &pixels;
 	for (int row = 0; row < 8; ++row)
+	{
 		for (int col = 0; col < 8; ++col)
-			pixels_[row * 8 + col] = &pixel[row * 256 + col];
+
+			pixels_[row * 8 + col] = pixels[row];
+	}
 }
 
 void Tile::setColor(const sf::Color& color)

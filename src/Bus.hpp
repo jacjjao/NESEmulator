@@ -19,6 +19,8 @@ public:
 	void ppuWrite(u16 addr, u8 data);
 	u8 ppuRead(u16 addr);
 
+	void reset();
+
 	PPU2C02 ppu;
 	CPU6502 cpu;
 

@@ -13,6 +13,8 @@ public:
 	void setColor(const sf::Color& color);
 	void setPosition(sf::Vector2f pos);
 
+	sf::Vertex& getVertex();
+
 private:
 	sf::Vertex* vertex_;
 };
@@ -32,20 +34,16 @@ private:
 	std::size_t size_;
 	std::vector<sf::Vertex> vertices_;
 };
-
 /*
 class Tile
 {
 public:
-	Tile() = default;
-	Tile(Pixel& pixels);
-
-	void setTile(Pixel& pixels);
+	Tile(std::array<Pixel, 8> pixels);
 
 	void setColor(const sf::Color& color);
 
 private:
-	std::array<Pixel*, 8 * 8> pixels_;
+	std::array<Pixel, 8 * 8> pixels_;
 };
 
 class TileArray

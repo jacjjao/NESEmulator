@@ -19,8 +19,13 @@ void CPU6502::print(const int length)
 		file.open("output.txt");
 
 	file << std::uppercase << std::hex << std::setfill('0') << std::setw(4) << (int)log_regs.PC << ' ';
-	for (int i = 0; i < length; ++i, ++log_regs.PC) 
-		file << ' ' << std::setw(2) << (int)read(log_regs.PC);
+	for (int i = 0; i < 3; ++i, ++log_regs.PC)
+	{
+		if (i < length)
+			file << ' ' << std::setw(2) << (int)read(log_regs.PC);
+		else
+			file << "   ";
+	}
 	file << "        ";
 	file << " A:"  << std::setw(2) << (int)log_regs.A;
 	file << " X:"  << std::setw(2) << (int)log_regs.X;
@@ -314,6 +319,12 @@ CPU6502::CPU6502()
 	instrs_[0x98] = { none, TYA, 2, 0 };
 
 	// unofficial instructions
+	const auto ALR = [this]() { this->ALR(); };
+	instrs_[0x4B] = { imm, ALR, 2, 0 };
+
+	const auto ANC = [this]() { this->ANC(); };
+	instrs_[0x0B] = { imm, ANC, 2, 0 };
+
 	const auto LAX = [this]() { this->LAX(); };
 	instrs_[0xA7] = { zp    , LAX, 3, 0 };
 	instrs_[0xB7] = { zpy   , LAX, 4, 0 };
@@ -461,6 +472,8 @@ void CPU6502::reset()
 	reg_.PC = getTwoBytesFromMem(0xFFFC);
 	reg_.SP = 0xFD;
 	setInterruptDisableFlag(true);
+
+	cycles_ += 8;
 }
 
 void CPU6502::irq()
@@ -904,6 +917,18 @@ void CPU6502::TYA()
 	setNegativeResultFlag(getBitN(reg_.A, 7));
 }
 
+void CPU6502::ALR()
+{
+	AND();
+	LSR();
+}
+
+void CPU6502::ANC()
+{
+	AND();
+	setCarryFlag(getNegativeResultFlag());
+}
+
 void CPU6502::LAX()
 {
 	LDA();
@@ -954,6 +979,7 @@ void CPU6502::SRE()
 
 void CPU6502::unknownOpcode()
 {
+	std::cerr << "[Warning] Unknown opcode: " << std::hex << (int)opcode_ << '\n';
 }
 
 void CPU6502::relativeDisplace()
