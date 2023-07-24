@@ -8,10 +8,7 @@
 class Pixel // This is actually a rectangle with 1 pixel width and 1 pixel height
 {
 public:
-	Pixel() = default;
 	Pixel(sf::Vertex& vertex);
-
-	void setPixel(sf::Vertex& vertex);
 
 	void setColor(const sf::Color& color);
 	void setPosition(sf::Vector2f pos);
@@ -20,6 +17,23 @@ private:
 	sf::Vertex* vertex_;
 };
 
+class PixelArray
+{
+public:
+	PixelArray(std::size_t size);
+
+	Pixel operator[](std::size_t index);
+
+	std::size_t size() const;
+
+	const std::vector<sf::Vertex>& getVertexArray() const;
+
+private:
+	std::size_t size_;
+	std::vector<sf::Vertex> vertices_;
+};
+
+/*
 class Tile
 {
 public:
@@ -32,22 +46,6 @@ public:
 
 private:
 	std::array<Pixel*, 8 * 8> pixels_;
-};
-
-class PixelArray
-{
-public:
-	PixelArray(std::size_t size);
-
-	Pixel& operator[](std::size_t index);
-
-	std::size_t size() const;
-
-	const std::vector<sf::Vertex>& getVertexArray() const;
-
-private:
-	std::vector<sf::Vertex> vertices_;
-	std::vector<Pixel> pixels_;
 };
 
 class TileArray
@@ -65,3 +63,4 @@ private:
 	PixelArray pixel_arr_;
 	std::vector<Tile> tiles_;
 };
+*/
