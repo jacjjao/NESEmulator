@@ -29,7 +29,10 @@ public:
 
 	bool isFrameComplete() const;
 
+public: // for debug
+	PixelArray& dbg_draw_pattern_tb(int i, u8 palette);
 	sf::Color getPalette(bool sprite_select, u8 pixel, u8 palette);
+	u8 pal = 0;
 
 private:
 	u8* mirroring(u16 addr);

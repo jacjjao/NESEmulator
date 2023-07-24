@@ -24,8 +24,4 @@ private:
 	sf::RenderWindow* window_ = nullptr;
 	sf::Clock system_clock_{};
 	sf::Event event_{};
-
-public: // for debug
-	PixelArray& dbg_draw_pattern_tb(int i, u8 palette);
-	u8 palette_ = 0;
 };

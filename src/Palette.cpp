@@ -77,15 +77,13 @@ u8& Palette::operator[](u8 addr)
 {
 	addr &= 0x1F;
 
-	if (addr == 0x10) addr = 0x00;
-	if (addr == 0x14) addr = 0x04;
-	if (addr == 0x18) addr = 0x08;
-	if (addr == 0x1C) addr = 0x0C;
+	if (addr == 0x10 || addr == 0x14 || addr == 0x18 || addr == 0x1C)
+		addr &= 0x0F;
 
 	return ram_[addr];
 }
 
 sf::Color Palette::getColor(const u8 index) const
 {
-	return palette_[index];
+	return palette_[index & 0x3F];
 }
