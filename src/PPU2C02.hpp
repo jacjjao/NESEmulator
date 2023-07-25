@@ -32,13 +32,13 @@ public:
 	bool nmi_occured = false;
 
 public: // for debug
-	PixelArray& dbgGetPatterntb(int i, u8 palette);
+	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
-	std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
-	sf::Color dbgGetColor(u16 palette, u16 pixel);
+	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
 	u8 dbg_pal = 0;
 
 private:
+	sf::Color getColorFromPaletteRam(u16 palette, u16 pixel);
 	u8* mirroring(u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
@@ -90,15 +90,28 @@ private:
 	} PPUSTATUS;
 	static_assert(sizeof(PPUSTATUS) == 1);
 
+	union
+	{
+		struct Foo
+		{
+			u16 coarse_x : 5;
+			u16 coarse_y : 5;
+			u16 nametb_sel : 2;
+			u16 fine_y : 3;
+		} scroll;
+		u16 reg;
+	} vram_addr_, tvram_addr_;
+	static_assert(sizeof(vram_addr_) == 2);
+
 	u8 OAMADDR = 0;
 	u8 OAMDATA = 0;
 	u8 PPUSCROLL = 0;
 	u8 PPUADDR = 0;
 	u8 PPUDATA = 0;
 
-	u8 scroll_latch = 0, addr_latch = 0;
+	bool latch_ = false;
 
-	u8 fine_x_scroll_ = 0;
+	u8 fine_x = 0;
 
 	PixelArray pixels_;
 	Palette palette_;
@@ -110,8 +123,6 @@ private:
 	bool odd_frame_ = false;
 
 	u8 data_buf_ = 0;
-	u16 tmp_vram_addr_ = 0;
-	u16 vram_addr_ = 0;
 	u16 pattb_shift_reg_[2] = {};
 	u8 palattr_shift_reg_[2] = {};
 

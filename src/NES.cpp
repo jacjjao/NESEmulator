@@ -80,8 +80,8 @@ void NES::onDraw()
 
     auto& patterntb1 = bus_.ppu.dbgGetPatterntb(0, bus_.ppu.dbg_pal);
     auto& patterntb2 = bus_.ppu.dbgGetPatterntb(1, bus_.ppu.dbg_pal);
-    window_->draw(patterntb1.getVertexArray().data(), patterntb1.getVertexArray().size(), sf::Quads);
-    window_->draw(patterntb2.getVertexArray().data(), patterntb2.getVertexArray().size(), sf::Quads);
+    window_->draw(patterntb1.data(), patterntb1.size(), sf::Quads);
+    window_->draw(patterntb2.data(), patterntb2.size(), sf::Quads);
     
     for (int i = 0; i < 8; ++i)
     {

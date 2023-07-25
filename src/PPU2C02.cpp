@@ -23,7 +23,7 @@ void PPU2C02::reset()
 {
 	PPUCTRL.reg = 0;
 	PPUMASK.reg = 0;
-	scroll_latch = addr_latch = 0;
+	latch_ = false;
 	PPUSCROLL = 0;
 	PPUDATA = 0;
 	odd_frame_ = false;
@@ -68,7 +68,7 @@ u8 PPU2C02::regRead(u16 addr)
 	case 0x02:
 		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
 		PPUSTATUS.bit.vb_start = 0;
-		scroll_latch = addr_latch = 0;
+		latch_ = false;
 		break;
 
 	case 0x04:
@@ -77,10 +77,10 @@ u8 PPU2C02::regRead(u16 addr)
 
 	case 0x07:
 		data = data_buf_;
-		data_buf_ = memRead(vram_addr_);
-		if (vram_addr_ >= 0x3F00)
+		data_buf_ = memRead(vram_addr_.reg);
+		if (vram_addr_.reg >= 0x3F00)
 			data = data_buf_;
-		vram_addr_ += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
+		vram_addr_.reg += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
 		break;
 	}
 
@@ -95,6 +95,7 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 	{
 	case 0x00:
 		PPUCTRL.reg = data;
+		tvram_addr_.scroll.nametb_sel = data & 0x03;
 		break;
 
 	case 0x01:
@@ -110,26 +111,37 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 		break;
 
 	case 0x05:
-		// TODO
+		if (!latch_) // first write
+		{
+			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
+			fine_x = data & 0x07;
+			latch_ = true;
+		}
+		else // second write
+		{
+			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
+			tvram_addr_.scroll.fine_y = (data & 0x03);
+			latch_ = false;
+		}
 		break;
 
 	case 0x06:
-		if (addr_latch == 0)
+		if (!latch_)
 		{
-			tmp_vram_addr_ = (static_cast<u16>(data & 0x3F) << 8) | (tmp_vram_addr_ & 0x00FF);
-			addr_latch = 1;
+			tvram_addr_.reg = (static_cast<u16>(data & 0x3F) << 8) | (tvram_addr_.reg & 0x00FF);
+			latch_ = true;
 		}
 		else
 		{
-			tmp_vram_addr_ = (tmp_vram_addr_ & 0xFF00) | static_cast<u16>(data);
-			vram_addr_ = tmp_vram_addr_;
-			addr_latch = 0;
+			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | static_cast<u16>(data);
+			vram_addr_.reg = tvram_addr_.reg;
+			latch_ = false;
 		}
 		break;
 
 	case 0x07:
-		memWrite(vram_addr_, data);
-		vram_addr_ += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
+		memWrite(vram_addr_.reg, data);
+		vram_addr_.reg += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
 		break;
 	}
 }
@@ -199,7 +211,7 @@ u8* PPU2C02::mirroring(u16 addr)
 	return &mem_[addr];
 }
 
-PixelArray& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
+const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
 {
 	static PixelArray patterntb[2]{ (128 * 128), (128 * 128) };
 	static bool is_init = false;
@@ -238,7 +250,7 @@ PixelArray& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
 				first[i] >>= 1;
 				second[i] >>= 1;
 
-				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(dbgGetColor(palette, pixel));
+				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(getColorFromPaletteRam(palette, pixel));
 			}
 		}
 
@@ -251,10 +263,10 @@ PixelArray& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
 	}
 
 
-	return patterntb[index];
+	return patterntb[index].getVertexArray();
 }
 
-sf::Color PPU2C02::dbgGetColor(const u16 palette, const u16 pixel)
+sf::Color PPU2C02::getColorFromPaletteRam(const u16 palette, const u16 pixel)
 {
 	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
 }
@@ -294,14 +306,14 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 					upper[i] >>= 1;
 					lower[i] >>= 1;
 
-					pixel.setColor(dbgGetColor(pal_sel, index));
+					pixel.setColor(getColorFromPaletteRam(pal_sel, index));
 				}
 			}
 		}
 	}
 }
 
-std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
+const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 {
 	static std::vector<sf::Vertex> frame_palette[8];
 	static bool init = false;
@@ -335,7 +347,7 @@ std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	u16 addr = 0x3F01 + index * 4;
 	for (int j = 0; j < 4; ++j)
 	{
-		sf::Color color = dbgGetColor(index, j);
+		sf::Color color = getColorFromPaletteRam(index, j);
 		frame_palette[index][j * 4].color = color;
 		frame_palette[index][j * 4 + 1].color = color;
 		frame_palette[index][j * 4 + 2].color = color;
