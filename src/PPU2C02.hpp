@@ -33,7 +33,7 @@ public:
 
 public: // for debug
 	PixelArray& dbgGetPatterntb(int i, u8 palette);
-	void dbgDrawNametb();
+	void dbgDrawNametb(u8 which);
 	std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
 	sf::Color dbgGetColor(u16 palette, u16 pixel);
 	u8 dbg_pal = 0;

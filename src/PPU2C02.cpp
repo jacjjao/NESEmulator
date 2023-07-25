@@ -1,6 +1,8 @@
 #include "PPU2C02.hpp"
 #include "common/bitHelper.hpp"
 
+#include <cassert>
+
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
@@ -257,14 +259,44 @@ sf::Color PPU2C02::dbgGetColor(const u16 palette, const u16 pixel)
 	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
 }
 
-void PPU2C02::dbgDrawNametb()
+void PPU2C02::dbgDrawNametb(const u8 which)
 {
+	u16 addr = 0x2000;
 	for (int row = 0; row < 30; ++row)
 	{
-		for (int col = 0; col < 32; ++col)
+		for (int col = 0; col < 32; ++col, ++addr)
 		{
-			const u8 tile = memRead(row * 32 + col);
+			std::array<u8, 8> lower{}, upper{};
+			const u8 patterntb_index = memRead(addr);
+			const u16 patterntb_addr = 0x1000 * which + u16(patterntb_index) * 16;
 			
+			for (int i = 0; i < 8; ++i)
+			{
+				lower[i] = memRead(patterntb_addr + i);
+				upper[i] = memRead(patterntb_addr + i + 8);
+			}
+
+			const u16 attr_addr = 0x23C0 + (row / 4) * 8 + (col / 4);
+			const u8 attr_val = memRead(attr_addr);
+			const u8 offset = (((row % 4) & 0x10) | ((col % 4) > 1)) * 2;
+			const u8 pal_sel = (attr_val >> offset) & 0x03;
+
+			u16 tl_pixel_idx = row * 8 * 256 + col * 8;
+			for (int i = 0; i < 8; ++i)
+			{
+				for (int j = 0; j < 8; ++j)
+				{
+					Pixel pixel = pixels_[tl_pixel_idx + i * 256 + (7 - j)];
+					const u8 lowerbit = lower[i] & 0x01;
+					const u8 upperbit = upper[i] & 0x01;
+					const u8 index = (upperbit << 1) | lowerbit;
+
+					upper[i] >>= 1;
+					lower[i] >>= 1;
+
+					pixel.setColor(dbgGetColor(pal_sel, index));
+				}
+			}
 		}
 	}
 }

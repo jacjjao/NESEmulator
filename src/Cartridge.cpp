@@ -1,10 +1,8 @@
 #include "Cartridge.hpp"
 #include "common/bitHelper.hpp"
-#include "Mapper000.hpp"
+#include "Mapper/Mapper000.hpp"
 #include <iostream>
 #include <fstream>
-
-#include <bitset>
 
 
 bool Cartridge::loadiNESFile(const std::filesystem::path& path)
@@ -116,12 +114,6 @@ const std::vector<u8>& Cartridge::getCHRRom() const
 
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->cpuMapRead(addr);
-    if (adr.has_value())
-    {
-        prg_rom_[adr.value()] = data;
-        return true;
-    }
     return false;
 }
 
@@ -137,12 +129,6 @@ std::optional<u8> Cartridge::cpuRead(const u16 addr)
 
 bool Cartridge::ppuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->ppuMapWrite(addr);
-    if (adr.has_value())
-    {
-        chr_rom_[adr.value()] = data;
-        return true;
-    }
     return false;
 }
 

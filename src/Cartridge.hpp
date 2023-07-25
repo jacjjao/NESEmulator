@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/type.hpp"
-#include "Mapper.hpp"
+#include "Mapper/Mapper.hpp"
 #include <filesystem>
 #include <memory>
 #include <vector>

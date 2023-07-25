@@ -38,7 +38,7 @@ private:
 class Tile
 {
 public:
-	Tile(std::array<Pixel, 8> pixels);
+	Tile(std::array<Pixel, 8 * 8> pixels);
 
 	void setColor(const sf::Color& color);
 

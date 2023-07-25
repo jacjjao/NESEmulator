@@ -86,9 +86,9 @@ void cpu_speed_test()
 }
 
 int main()
-{  
+{   
     auto cartridge = std::make_shared<Cartridge>();
-    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/Super Mario Bros.nes"))
+    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/Donkey Kong.nes"))
     {
         return EXIT_FAILURE;
     }

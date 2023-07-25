@@ -43,6 +43,8 @@ void NES::reset()
 
 bool NES::onUpdate(const float elapsed_time)
 {
+    if (pause_) return true;
+
     bus_.ppu.update();
     if (cycle_count_ % 3 == 0)
     {
@@ -71,6 +73,8 @@ void NES::onDraw()
 
     window_->clear(sf::Color{0, 0, 50});
 
+    bus_.ppu.dbgDrawNametb(1);
+
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
 
@@ -78,13 +82,13 @@ void NES::onDraw()
     auto& patterntb2 = bus_.ppu.dbgGetPatterntb(1, bus_.ppu.dbg_pal);
     window_->draw(patterntb1.getVertexArray().data(), patterntb1.getVertexArray().size(), sf::Quads);
     window_->draw(patterntb2.getVertexArray().data(), patterntb2.getVertexArray().size(), sf::Quads);
-
+    
     for (int i = 0; i < 8; ++i)
     {
         auto& palette = bus_.ppu.dbgGetFramePalette(i);
         window_->draw(palette.data(), palette.size(), sf::Quads);
     }
-
+    
     window_->display();
 }
 
@@ -111,5 +115,5 @@ void NES::onKeyPressed()
     else if (event_.key.code == sf::Keyboard::Left)
         --bus_.ppu.dbg_pal &= 0x07;
     else if (event_.key.code == sf::Keyboard::Space)
-        sim_timing_ = !sim_timing_;
+        pause_ = !pause_;
 }

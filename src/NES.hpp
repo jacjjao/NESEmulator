@@ -28,4 +28,5 @@ private:
 	sf::Event event_{};
 
 	bool sim_timing_ = false;
+	bool pause_ = false;
 };
