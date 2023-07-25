@@ -113,7 +113,7 @@ private:
 
 	u8 fine_x = 0;
 
-	PixelArray pixels_;
+	PixelArray pixels_, frame_;
 	Palette palette_;
 	std::vector<u8> mem_;
 
@@ -123,9 +123,18 @@ private:
 	bool odd_frame_ = false;
 
 	u8 data_buf_ = 0;
-	u16 pattb_shift_reg_[2] = {};
-	u8 palattr_shift_reg_[2] = {};
 
-	int cycle_ = 0;
+	struct ShiftRegister
+	{
+		u16 tile_pat;
+		u16 pixel_pat;
+		u8 cur_tile_attr;
+		u8 next_tile_attr;
+	} shift_reg;
+	
+	bool attr_shift_ = false;
+
+	unsigned scanline_ = 0;
+	unsigned cycle_ = 0;
 	u64 total_cycle_ = 0;
 };

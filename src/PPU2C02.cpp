@@ -6,7 +6,8 @@
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
-	pixels_(resolution)
+	pixels_(resolution),
+	frame_(resolution)
 {
 	std::size_t i = 0;
 	for (int row = 0; row < 240; ++row)
@@ -31,25 +32,29 @@ void PPU2C02::reset()
 
 void PPU2C02::update()
 {
-	if (cycle_ == -1 || cycle_ == 1)
+	if (scanline_ == 261)
 	{
-		PPUSTATUS.bit.vb_start = 0;
-	}
-
-	if (cycle_ == 241)
-	{
-		PPUSTATUS.bit.vb_start = 1;
-		nmi_occured = PPUCTRL.bit.gen_nmi;
-	}
-
-	if (cycle_ == 260)
-	{
-		cycle_ = -1;
 		nmi_occured = false;
-		return;
+		PPUSTATUS.bit.vb_start = 0;
+		scanline_ = cycle_ = 0;
 	}
-
-	++cycle_;
+	
+	if (240 <= scanline_ && scanline_ <= 260)
+	{
+		if (scanline_ == 241 && cycle_ == 1)
+		{
+			PPUSTATUS.bit.vb_start = 1;
+			nmi_occured = PPUCTRL.bit.gen_nmi;
+		}
+		goto update_cycle;
+	}
+	
+update_cycle:
+	if (++cycle_ > 340)
+	{
+		cycle_ = 0;
+		++scanline_;
+	}
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
