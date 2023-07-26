@@ -38,8 +38,7 @@ void PPU2C02::update()
 	};
 	const auto fetchAttribute = [this] {
 		const u16 v = vram_addr_.reg;
-		u16 next_attr_addr = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
-		
+		const u16 next_attr_addr = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
 		const u8 data = memRead(next_attr_addr);
 		const bool is_top  = (vram_addr_.scroll.coarse_y & 0x03) < 2;
 		const bool is_left = (vram_addr_.scroll.coarse_x & 0x03) < 2;
@@ -87,14 +86,59 @@ void PPU2C02::update()
 		latches_.pat_high = pat;
 	};
 	const auto updateRegisters = [this] {
+		if (337 <= cycle_ && cycle_ <= 340) return;
 		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
 		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | (latches_.pat_low   & 0x00FF);
 		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | (latches_.attr_high & 0x00FF);
 		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | (latches_.attr_low  & 0x00FF);
 		shift_reg_.tile_name = latches_.tile_name;
 	};
+
+	const auto drawPixel = [this] {
+		if (cycle_ > 256 || scanline_ >= 240) return; 
+		const u8 pos = 15 - (fine_x & 0x07);
+		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
+		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
+		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
+		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
+		const u8 pixel = (pixel_high << 1) | pixel_low;
+		const u8 pal   = (pal_high   << 1) | pal_low;
+		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
+	};
+	const auto shiftRegisters = [this] {
+		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ <= 340)) return;
+		shift_reg_.pat_high  <<= 1;
+		shift_reg_.pat_low   <<= 1;
+		shift_reg_.attr_high <<= 1;
+		shift_reg_.attr_low  <<= 1;
+	};
+	const auto fetch = [this, &fetchUpperPattern, &fetchName, &fetchAttribute, &fetchLowerPattern, &updateRegisters] {
+		if ((256 < cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
+		switch (cycle_ % 8)
+		{
+		case 0:
+			fetchUpperPattern();
+			break;
+
+		case 1:
+			updateRegisters();
+			break;
+
+		case 2:
+			fetchName();
+			break;
+
+		case 4:
+			fetchAttribute();
+			break;
+
+		case 6:
+			fetchLowerPattern();
+			break;
+		}
+	};
 	const auto incCoarseX = [this] {
-		if (cycle_ % 8 != 0 || (257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
+		if (cycle_ % 8 != 0 || (240 <= scanline_ && scanline_ < 261) || (257 <= cycle_ && cycle_ < 321)) return;
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
@@ -104,7 +148,7 @@ void PPU2C02::update()
 			++vram_addr_.scroll.coarse_x;
 	};
 	const auto incY = [this] {
-		if (cycle_ != 256) return;
+		if (cycle_ != 256 || (240 <= scanline_ && scanline_ < 261)) return;
 		if (vram_addr_.scroll.fine_y < 7)
 			++vram_addr_.scroll.fine_y;
 		else
@@ -123,48 +167,10 @@ void PPU2C02::update()
 			vram_addr_.scroll.coarse_y = y;
 		}
 	};
-	const auto drawPixel = [this] {
-		if (cycle_ >= 257 || scanline_ >= 240 || cycle_ == 0) return; 
-		const u8 pos = 15 - (fine_x & 0x07);
-		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
-		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
-		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
-		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
-		const u8 pixel = (pixel_high << 1) | pixel_low;
-		const u8 pal   = (pal_high   << 1) | pal_low;
-		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
-	};
-	const auto shiftRegisters = [this] {
-		if ((257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
-		shift_reg_.pat_high  <<= 1;
-		shift_reg_.pat_low   <<= 1;
-		shift_reg_.attr_high <<= 1;
-		shift_reg_.attr_low  <<= 1;
-	};
-	const auto fetch = [this, &fetchUpperPattern, &incCoarseX, &fetchName, &fetchAttribute, &fetchLowerPattern, &updateRegisters] {
-		if ((257 <= cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341) || (240 <= scanline_ && scanline_ < 261)) return;
-		switch (cycle_ % 8)
-		{
-		case 0:
-			fetchUpperPattern();
-			updateRegisters();
-			break;
-
-		case 2:
-			fetchName();
-			break;
-
-		case 4:
-			fetchAttribute();
-			break;
-
-		case 6:
-			fetchLowerPattern();
-			break;
-		}
-	};
-	const auto updateV = [this] {
-		if (cycle_ == 257 && (scanline_ < 240 || scanline_ == 261)) // horizontal
+	const auto updateVramAddr = [this, &incCoarseX, &incY] {
+		incCoarseX();
+		incY();
+		if (cycle_ == 257) // horizontal
 		{
 			vram_addr_.reg = (vram_addr_.reg & 0x7BE0) | (tvram_addr_.reg & 0x041F);
 		}
@@ -174,18 +180,19 @@ void PPU2C02::update()
 		}
 	};
 
+	if (cycle_ == 0)
+	{
+		++cycle_;
+		return;
+	}
+
 	const bool enable_rendering = PPUMASK.bit.show_bg || PPUMASK.bit.show_sp;
 	if (enable_rendering)
 	{
 		drawPixel();
 		shiftRegisters();
-	}
-	fetch();
-	if (enable_rendering)
-	{
-		incCoarseX();
-		incY();
-		updateV();
+		fetch();
+		updateVramAddr();
 	}
 
 	if (scanline_ == 241 && cycle_ == 1)
