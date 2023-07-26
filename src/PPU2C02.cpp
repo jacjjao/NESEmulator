@@ -139,6 +139,7 @@ void PPU2C02::update()
 	};
 	const auto incCoarseX = [this] {
 		if (cycle_ % 8 != 0 || (240 <= scanline_ && scanline_ < 261) || (257 <= cycle_ && cycle_ < 321)) return;
+		// problem in this function
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
@@ -182,6 +183,10 @@ void PPU2C02::update()
 
 	if (cycle_ == 0)
 	{
+		if (scanline_ == 0)
+		{
+			// todo fetch first two tile
+		}
 		++cycle_;
 		return;
 	}
