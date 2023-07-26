@@ -124,11 +124,11 @@ private:
 
 	struct ShiftRegister
 	{
-		u16 pat_high  = 0;
-		u16 pat_low   = 0;
-		u16 attr_low  = 0;
-		u16 attr_high = 0;
-		u8 tile_name  = 0;
+		u16 pat_high	  = 0;
+		u16 pat_low		  = 0;
+		u16 attr_low	  = 0;
+		u16 attr_high	  = 0;
+		u16 tile_name	  = 0;
 	} shift_reg_, latches_;
 	
 	bool attr_shift_ = false;

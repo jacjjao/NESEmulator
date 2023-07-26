@@ -71,7 +71,7 @@ void PPU2C02::update()
 	};
 	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | ((shift_reg_.tile_name & 0xFF00) >> 8);
 		next_pat_addr = (next_pat_addr << 1) | 0x00;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
 		const u16 pat = memRead(next_pat_addr);
@@ -79,7 +79,7 @@ void PPU2C02::update()
 	};
 	const auto fetchUpperPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | ((shift_reg_.tile_name & 0xFF00) >> 8);
 		next_pat_addr = (next_pat_addr << 1) | 0x01;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
 		const u16 pat = memRead(next_pat_addr);
@@ -87,11 +87,11 @@ void PPU2C02::update()
 	};
 	const auto updateRegisters = [this] {
 		if (337 <= cycle_ && cycle_ <= 340) return;
-		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
+		shift_reg_.pat_high	 = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
 		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | (latches_.pat_low   & 0x00FF);
 		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | (latches_.attr_high & 0x00FF);
-		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | (latches_.attr_low  & 0x00FF);
-		shift_reg_.tile_name = latches_.tile_name;
+		shift_reg_.attr_low	 = (shift_reg_.attr_low  & 0xFF00) | (latches_.attr_low  & 0x00FF);
+		shift_reg_.tile_name = ((shift_reg_.tile_name << 8) & 0xFF00) | (latches_.tile_name & 0x00FF);
 	};
 
 	const auto drawPixel = [this] {
