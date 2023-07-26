@@ -32,38 +32,69 @@ void PPU2C02::reset()
 
 void PPU2C02::update()
 {
-	const auto fetchName = [this]() {
+	const auto fetchName = [this] {
 		const u16 next_tile_addr = 0x2000 | (vram_addr_.reg & 0x0FFF);
-		shift_reg_.cur_tile_name = shift_reg_.next_tile_name;
-		shift_reg_.next_tile_name = memRead(next_tile_addr);
+		latches_.tile_name = memRead(next_tile_addr);
 	};
-	const auto fetchAttribute = [this]() {
-		u16 next_attr_addr = vram_addr_.scroll.nametb_sel;
-		next_attr_addr = (next_attr_addr << 4) | 0x0F;
-		next_attr_addr = (next_attr_addr << 3) | vram_addr_.scroll.coarse_y;
-		next_attr_addr = (next_attr_addr << 3) | vram_addr_.scroll.coarse_x;
-		shift_reg_.cur_tile_attr = shift_reg_.next_tile_attr;
-		shift_reg_.next_tile_attr = memRead(next_attr_addr);
+	const auto fetchAttribute = [this] {
+		const u16 v = vram_addr_.reg;
+		u16 next_attr_addr = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
+		
+		const u8 data = memRead(next_attr_addr);
+		const bool is_top  = (vram_addr_.scroll.coarse_y & 0x03) < 2;
+		const bool is_left = (vram_addr_.scroll.coarse_x & 0x03) < 2;
+		u8 offset = 0;
+		if (is_top)
+		{
+			if (is_left) // top left
+			{
+				offset = 0;
+			}
+			else // top right
+			{
+				offset = 2;
+			}
+		}
+		else
+		{
+			if (is_left) // bottom left
+			{
+				offset = 4;
+			}
+			else // bottom right
+			{
+				offset = 6;
+			}
+		}
+		const u8 pal = (data >> offset) & 0x03;
+		latches_.attr_low  = (getBitN(pal, 0) ? 0x00FF : 0x0000);
+		latches_.attr_high = (getBitN(pal, 1) ? 0x00FF : 0x0000);
 	};
-	const auto fetchLowerPattern = [this]() {
+	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 4) | ((scanline_ / 8) & 0x0F);
-		next_pat_addr = (next_pat_addr << 4) | ((cycle_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x00;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
 		const u16 pat = memRead(next_pat_addr);
-		shift_reg_.lower_pat = (shift_reg_.lower_pat & 0x00FF) | (pat << 8);
+		latches_.pat_low = pat;
 	};
-	const auto fetchUpperPattern = [this]() {
+	const auto fetchUpperPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 4) | ((scanline_ / 8) & 0x0F);
-		next_pat_addr = (next_pat_addr << 4) | ((cycle_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x01;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
 		const u16 pat = memRead(next_pat_addr);
-		shift_reg_.lower_pat = (shift_reg_.lower_pat & 0x00FF) | (pat << 8);
+		latches_.pat_high = pat;
 	};
-	const auto incCoarseX = [this]() {
+	const auto updateRegisters = [this] {
+		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
+		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | (latches_.pat_low   & 0x00FF);
+		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | (latches_.attr_high & 0x00FF);
+		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | (latches_.attr_low  & 0x00FF);
+		shift_reg_.tile_name = latches_.tile_name;
+	};
+	const auto incCoarseX = [this] {
+		if (cycle_ % 8 != 0 || (257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
@@ -72,85 +103,8 @@ void PPU2C02::update()
 		else
 			++vram_addr_.scroll.coarse_x;
 	};
-	const auto updateCycle = [this]() {
-		++cycle_;
-		if (cycle_ > 340)
-		{
-			cycle_ = 0;
-			++scanline_;
-		}
-	};
-
-	if (scanline_ == 261 && cycle_ == 1)
-	{
-		nmi_occured = false;
-		PPUSTATUS.bit.vb_start = 0;
-		scanline_ = cycle_ = 0;
-	}
-	
-	if (240 <= scanline_ && scanline_ <= 260)
-	{
-		if (scanline_ == 240 && cycle_ == 1)
-			frame_complete_ = true;
-		if (scanline_ == 241 && cycle_ == 1)
-		{
-			PPUSTATUS.bit.vb_start = 1;
-			nmi_occured = PPUCTRL.bit.gen_nmi;
-		}
-		updateCycle();
-		return;
-	}
-	
-	if (cycle_ == 0)
-	{
-		updateCycle();
-		return;
-	}
-
-	if (cycle_ > 256)
-	{
-		updateCycle();
-		return;
-	}
-
-
-	// fetch data from shift registers
-	const u8 attr = getBitN(shift_reg_.cur_tile_attr, fine_x);
-	const u8 name = getBitN(shift_reg_.cur_tile_name, fine_x);
-	const u8 upper = getBitN(shift_reg_.upper_pat, fine_x);
-	const u8 lower = getBitN(shift_reg_.lower_pat, fine_x);
-	
-	const u8 pixel = (upper << 1) | lower;
-	pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(attr, pixel));
-
-	shift_reg_.cur_tile_attr >>= 1;
-	shift_reg_.cur_tile_name >>= 1;
-	shift_reg_.upper_pat >>= 1;
-	shift_reg_.lower_pat >>= 1;
-
-
-	switch (cycle_ % 8)
-	{
-	case 0:
-		fetchUpperPattern();
-		incCoarseX();
-		break;
-
-	case 2:
-		fetchName();
-		break;
-
-	case 4:
-		fetchAttribute();
-		break;
-
-	case 6:
-		fetchLowerPattern();
-		break;
-	}
-
-	if (cycle_ == 256) // update fine Y
-	{
+	const auto incY = [this] {
+		if (cycle_ != 256) return;
 		if (vram_addr_.scroll.fine_y < 7)
 			++vram_addr_.scroll.fine_y;
 		else
@@ -160,7 +114,7 @@ void PPU2C02::update()
 			if (y == 29)
 			{
 				y = 0;
-				vram_addr_.reg ^= 0x0800;
+				vram_addr_.reg ^= 0x0800; // switch vertical nametable
 			}
 			else if (y == 31)
 				y = 0;
@@ -168,9 +122,112 @@ void PPU2C02::update()
 				++y;
 			vram_addr_.scroll.coarse_y = y;
 		}
+	};
+	const auto drawPixel = [this] {
+		if (cycle_ >= 257 || scanline_ >= 240 || cycle_ == 0) return; 
+		const u8 pos = 15 - (fine_x & 0x07);
+		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
+		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
+		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
+		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
+		const u8 pixel = (pixel_high << 1) | pixel_low;
+		const u8 pal   = (pal_high   << 1) | pal_low;
+		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
+	};
+	const auto shiftRegisters = [this] {
+		if ((257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
+		shift_reg_.pat_high  <<= 1;
+		shift_reg_.pat_low   <<= 1;
+		shift_reg_.attr_high <<= 1;
+		shift_reg_.attr_low  <<= 1;
+	};
+	const auto fetch = [this, &fetchUpperPattern, &incCoarseX, &fetchName, &fetchAttribute, &fetchLowerPattern, &updateRegisters] {
+		if ((257 <= cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341) || (240 <= scanline_ && scanline_ < 261)) return;
+		switch (cycle_ % 8)
+		{
+		case 0:
+			fetchUpperPattern();
+			updateRegisters();
+			break;
+
+		case 2:
+			fetchName();
+			break;
+
+		case 4:
+			fetchAttribute();
+			break;
+
+		case 6:
+			fetchLowerPattern();
+			break;
+		}
+	};
+	const auto updateV = [this] {
+		if (cycle_ == 257 && (scanline_ < 240 || scanline_ == 261)) // horizontal
+		{
+			vram_addr_.reg = (vram_addr_.reg & 0x7BE0) | (tvram_addr_.reg & 0x041F);
+		}
+		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304)) // vertical
+		{
+			vram_addr_.reg = (vram_addr_.reg & 0x041F) | (tvram_addr_.reg & 0x7BE0);
+		}
+	};
+
+	const bool enable_rendering = PPUMASK.bit.show_bg || PPUMASK.bit.show_sp;
+	if (enable_rendering)
+	{
+		drawPixel();
+		shiftRegisters();
+	}
+	fetch();
+	if (enable_rendering)
+	{
+		incCoarseX();
+		incY();
+		updateV();
 	}
 
-	updateCycle();
+	if (scanline_ == 241 && cycle_ == 1)
+	{
+		PPUSTATUS.bit.vb_start = 1;
+		nmi_occured = PPUCTRL.bit.gen_nmi;
+	}
+	else if (scanline_ == 261 && cycle_ == 1)
+	{
+		nmi_occured = false;
+		PPUSTATUS.bit.vb_start = 0;
+	}
+
+	++cycle_;
+	if (cycle_ > 340)
+	{
+		cycle_ = 0;
+		scanline_ = (scanline_ + 1) % 262;
+	}
+}
+
+void PPU2C02::dummyUpdate()
+{
+	if (scanline_ == 261 && cycle_ == 1)
+	{
+		nmi_occured = false;
+		PPUSTATUS.bit.vb_start = 0;
+		scanline_ = cycle_ = 0;
+	}
+
+	if (scanline_ == 241 && cycle_ == 1)
+	{
+		PPUSTATUS.bit.vb_start = 1;
+		nmi_occured = PPUCTRL.bit.gen_nmi;
+	}
+
+	++cycle_;
+	if (cycle_ > 340)
+	{
+		cycle_ = 0;
+		++scanline_;
+	}
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
@@ -215,9 +272,12 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 	switch (addr)
 	{
 	case 0x00:
+	{
 		PPUCTRL.reg = data;
-		tvram_addr_.scroll.nametb_sel = data & 0x03;
+		const u16 d = data;
+		tvram_addr_.scroll.nametb_sel = (tvram_addr_.scroll.nametb_sel & 0x73FF) | ((d & 0x03) << 10);
 		break;
+	}
 
 	case 0x01:
 		PPUMASK.reg = data;
@@ -246,11 +306,11 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 		break;
 
 	case 0x06:
-		if (!write_latch_)
+		if (!write_latch_) // first write
 		{
 			tvram_addr_.reg = (static_cast<u16>(data & 0x3F) << 8) | (tvram_addr_.reg & 0x00FF);
 		}
-		else
+		else // second write
 		{
 			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | static_cast<u16>(data);
 			vram_addr_.reg = tvram_addr_.reg;
@@ -287,12 +347,6 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
 {
-	/*
-	if (frame_complete_)
-	{
-		frame_complete_ = false;
-		std::swap(pixels_, frame_);
-	}*/
 	return pixels_.getVertexArray();
 }
 
@@ -329,34 +383,6 @@ u8* PPU2C02::mirroring(u16 addr)
 		addr &= 0x3F1F;
 	}
 	return &mem_[addr];
-}
-
-void PPU2C02::dummyUpdate()
-{
-	if (scanline_ == 261 && cycle_ == 1)
-	{
-		nmi_occured = false;
-		PPUSTATUS.bit.vb_start = 0;
-		scanline_ = cycle_ = 0;
-	}
-
-	if (240 <= scanline_ && scanline_ <= 260)
-	{
-		if (scanline_ == 240 && cycle_ == 1)
-			frame_complete_ = true;
-		if (scanline_ == 241 && cycle_ == 1)
-		{
-			PPUSTATUS.bit.vb_start = 1;
-			nmi_occured = PPUCTRL.bit.gen_nmi;
-		}
-	}
-
-	++cycle_;
-	if (cycle_ > 340)
-	{
-		cycle_ = 0;
-		++scanline_;
-	}
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)

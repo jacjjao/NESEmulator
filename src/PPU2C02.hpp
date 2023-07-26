@@ -118,20 +118,18 @@ private:
 
 	std::shared_ptr<Cartridge> cart_;
 
-	bool frame_complete_ = false;
 	bool odd_frame_ = false;
 
 	u8 data_buf_ = 0;
 
 	struct ShiftRegister
 	{
-		u16 upper_pat;
-		u16 lower_pat;
-		u8 cur_tile_attr;
-		u8 next_tile_attr;
-		u8 cur_tile_name;
-		u8 next_tile_name;
-	} shift_reg_;
+		u16 pat_high  = 0;
+		u16 pat_low   = 0;
+		u16 attr_low  = 0;
+		u16 attr_high = 0;
+		u8 tile_name  = 0;
+	} shift_reg_, latches_;
 	
 	bool attr_shift_ = false;
 
