@@ -86,7 +86,7 @@ void PPU2C02::update()
 		latches_.pat_high = pat;
 	};
 	const auto updateRegisters = [this] {
-		if (337 <= cycle_ && cycle_ <= 340) return;
+		if (cycle_ > 256 || scanline_ >= 240) return;
 		shift_reg_.pat_high	 = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
 		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | (latches_.pat_low   & 0x00FF);
 		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | (latches_.attr_high & 0x00FF);
@@ -106,14 +106,14 @@ void PPU2C02::update()
 		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
-		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ <= 340)) return;
+		if (cycle_ > 256 || scanline_ >= 240) return;
 		shift_reg_.pat_high  <<= 1;
 		shift_reg_.pat_low   <<= 1;
 		shift_reg_.attr_high <<= 1;
 		shift_reg_.attr_low  <<= 1;
 	};
 	const auto fetch = [this, &fetchUpperPattern, &fetchName, &fetchAttribute, &fetchLowerPattern, &updateRegisters] {
-		if ((256 < cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
+		if (cycle_ > 256 || scanline_ >= 240) return;
 		switch (cycle_ % 8)
 		{
 		case 0:
@@ -138,8 +138,7 @@ void PPU2C02::update()
 		}
 	};
 	const auto incCoarseX = [this] {
-		if (cycle_ % 8 != 0 || (240 <= scanline_ && scanline_ < 261) || (257 <= cycle_ && cycle_ < 321)) return;
-		// problem in this function
+		if (cycle_ % 8 != 0 || scanline_ >= 240 || cycle_ > 256) return;
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
@@ -149,7 +148,7 @@ void PPU2C02::update()
 			++vram_addr_.scroll.coarse_x;
 	};
 	const auto incY = [this] {
-		if (cycle_ != 256 || (240 <= scanline_ && scanline_ < 261)) return;
+		if (cycle_ != 256 || scanline_ >= 240) return;
 		if (vram_addr_.scroll.fine_y < 7)
 			++vram_addr_.scroll.fine_y;
 		else
@@ -171,51 +170,51 @@ void PPU2C02::update()
 	const auto updateVramAddr = [this, &incCoarseX, &incY] {
 		incCoarseX();
 		incY();
-		if (cycle_ == 257) // horizontal
+		if (cycle_ == 257 || scanline_ >= 240) // horizontal
 		{
 			vram_addr_.reg = (vram_addr_.reg & 0x7BE0) | (tvram_addr_.reg & 0x041F);
 		}
-		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304)) // vertical
-		{
-			vram_addr_.reg = (vram_addr_.reg & 0x041F) | (tvram_addr_.reg & 0x7BE0);
-		}
 	};
 
-	if (cycle_ == 0)
-	{
-		if (scanline_ == 0)
-		{
-			// todo fetch first two tile
-		}
-		++cycle_;
-		return;
-	}
-
-	const bool enable_rendering = PPUMASK.bit.show_bg || PPUMASK.bit.show_sp;
-	if (enable_rendering)
-	{
-		drawPixel();
-		shiftRegisters();
-		fetch();
-		updateVramAddr();
-	}
 
 	if (scanline_ == 241 && cycle_ == 1)
 	{
 		PPUSTATUS.bit.vb_start = 1;
 		nmi_occured = PPUCTRL.bit.gen_nmi;
 	}
-	else if (scanline_ == 261 && cycle_ == 1)
+	else if (scanline_ == 261)
 	{
 		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
+		vram_addr_.reg = tvram_addr_.reg;
+		scanline_ = cycle_ = 0;
+		return;
+	}
+
+	const bool enable_rendering = PPUMASK.bit.show_bg || PPUMASK.bit.show_sp;
+	if (enable_rendering)
+	{	
+		if (cycle_ == 0 && scanline_ < 240)
+		{
+			// std::printf("%d: %d %d\n", (int)scanline_, (int)vram_addr_.scroll.coarse_x, (int)vram_addr_.scroll.coarse_y);
+
+			
+
+			++cycle_;
+			return;
+		}
+
+		drawPixel();
+		shiftRegisters();
+		fetch();
+		updateVramAddr();
 	}
 
 	++cycle_;
 	if (cycle_ > 340)
 	{
 		cycle_ = 0;
-		scanline_ = (scanline_ + 1) % 262;
+		++scanline_;
 	}
 }
 
