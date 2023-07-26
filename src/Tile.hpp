@@ -24,6 +24,9 @@ class PixelArray
 public:
 	PixelArray(std::size_t size);
 
+	PixelArray(PixelArray&&) noexcept = default;
+	PixelArray& operator=(PixelArray&&) noexcept = default;
+
 	Pixel operator[](std::size_t index);
 
 	std::size_t size() const;

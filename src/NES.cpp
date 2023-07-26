@@ -46,6 +46,7 @@ bool NES::onUpdate(const float elapsed_time)
     if (pause_) return true;
 
     bus_.ppu.update();
+    // bus_.ppu.dummyUpdate();
     if (cycle_count_ % 3 == 0)
     {
         bus_.cpu.update();
@@ -73,7 +74,7 @@ void NES::onDraw()
 
     window_->clear(sf::Color{0, 0, 50});
 
-    bus_.ppu.dbgDrawNametb(1);
+    // bus_.ppu.dbgDrawNametb(0);
 
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);

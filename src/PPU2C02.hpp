@@ -25,13 +25,12 @@ public:
 	u8 memRead(u16 addr);
 	void memWrite(u16 addr, u8 data);
 
-	const std::vector<sf::Vertex>& getVideoOutput() const;
-
-	bool isFrameComplete() const;
+	const std::vector<sf::Vertex>& getVideoOutput();
 
 	bool nmi_occured = false;
 
 public: // for debug
+	void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
@@ -109,7 +108,7 @@ private:
 	u8 PPUADDR = 0;
 	u8 PPUDATA = 0;
 
-	bool latch_ = false;
+	bool write_latch_ = false;
 
 	u8 fine_x = 0;
 
@@ -126,11 +125,13 @@ private:
 
 	struct ShiftRegister
 	{
-		u16 tile_pat;
-		u16 pixel_pat;
+		u16 upper_pat;
+		u16 lower_pat;
 		u8 cur_tile_attr;
 		u8 next_tile_attr;
-	} shift_reg;
+		u8 cur_tile_name;
+		u8 next_tile_name;
+	} shift_reg_;
 	
 	bool attr_shift_ = false;
 

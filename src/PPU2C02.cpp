@@ -24,7 +24,7 @@ void PPU2C02::reset()
 {
 	PPUCTRL.reg = 0;
 	PPUMASK.reg = 0;
-	latch_ = false;
+	write_latch_ = false;
 	PPUSCROLL = 0;
 	PPUDATA = 0;
 	odd_frame_ = false;
@@ -32,7 +32,56 @@ void PPU2C02::reset()
 
 void PPU2C02::update()
 {
-	if (scanline_ == 261)
+	const auto fetchName = [this]() {
+		const u16 next_tile_addr = 0x2000 | (vram_addr_.reg & 0x0FFF);
+		shift_reg_.cur_tile_name = shift_reg_.next_tile_name;
+		shift_reg_.next_tile_name = memRead(next_tile_addr);
+	};
+	const auto fetchAttribute = [this]() {
+		u16 next_attr_addr = vram_addr_.scroll.nametb_sel;
+		next_attr_addr = (next_attr_addr << 4) | 0x0F;
+		next_attr_addr = (next_attr_addr << 3) | vram_addr_.scroll.coarse_y;
+		next_attr_addr = (next_attr_addr << 3) | vram_addr_.scroll.coarse_x;
+		shift_reg_.cur_tile_attr = shift_reg_.next_tile_attr;
+		shift_reg_.next_tile_attr = memRead(next_attr_addr);
+	};
+	const auto fetchLowerPattern = [this]() {
+		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
+		next_pat_addr = (next_pat_addr << 4) | ((scanline_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 4) | ((cycle_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 1) | 0x00;
+		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
+		const u16 pat = memRead(next_pat_addr);
+		shift_reg_.lower_pat = (shift_reg_.lower_pat & 0x00FF) | (pat << 8);
+	};
+	const auto fetchUpperPattern = [this]() {
+		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
+		next_pat_addr = (next_pat_addr << 4) | ((scanline_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 4) | ((cycle_ / 8) & 0x0F);
+		next_pat_addr = (next_pat_addr << 1) | 0x01;
+		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
+		const u16 pat = memRead(next_pat_addr);
+		shift_reg_.lower_pat = (shift_reg_.lower_pat & 0x00FF) | (pat << 8);
+	};
+	const auto incCoarseX = [this]() {
+		if (vram_addr_.scroll.coarse_x == 31)
+		{
+			vram_addr_.scroll.coarse_x = 0;
+			vram_addr_.reg ^= 0x0400;
+		}
+		else
+			++vram_addr_.scroll.coarse_x;
+	};
+	const auto updateCycle = [this]() {
+		++cycle_;
+		if (cycle_ > 340)
+		{
+			cycle_ = 0;
+			++scanline_;
+		}
+	};
+
+	if (scanline_ == 261 && cycle_ == 1)
 	{
 		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
@@ -41,20 +90,87 @@ void PPU2C02::update()
 	
 	if (240 <= scanline_ && scanline_ <= 260)
 	{
+		if (scanline_ == 240 && cycle_ == 1)
+			frame_complete_ = true;
 		if (scanline_ == 241 && cycle_ == 1)
 		{
 			PPUSTATUS.bit.vb_start = 1;
 			nmi_occured = PPUCTRL.bit.gen_nmi;
 		}
-		goto update_cycle;
+		updateCycle();
+		return;
 	}
 	
-update_cycle:
-	if (++cycle_ > 340)
+	if (cycle_ == 0)
 	{
-		cycle_ = 0;
-		++scanline_;
+		updateCycle();
+		return;
 	}
+
+	if (cycle_ > 256)
+	{
+		updateCycle();
+		return;
+	}
+
+
+	// fetch data from shift registers
+	const u8 attr = getBitN(shift_reg_.cur_tile_attr, fine_x);
+	const u8 name = getBitN(shift_reg_.cur_tile_name, fine_x);
+	const u8 upper = getBitN(shift_reg_.upper_pat, fine_x);
+	const u8 lower = getBitN(shift_reg_.lower_pat, fine_x);
+	
+	const u8 pixel = (upper << 1) | lower;
+	pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(attr, pixel));
+
+	shift_reg_.cur_tile_attr >>= 1;
+	shift_reg_.cur_tile_name >>= 1;
+	shift_reg_.upper_pat >>= 1;
+	shift_reg_.lower_pat >>= 1;
+
+
+	switch (cycle_ % 8)
+	{
+	case 0:
+		fetchUpperPattern();
+		incCoarseX();
+		break;
+
+	case 2:
+		fetchName();
+		break;
+
+	case 4:
+		fetchAttribute();
+		break;
+
+	case 6:
+		fetchLowerPattern();
+		break;
+	}
+
+	if (cycle_ == 256) // update fine Y
+	{
+		if (vram_addr_.scroll.fine_y < 7)
+			++vram_addr_.scroll.fine_y;
+		else
+		{
+			vram_addr_.scroll.fine_y = 0;
+			u8 y = vram_addr_.scroll.coarse_y;
+			if (y == 29)
+			{
+				y = 0;
+				vram_addr_.reg ^= 0x0800;
+			}
+			else if (y == 31)
+				y = 0;
+			else
+				++y;
+			vram_addr_.scroll.coarse_y = y;
+		}
+	}
+
+	updateCycle();
 }
 
 void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
@@ -73,7 +189,7 @@ u8 PPU2C02::regRead(u16 addr)
 	case 0x02:
 		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
 		PPUSTATUS.bit.vb_start = 0;
-		latch_ = false;
+		write_latch_ = false;
 		break;
 
 	case 0x04:
@@ -116,32 +232,30 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 		break;
 
 	case 0x05:
-		if (!latch_) // first write
+		if (!write_latch_) // first write
 		{
 			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
 			fine_x = data & 0x07;
-			latch_ = true;
 		}
 		else // second write
 		{
 			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
 			tvram_addr_.scroll.fine_y = (data & 0x03);
-			latch_ = false;
 		}
+		write_latch_ = !write_latch_;
 		break;
 
 	case 0x06:
-		if (!latch_)
+		if (!write_latch_)
 		{
 			tvram_addr_.reg = (static_cast<u16>(data & 0x3F) << 8) | (tvram_addr_.reg & 0x00FF);
-			latch_ = true;
 		}
 		else
 		{
 			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | static_cast<u16>(data);
 			vram_addr_.reg = tvram_addr_.reg;
-			latch_ = false;
 		}
+		write_latch_ = !write_latch_;
 		break;
 
 	case 0x07:
@@ -171,14 +285,15 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 	*mirroring(addr) = data;
 }
 
-const std::vector<sf::Vertex>& PPU2C02::getVideoOutput() const
+const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
 {
+	/*
+	if (frame_complete_)
+	{
+		frame_complete_ = false;
+		std::swap(pixels_, frame_);
+	}*/
 	return pixels_.getVertexArray();
-}
-
-bool PPU2C02::isFrameComplete() const
-{
-	return frame_complete_;
 }
 
 u8* PPU2C02::mirroring(u16 addr)
@@ -214,6 +329,34 @@ u8* PPU2C02::mirroring(u16 addr)
 		addr &= 0x3F1F;
 	}
 	return &mem_[addr];
+}
+
+void PPU2C02::dummyUpdate()
+{
+	if (scanline_ == 261 && cycle_ == 1)
+	{
+		nmi_occured = false;
+		PPUSTATUS.bit.vb_start = 0;
+		scanline_ = cycle_ = 0;
+	}
+
+	if (240 <= scanline_ && scanline_ <= 260)
+	{
+		if (scanline_ == 240 && cycle_ == 1)
+			frame_complete_ = true;
+		if (scanline_ == 241 && cycle_ == 1)
+		{
+			PPUSTATUS.bit.vb_start = 1;
+			nmi_occured = PPUCTRL.bit.gen_nmi;
+		}
+	}
+
+	++cycle_;
+	if (cycle_ > 340)
+	{
+		cycle_ = 0;
+		++scanline_;
+	}
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
