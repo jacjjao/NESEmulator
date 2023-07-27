@@ -1,9 +1,6 @@
 #include "PPU2C02.hpp"
 #include "common/bitHelper.hpp"
 
-#include <cassert>
-#include <iostream>
-#include <bitset>
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
@@ -39,9 +36,9 @@ void PPU2C02::update()
 	const auto fetchAttribute = [this] {
 		const u16 v = vram_addr_.reg;
 		u16 next_attr_addr = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
-		
+
 		const u8 data = memRead(next_attr_addr);
-		const bool is_top  = (vram_addr_.scroll.coarse_y & 0x03) < 2;
+		const bool is_top = (vram_addr_.scroll.coarse_y & 0x03) < 2;
 		const bool is_left = (vram_addr_.scroll.coarse_x & 0x03) < 2;
 		u8 offset = 0;
 		if (is_top)
@@ -67,7 +64,7 @@ void PPU2C02::update()
 			}
 		}
 		const u8 pal = (data >> offset) & 0x03;
-		latches_.attr_low  = (getBitN(pal, 0) ? 0xFF : 0x00);
+		latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
 		latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
@@ -85,28 +82,28 @@ void PPU2C02::update()
 		latches_.pat_high = memRead(next_pat_addr);
 	};
 	const auto loadRegisters = [this] {
-		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | latches_.pat_high;
-		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | latches_.pat_low;
+		shift_reg_.pat_high = (shift_reg_.pat_high & 0xFF00) | latches_.pat_high;
+		shift_reg_.pat_low = (shift_reg_.pat_low & 0xFF00) | latches_.pat_low;
 		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | latches_.attr_high;
-		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | latches_.attr_low;
+		shift_reg_.attr_low = (shift_reg_.attr_low & 0xFF00) | latches_.attr_low;
 	};
 	const auto drawPixel = [this] {
-		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return; 
-		const u8 pos        = 15 - (fine_x & 0x07);
-		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
-		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
-		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
-		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
-		const u8 pixel	    = (pixel_high << 1) | pixel_low;
-		const u8 pal        = (pal_high   << 1) | pal_low;
+		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return;
+		const u8 pos = 15 - (fine_x & 0x07);
+		const u8 pixel_high = getBitN(shift_reg_.pat_high, pos);
+		const u8 pixel_low = getBitN(shift_reg_.pat_low, pos);
+		const u8 pal_high = getBitN(shift_reg_.attr_high, pos);
+		const u8 pal_low = getBitN(shift_reg_.attr_low, pos);
+		const u8 pixel = (pixel_high << 1) | pixel_low;
+		const u8 pal = (pal_high << 1) | pal_low;
 		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
 		if (256 < cycle_ && cycle_ < 321 || (337 <= cycle_ && cycle_ < 341)) return;
-		shift_reg_.pat_high  <<= 1;
-		shift_reg_.pat_low   <<= 1;
+		shift_reg_.pat_high <<= 1;
+		shift_reg_.pat_low <<= 1;
 		shift_reg_.attr_high <<= 1;
-		shift_reg_.attr_low  <<= 1;
+		shift_reg_.attr_low <<= 1;
 	};
 	const auto fetch = [&] {
 		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341)) return;
@@ -165,13 +162,13 @@ void PPU2C02::update()
 		if (cycle_ == 257)
 		{
 			vram_addr_.scroll.nametable_x = tvram_addr_.scroll.nametable_x;
-			vram_addr_.scroll.coarse_x    = tvram_addr_.scroll.coarse_x;
+			vram_addr_.scroll.coarse_x = tvram_addr_.scroll.coarse_x;
 		}
 		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304))
 		{
-			vram_addr_.scroll.fine_y      = tvram_addr_.scroll.fine_y;
+			vram_addr_.scroll.fine_y = tvram_addr_.scroll.fine_y;
 			vram_addr_.scroll.nametable_y = tvram_addr_.scroll.nametable_y;
-			vram_addr_.scroll.coarse_y    = tvram_addr_.scroll.coarse_y;
+			vram_addr_.scroll.coarse_y = tvram_addr_.scroll.coarse_y;
 		}
 	};
 
@@ -254,7 +251,7 @@ u8 PPU2C02::regRead(u16 addr)
 	u8 data = 0;
 
 	switch (addr)
-	{		
+	{
 	case 0x02:
 		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
 		PPUSTATUS.bit.vb_start = 0;
@@ -424,7 +421,7 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 			first[i] = memRead(addr + i);
 			second[i] = memRead(addr + i + 8);
 		}
-		
+
 		for (int i = 0; i < 8; ++i)
 		{
 			for (int j = 0; j < 8; ++j)
@@ -467,7 +464,7 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 			std::array<u8, 8> lower{}, upper{};
 			const u8 patterntb_index = memRead(addr);
 			const u16 patterntb_addr = 0x1000 * which + u16(patterntb_index) * 16;
-			
+
 			for (int i = 0; i < 8; ++i)
 			{
 				lower[i] = memRead(patterntb_addr + i);
@@ -539,6 +536,6 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 		frame_palette[index][j * 4 + 2].color = color;
 		frame_palette[index][j * 4 + 3].color = color;
 	}
-		
+
 	return frame_palette[index];
 }

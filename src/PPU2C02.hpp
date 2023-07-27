@@ -124,22 +124,20 @@ private:
 
 	struct Latches
 	{
-		u8 pat_high  = 0;
-		u8 pat_low   = 0;
-		u8 attr_low  = 0;
+		u8 pat_high = 0;
+		u8 pat_low = 0;
+		u8 attr_low = 0;
 		u8 attr_high = 0;
 		u8 tile_name = 0;
 	} latches_;
 
 	struct ShiftRegister
 	{
-		u16 pat_high  = 0;
-		u16 pat_low   = 0;
-		u16 attr_low  = 0;
+		u16 pat_high = 0;
+		u16 pat_low = 0;
+		u16 attr_low = 0;
 		u16 attr_high = 0;
 	} shift_reg_;
-	
-	// bool attr_shift_ = false;
 
 	unsigned scanline_ = 0;
 	unsigned cycle_ = 0;
