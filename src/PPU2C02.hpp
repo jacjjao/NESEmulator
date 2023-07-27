@@ -47,7 +47,8 @@ private:
 	{
 		struct Foo
 		{
-			u8 nametb_addr : 2;
+			u8 nametable_x : 1;
+			u8 nametable_y : 1;
 			u8 vram_addr_inc : 1;
 			u8 sp_patterntb_addr : 1;
 			u8 bg_patterntb_addr : 1;
@@ -95,7 +96,8 @@ private:
 		{
 			u16 coarse_x : 5;
 			u16 coarse_y : 5;
-			u16 nametb_sel : 2;
+			u16 nametable_x : 1;
+			u16 nametable_y : 1;
 			u16 fine_y : 3;
 		} scroll;
 		u16 reg;
@@ -118,9 +120,16 @@ private:
 
 	std::shared_ptr<Cartridge> cart_;
 
-	bool odd_frame_ = false;
-
 	u8 data_buf_ = 0;
+
+	struct Latches
+	{
+		u8 pat_high  = 0;
+		u8 pat_low   = 0;
+		u8 attr_low  = 0;
+		u8 attr_high = 0;
+		u8 tile_name = 0;
+	} latches_;
 
 	struct ShiftRegister
 	{
@@ -128,10 +137,9 @@ private:
 		u16 pat_low   = 0;
 		u16 attr_low  = 0;
 		u16 attr_high = 0;
-		u8 tile_name  = 0;
-	} shift_reg_, latches_;
+	} shift_reg_;
 	
-	bool attr_shift_ = false;
+	// bool attr_shift_ = false;
 
 	unsigned scanline_ = 0;
 	unsigned cycle_ = 0;

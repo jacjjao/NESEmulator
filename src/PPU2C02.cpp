@@ -2,7 +2,8 @@
 #include "common/bitHelper.hpp"
 
 #include <cassert>
-
+#include <iostream>
+#include <bitset>
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
@@ -27,7 +28,6 @@ void PPU2C02::reset()
 	write_latch_ = false;
 	PPUSCROLL = 0;
 	PPUDATA = 0;
-	odd_frame_ = false;
 }
 
 void PPU2C02::update()
@@ -67,38 +67,76 @@ void PPU2C02::update()
 			}
 		}
 		const u8 pal = (data >> offset) & 0x03;
-		latches_.attr_low  = (getBitN(pal, 0) ? 0x00FF : 0x0000);
-		latches_.attr_high = (getBitN(pal, 1) ? 0x00FF : 0x0000);
+		latches_.attr_low  = (getBitN(pal, 0) ? 0xFF : 0x00);
+		latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x00;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
-		const u16 pat = memRead(next_pat_addr);
-		latches_.pat_low = pat;
+		latches_.pat_low = memRead(next_pat_addr);
 	};
 	const auto fetchUpperPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | shift_reg_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x01;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
-		const u16 pat = memRead(next_pat_addr);
-		latches_.pat_high = pat;
+		latches_.pat_high = memRead(next_pat_addr);
 	};
-	const auto updateRegisters = [this] {
-		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | (latches_.pat_high  & 0x00FF);
-		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | (latches_.pat_low   & 0x00FF);
-		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | (latches_.attr_high & 0x00FF);
-		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | (latches_.attr_low  & 0x00FF);
-		shift_reg_.tile_name = latches_.tile_name;
+	const auto loadRegisters = [this] {
+		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | latches_.pat_high;
+		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | latches_.pat_low;
+		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | latches_.attr_high;
+		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | latches_.attr_low;
+	};
+	const auto drawPixel = [this] {
+		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return; 
+		const u8 pos        = 15 - (fine_x & 0x07);
+		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
+		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
+		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
+		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
+		const u8 pixel	    = (pixel_high << 1) | pixel_low;
+		const u8 pal        = (pal_high   << 1) | pal_low;
+		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
+	};
+	const auto shiftRegisters = [this] {
+		if (256 < cycle_ && cycle_ < 321 || (337 <= cycle_ && cycle_ < 341)) return;
+		shift_reg_.pat_high  <<= 1;
+		shift_reg_.pat_low   <<= 1;
+		shift_reg_.attr_high <<= 1;
+		shift_reg_.attr_low  <<= 1;
+	};
+	const auto fetch = [&] {
+		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341)) return;
+		shiftRegisters();
+		switch (cycle_ % 8)
+		{
+		case 0:
+			fetchUpperPattern();
+			loadRegisters();
+			break;
+
+		case 2:
+			fetchName();
+			break;
+
+		case 4:
+			fetchAttribute();
+			break;
+
+		case 6:
+			fetchLowerPattern();
+			break;
+		}
 	};
 	const auto incCoarseX = [this] {
-		if (cycle_ % 8 != 0 || (257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
+		if (cycle_ % 8 != 0 || (256 < cycle_ && cycle_ < 321)) return;
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
-			vram_addr_.reg ^= 0x0400;
+			vram_addr_.scroll.nametable_x = ~vram_addr_.scroll.nametable_x;
 		}
 		else
 			++vram_addr_.scroll.coarse_x;
@@ -123,77 +161,47 @@ void PPU2C02::update()
 			vram_addr_.scroll.coarse_y = y;
 		}
 	};
-	const auto drawPixel = [this] {
-		if (cycle_ >= 257 || scanline_ >= 240 || cycle_ == 0) return; 
-		const u8 pos = 15 - (fine_x & 0x07);
-		const u8 pixel_high = getBitN(shift_reg_.pat_high,  pos);
-		const u8 pixel_low  = getBitN(shift_reg_.pat_low,   pos);
-		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
-		const u8 pal_low    = getBitN(shift_reg_.attr_low,  pos);
-		const u8 pixel = (pixel_high << 1) | pixel_low;
-		const u8 pal   = (pal_high   << 1) | pal_low;
-		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
-	};
-	const auto shiftRegisters = [this] {
-		if ((257 <= cycle_ && cycle_ < 321) || (240 <= scanline_ && scanline_ < 261)) return;
-		shift_reg_.pat_high  <<= 1;
-		shift_reg_.pat_low   <<= 1;
-		shift_reg_.attr_high <<= 1;
-		shift_reg_.attr_low  <<= 1;
-	};
-	const auto fetch = [this, &fetchUpperPattern, &incCoarseX, &fetchName, &fetchAttribute, &fetchLowerPattern, &updateRegisters] {
-		if ((257 <= cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341) || (240 <= scanline_ && scanline_ < 261)) return;
-		switch (cycle_ % 8)
-		{
-		case 0:
-			fetchUpperPattern();
-			updateRegisters();
-			break;
-
-		case 2:
-			fetchName();
-			break;
-
-		case 4:
-			fetchAttribute();
-			break;
-
-		case 6:
-			fetchLowerPattern();
-			break;
-		}
-	};
 	const auto updateV = [this] {
-		if (cycle_ == 257 && (scanline_ < 240 || scanline_ == 261)) // horizontal
+		if (cycle_ == 257)
 		{
-			vram_addr_.reg = (vram_addr_.reg & 0x7BE0) | (tvram_addr_.reg & 0x041F);
+			vram_addr_.scroll.nametable_x = tvram_addr_.scroll.nametable_x;
+			vram_addr_.scroll.coarse_x    = tvram_addr_.scroll.coarse_x;
 		}
-		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304)) // vertical
+		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304))
 		{
-			vram_addr_.reg = (vram_addr_.reg & 0x041F) | (tvram_addr_.reg & 0x7BE0);
+			vram_addr_.scroll.fine_y      = tvram_addr_.scroll.fine_y;
+			vram_addr_.scroll.nametable_y = tvram_addr_.scroll.nametable_y;
+			vram_addr_.scroll.coarse_y    = tvram_addr_.scroll.coarse_y;
 		}
 	};
 
-	const bool enable_rendering = PPUMASK.bit.show_bg || PPUMASK.bit.show_sp;
-	if (enable_rendering)
+	if (cycle_ == 0)
 	{
-		drawPixel();
-		shiftRegisters();
-	}
-	fetch();
-	if (enable_rendering)
-	{
-		incCoarseX();
-		incY();
-		updateV();
+		cycle_ = 1;
 	}
 
-	if (scanline_ == 241 && cycle_ == 1)
+	if (240 <= scanline_ && scanline_ <= 260)
 	{
-		PPUSTATUS.bit.vb_start = 1;
-		nmi_occured = PPUCTRL.bit.gen_nmi;
+		if (scanline_ == 241 && cycle_ == 1)
+		{
+			PPUSTATUS.bit.vb_start = 1;
+			nmi_occured = PPUCTRL.bit.gen_nmi;
+		}
 	}
-	else if (scanline_ == 261 && cycle_ == 1)
+
+	else
+	{
+		if (PPUMASK.bit.show_bg)
+		{
+			drawPixel();
+			fetch();
+			incCoarseX();
+			incY();
+			updateV();
+		}
+	}
+
+	if (scanline_ == 261 && cycle_ == 1)
 	{
 		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
@@ -203,7 +211,11 @@ void PPU2C02::update()
 	if (cycle_ > 340)
 	{
 		cycle_ = 0;
-		scanline_ = (scanline_ + 1) % 262;
+		++scanline_;
+		if (scanline_ > 261)
+		{
+			scanline_ = 0;
+		}
 	}
 }
 
@@ -274,8 +286,8 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 	case 0x00:
 	{
 		PPUCTRL.reg = data;
-		const u16 d = data;
-		tvram_addr_.scroll.nametb_sel = (tvram_addr_.scroll.nametb_sel & 0x73FF) | ((d & 0x03) << 10);
+		tvram_addr_.scroll.nametable_x = PPUCTRL.bit.nametable_x;
+		tvram_addr_.scroll.nametable_y = PPUCTRL.bit.nametable_y;
 		break;
 	}
 
@@ -294,13 +306,13 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 	case 0x05:
 		if (!write_latch_) // first write
 		{
-			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
+			tvram_addr_.scroll.coarse_x = (data >> 3);
 			fine_x = data & 0x07;
 		}
 		else // second write
 		{
-			tvram_addr_.scroll.coarse_x = ((data & 0xF8) >> 3);
-			tvram_addr_.scroll.fine_y = (data & 0x03);
+			tvram_addr_.scroll.coarse_y = (data >> 3);
+			tvram_addr_.scroll.fine_y = (data & 0x07);
 		}
 		write_latch_ = !write_latch_;
 		break;
@@ -312,8 +324,8 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 		}
 		else // second write
 		{
-			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | static_cast<u16>(data);
-			vram_addr_.reg = tvram_addr_.reg;
+			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | data;
+			vram_addr_ = tvram_addr_;
 		}
 		write_latch_ = !write_latch_;
 		break;
