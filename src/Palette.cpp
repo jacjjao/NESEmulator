@@ -73,7 +73,7 @@ Palette::Palette() :
 	palette_[0x3F] = sf::Color(0, 0, 0);
 }
 
-u8& Palette::operator[](u8 addr)
+u8& Palette::operator[](u16 addr)
 {
 	addr &= 0x1F;
 

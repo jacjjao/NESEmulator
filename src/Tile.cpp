@@ -7,8 +7,10 @@ Pixel::Pixel(sf::Vertex& vertex)
 
 void Pixel::setColor(const sf::Color& color)
 {
-	for (std::size_t i = 0; i < 4; ++i)
-		vertex_[i].color = color;
+	vertex_[0].color = color;
+	vertex_[1].color = color;
+	vertex_[2].color = color;
+	vertex_[3].color = color;
 }
 
 void Pixel::setPosition(const sf::Vector2f pos)

@@ -2,7 +2,7 @@
 
 #include "common/type.hpp"
 #include <functional>
-#include <vector>
+#include <array>
 
 // #define EMUCPULOG
 
@@ -25,86 +25,37 @@ public:
 	void irq();
 	void nmi();
 
-// private:
+private:
 	struct Instruction
 	{
 		std::function<void(void)> addr_mode;
 		std::function<void(void)> operate;
-		u8 cycles;
-		u8 penalty; // page crossed penalty
+		u8 cycles  = 0;
+		u8 penalty = 0; // page crossed penalty
 	};
 
 	u16 abs_addr_ = 0;
 	u8 opcode_ = 0;
 
-	void ADC();
-	void AND();
-	void ASL();
-	void BCC();
-	void BCS();
-	void BEQ();
-	void BIT();
-	void BMI();
-	void BNE();
-	void BPL();
-	void BRK();
-	void BVC();
-	void BVS();
-	void CLC();
-	void CLD();
-	void CLI();
-	void CLV();
-	void CMP();
-	void CPX();
-	void CPY();
-	void DEC();
-	void DEX();
-	void DEY();
-	void EOR();
-	void INC();
-	void INX();
-	void INY();
-	void JMP();
-	void JSR();
-	void LDA();
-	void LDX();
-	void LDY();
-	void LSR();
-	void NOP();
-	void ORA();
-	void PHA();
-	void PHP();
-	void PLA();
-	void PLP();
-	void ROL();
-	void ROR();
-	void RTI();
-	void RTS();
-	void SBC(); 
-	void SEC();
-	void SED();
-	void SEI();
-	void STA();
-	void STX();
-	void STY();
-	void TAX();
-	void TAY();
-	void TSX(); 
-	void TXA();
-	void TXS();
-	void TYA();
+	void ADC(); void AND(); void ASL(); void BCC();
+	void BCS(); void BEQ(); void BIT(); void BMI();
+	void BNE(); void BPL(); void BRK();	void BVC();
+	void BVS();	void CLC();	void CLD();	void CLI();
+	void CLV();	void CMP();	void CPX();	void CPY();
+	void DEC();	void DEX();	void DEY();	void EOR();
+	void INC();	void INX();	void INY();	void JMP();
+	void JSR();	void LDA();	void LDX();	void LDY();
+	void LSR();	void NOP();	void ORA();	void PHA();
+	void PHP();	void PLA();	void PLP();	void ROL();
+	void ROR();	void RTI();	void RTS();	void SBC(); 
+	void SEC();	void SED();	void SEI();	void STA();
+	void STX();	void STY();	void TAX();	void TAY();
+	void TSX();	void TXA();	void TXS();	void TYA();
 
 	// unofficial instructions
-	void ALR();
-	void ANC();
-	void LAX();
-	void SAX();
-	void DCP();
-	void ISC();
-	void RLA();
-	void RRA();
-	void SLO();
-	void SRE();
+	void ALR();	void ANC();	void LAX();	void SAX();
+	void DCP();	void ISC();	void RLA();	void RRA();
+	void SLO();	void SRE();
 
 	void unknownOpcode();
 
@@ -118,7 +69,7 @@ public:
 		Rel,
 		Abs, Abx, Aby,
 		Ind, IdxInd, IndIdx
-	} addr_mode_;
+	} addr_mode_ = AddrMode::Imp;
 	
 	void none();
 	void imm();
@@ -179,12 +130,12 @@ public:
 #endif
 
 	static constexpr std::size_t instrs_size = 256;
+	static constexpr u16 stack_low = 0x0100;
 
-	std::vector<Instruction> instrs_;
+	std::array<Instruction, instrs_size> instrs_;
+
 	u8 cycles_ = 0;
 	u64 total_cycles_ = 0;
 
 	Bus* bus_ = nullptr;
-
-	static constexpr u16 stack_low = 0x0100;
 };

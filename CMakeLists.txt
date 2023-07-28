@@ -11,11 +11,9 @@ if (WIN32)
 endif()
 enable_testing()
 
-file(GLOB SOURCES
+file(GLOB_RECURSE SOURCES
     src/*.hpp
 	src/*.cpp 
-	src/common/*.hpp
-	src/common/*.cpp
 )
 
 file(GLOB TEST_SOURCES

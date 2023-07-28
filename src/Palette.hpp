@@ -10,7 +10,7 @@ class Palette
 public:
 	Palette();
 
-	u8& operator[](u8 addr);
+	u8& operator[](u16 addr);
 
 	sf::Color getColor(u8 index) const;
 

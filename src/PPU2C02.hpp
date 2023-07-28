@@ -5,7 +5,6 @@
 #include "Palette.hpp"
 #include "Cartridge.hpp"
 #include <SFML/Graphics/Vertex.hpp>
-#include <array>
 #include <vector>
 
 
@@ -24,6 +23,8 @@ public:
 	void regWrite(u16 addr, u8 data);
 	u8 memRead(u16 addr);
 	void memWrite(u16 addr, u8 data);
+
+	bool frame_complete = false;
 
 	const std::vector<sf::Vertex>& getVideoOutput();
 
@@ -118,6 +119,8 @@ private:
 	Palette palette_;
 	std::vector<u8> mem_;
 
+	std::size_t pixel_index_ = 0;
+
 	std::shared_ptr<Cartridge> cart_;
 
 	u8 data_buf_ = 0;
@@ -140,6 +143,6 @@ private:
 	} shift_reg_;
 
 	unsigned scanline_ = 0;
-	unsigned cycle_ = 0;
+	int cycle_ = 0;
 	u64 total_cycle_ = 0;
 };

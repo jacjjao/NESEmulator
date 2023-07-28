@@ -19,6 +19,11 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	{
 		ppu.regWrite(addr & 0x0007, data);
 	}
+	else if (addr == 0x4016)
+	{
+		joystick.setStrobe(data);
+		joystick_cache_ = joystick;
+	}
 	else
 	{
 		cpu_mem_[addr] = data;
@@ -39,6 +44,10 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return ppu.regRead(addr & 0x0007);
 	}
+	else if (addr == 0x4016)
+	{
+		return joystick_cache_.report();
+	}
 	return cpu_mem_[addr];
 }
 
@@ -52,8 +61,25 @@ u8 Bus::ppuRead(const u16 addr)
 	return ppu.memRead(addr);
 }
 
+void Bus::clock()
+{
+	//ppu.dummyUpdate();
+	ppu.update();
+	if (cycle_ % 3 == 0)
+	{
+		cpu.update();
+	}
+	if (ppu.nmi_occured)
+	{
+		ppu.nmi_occured = false;
+		cpu.nmi();
+	}
+	++cycle_;
+}
+
 void Bus::reset()
 {
+	cycle_ = 0;
 	cpu.reset();
 	ppu.reset();
 }

@@ -15,7 +15,7 @@ PPU2C02::PPU2C02() :
 			pixels_[i].setColor(palette_.getColor(0x00));
 		}
 
-	PPUSTATUS.reg = 0xA0;
+	PPUSTATUS.reg = 0;
 }
 
 void PPU2C02::reset()
@@ -63,7 +63,7 @@ void PPU2C02::update()
 				offset = 6;
 			}
 		}
-		const u8 pal = (data >> offset) & 0x03;
+		const u8 pal = (data >> offset);
 		latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
 		latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
@@ -82,54 +82,30 @@ void PPU2C02::update()
 		latches_.pat_high = memRead(next_pat_addr);
 	};
 	const auto loadRegisters = [this] {
-		shift_reg_.pat_high = (shift_reg_.pat_high & 0xFF00) | latches_.pat_high;
-		shift_reg_.pat_low = (shift_reg_.pat_low & 0xFF00) | latches_.pat_low;
+		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | latches_.pat_high;
+		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | latches_.pat_low;
 		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | latches_.attr_high;
-		shift_reg_.attr_low = (shift_reg_.attr_low & 0xFF00) | latches_.attr_low;
+		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | latches_.attr_low;
 	};
 	const auto drawPixel = [this] {
 		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return;
-		const u8 pos = 15 - (fine_x & 0x07);
+		const u8 pos        = 15 - (fine_x & 0x07);
 		const u8 pixel_high = getBitN(shift_reg_.pat_high, pos);
-		const u8 pixel_low = getBitN(shift_reg_.pat_low, pos);
-		const u8 pal_high = getBitN(shift_reg_.attr_high, pos);
-		const u8 pal_low = getBitN(shift_reg_.attr_low, pos);
-		const u8 pixel = (pixel_high << 1) | pixel_low;
-		const u8 pal = (pal_high << 1) | pal_low;
-		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(pal, pixel));
+		const u8 pixel_low  = getBitN(shift_reg_.pat_low, pos);
+		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
+		const u8 pal_low    = getBitN(shift_reg_.attr_low, pos);
+		const u8 pixel      = (pixel_high << 1) | pixel_low;
+		const u8 pal        = (pal_high << 1) | pal_low;
+		pixels_[pixel_index_++].setColor(getColorFromPaletteRam(pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
 		if (256 < cycle_ && cycle_ < 321 || (337 <= cycle_ && cycle_ < 341)) return;
-		shift_reg_.pat_high <<= 1;
-		shift_reg_.pat_low <<= 1;
+		shift_reg_.pat_high  <<= 1;
+		shift_reg_.pat_low   <<= 1;
 		shift_reg_.attr_high <<= 1;
-		shift_reg_.attr_low <<= 1;
-	};
-	const auto fetch = [&] {
-		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341)) return;
-		shiftRegisters();
-		switch (cycle_ % 8)
-		{
-		case 0:
-			fetchUpperPattern();
-			loadRegisters();
-			break;
-
-		case 2:
-			fetchName();
-			break;
-
-		case 4:
-			fetchAttribute();
-			break;
-
-		case 6:
-			fetchLowerPattern();
-			break;
-		}
+		shift_reg_.attr_low  <<= 1;
 	};
 	const auto incCoarseX = [this] {
-		if (cycle_ % 8 != 0 || (256 < cycle_ && cycle_ < 321)) return;
 		if (vram_addr_.scroll.coarse_x == 31)
 		{
 			vram_addr_.scroll.coarse_x = 0;
@@ -137,6 +113,33 @@ void PPU2C02::update()
 		}
 		else
 			++vram_addr_.scroll.coarse_x;
+	};
+	const auto fetch = [&] {
+		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341)) return;
+		shiftRegisters();
+		switch ((cycle_ - 1) % 8)
+		{
+		case 0:
+			loadRegisters();
+			fetchName();
+			break;
+
+		case 2:
+			fetchAttribute();
+			break;
+
+		case 4:
+			fetchLowerPattern();
+			break;
+
+		case 6:
+			fetchUpperPattern();
+			break;
+
+		case 7:
+			incCoarseX();
+			break;
+		}
 	};
 	const auto incY = [this] {
 		if (cycle_ != 256) return;
@@ -149,7 +152,7 @@ void PPU2C02::update()
 			if (y == 29)
 			{
 				y = 0;
-				vram_addr_.reg ^= 0x0800; // switch vertical nametable
+				vram_addr_.scroll.nametable_y = ~vram_addr_.scroll.nametable_y;
 			}
 			else if (y == 31)
 				y = 0;
@@ -158,17 +161,18 @@ void PPU2C02::update()
 			vram_addr_.scroll.coarse_y = y;
 		}
 	};
-	const auto updateV = [this] {
+	const auto transferTtoV = [&] {
 		if (cycle_ == 257)
 		{
+			loadRegisters();
 			vram_addr_.scroll.nametable_x = tvram_addr_.scroll.nametable_x;
-			vram_addr_.scroll.coarse_x = tvram_addr_.scroll.coarse_x;
+			vram_addr_.scroll.coarse_x    = tvram_addr_.scroll.coarse_x;
 		}
 		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304))
 		{
-			vram_addr_.scroll.fine_y = tvram_addr_.scroll.fine_y;
+			vram_addr_.scroll.fine_y      = tvram_addr_.scroll.fine_y;
 			vram_addr_.scroll.nametable_y = tvram_addr_.scroll.nametable_y;
-			vram_addr_.scroll.coarse_y = tvram_addr_.scroll.coarse_y;
+			vram_addr_.scroll.coarse_y    = tvram_addr_.scroll.coarse_y;
 		}
 	};
 
@@ -190,18 +194,20 @@ void PPU2C02::update()
 	{
 		if (PPUMASK.bit.show_bg)
 		{
-			drawPixel();
 			fetch();
-			incCoarseX();
 			incY();
-			updateV();
+			transferTtoV();
+			drawPixel();
 		}
 	}
 
 	if (scanline_ == 261 && cycle_ == 1)
 	{
+		pixel_index_ = 0;
 		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
+		PPUSTATUS.bit.sp0_hit = 0;
+		PPUSTATUS.bit.sp_overflow = 0;
 	}
 
 	++cycle_;
@@ -211,6 +217,7 @@ void PPU2C02::update()
 		++scanline_;
 		if (scanline_ > 261)
 		{
+			frame_complete = true;
 			scanline_ = 0;
 		}
 	}
@@ -223,6 +230,7 @@ void PPU2C02::dummyUpdate()
 		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
 		scanline_ = cycle_ = 0;
+		frame_complete = true;
 	}
 
 	if (scanline_ == 241 && cycle_ == 1)
@@ -339,7 +347,7 @@ u8 PPU2C02::memRead(u16 addr)
 	addr &= 0x3FFF;
 	if (const auto data = cart_->ppuRead(addr); data.has_value())
 	{
-		return data.value();
+		return *data;
 	}
 	return *mirroring(addr);
 }
@@ -361,8 +369,12 @@ const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
 
 u8* PPU2C02::mirroring(u16 addr)
 {
-	if (0x2000 <= addr && addr <= 0x2FFF)
+	if (0x2000 <= addr && addr <= 0x3EFF)
 	{
+		if (0x3000 <= addr && addr <= 0x3EFF)
+		{
+			addr &= 0x2EFF;
+		}
 		if (cart_->getMirrorType() == MirrorType::Vertical)
 		{
 			if (0x2800 <= addr && addr <= 0x2FFF)
@@ -379,19 +391,16 @@ u8* PPU2C02::mirroring(u16 addr)
 			}
 		}
 	}
-	else if (0x3000 <= addr && addr <= 0x3EFF)
-	{
-		addr &= 0x2EFF;
-	}
-	else if (0x3F00 <= addr && addr <= 0x3F1F)
+	else if (0x3F00 <= addr && addr <= 0x3FFF)
 	{
 		return &palette_[addr];
 	}
-	else if (0x3F20 <= addr && addr <= 0x3FFF)
-	{
-		addr &= 0x3F1F;
-	}
 	return &mem_[addr];
+}
+
+sf::Color PPU2C02::getColorFromPaletteRam(const u16 palette, const u16 pixel)
+{
+	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
@@ -447,11 +456,6 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 
 
 	return patterntb[index].getVertexArray();
-}
-
-sf::Color PPU2C02::getColorFromPaletteRam(const u16 palette, const u16 pixel)
-{
-	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
 }
 
 void PPU2C02::dbgDrawNametb(const u8 which)

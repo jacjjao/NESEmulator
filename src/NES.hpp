@@ -19,9 +19,9 @@ private:
 	void onDraw();
 	void onEvent();
 	void onKeyPressed();
+	void onKeyReleased();
 
 	Bus bus_{};
-	u64 cycle_count_ = 0;
 
 	sf::RenderWindow* window_ = nullptr;
 	sf::Clock system_clock_{};

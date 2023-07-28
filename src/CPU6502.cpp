@@ -2,10 +2,7 @@
 #include "Bus.hpp"
 #include "common/bitHelper.hpp"
 
-#include <algorithm>
-#include <iostream>
 #include <cassert>
-#include <sstream>
 
 #ifdef EMUCPULOG
 #include <fstream>
@@ -53,7 +50,9 @@ CPU6502::CPU6502()
 	const auto idxInd  = [this]() { this->idxInd(); };
 	const auto indIdx  = [this]() { this->indIdx(); };
 
-	instrs_.resize(instrs_size, { none, unknown, 0, 0 });
+	const Instruction unknownInstr = { none, unknown, 0, 0 };
+	for (auto& instr : instrs_)
+		instr = unknownInstr;
 
 	const auto ADC = [this]() { this->ADC(); };
 	instrs_[0x69] = { imm,    ADC, 2, 0 };
@@ -979,7 +978,7 @@ void CPU6502::SRE()
 
 void CPU6502::unknownOpcode()
 {
-	std::cerr << "[Warning] Unknown opcode: " << std::hex << (int)opcode_ << '\n';
+	std::fprintf(stderr, "[Warning] Unknown opcode: %X\n", (int)opcode_);
 }
 
 void CPU6502::relativeDisplace()

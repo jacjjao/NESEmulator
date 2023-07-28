@@ -38,27 +38,20 @@ void NES::reset()
 {
     bus_.reset();
     system_clock_.restart();
-    cycle_count_ = 0;
 }
 
-bool NES::onUpdate(const float elapsed_time)
+bool NES::onUpdate(float)
 {
     if (pause_) return true;
 
-    bus_.ppu.update();
-    // bus_.ppu.dummyUpdate();
-    if (cycle_count_ % 3 == 0)
-    {
-        bus_.cpu.update();
-    }
-
-    if (bus_.ppu.nmi_occured)
-    {
-        bus_.ppu.nmi_occured = false;
-        bus_.cpu.nmi();
-    }
-
-    ++cycle_count_;
+    bus_.joystick.setBotton(Botton::Up,     (event_.key.code == sf::Keyboard::W));
+    bus_.joystick.setBotton(Botton::Down,   (event_.key.code == sf::Keyboard::S));
+    bus_.joystick.setBotton(Botton::Left,   (event_.key.code == sf::Keyboard::A));
+    bus_.joystick.setBotton(Botton::Right,  (event_.key.code == sf::Keyboard::D));
+    bus_.joystick.setBotton(Botton::A,      (event_.key.code == sf::Keyboard::K));
+    bus_.joystick.setBotton(Botton::B,      (event_.key.code == sf::Keyboard::J));
+    bus_.joystick.setBotton(Botton::Start,  (event_.key.code == sf::Keyboard::H));
+    bus_.joystick.setBotton(Botton::Select, (event_.key.code == sf::Keyboard::G));
 
     return true;
 }
@@ -66,19 +59,26 @@ bool NES::onUpdate(const float elapsed_time)
 void NES::onDraw()
 {
     static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 60.0f;
+    static constexpr float frame_time_interval = 1.0f / 50.0f;
+    static sf::Color background_color = sf::Color{ 0, 0, 50 };
 
-    if (clock.getElapsedTime().asSeconds() < frame_time_interval)
-        return;
-    clock.restart();
+    if (!pause_ && clock.getElapsedTime().asSeconds() >= frame_time_interval)
+    {
+        clock.restart();
+        do
+        {
+            bus_.clock();
+        } while (!bus_.ppu.frame_complete);
+        bus_.ppu.frame_complete = false;
+    }
 
-    window_->clear(sf::Color{0, 0, 50});
+    window_->clear(background_color);
 
-    // bus_.ppu.dbgDrawNametb(0);
-
+    // bus_.ppu.dbgDrawNametb(1);
+    
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
-
+    
     auto& patterntb1 = bus_.ppu.dbgGetPatterntb(0, bus_.ppu.dbg_pal);
     auto& patterntb2 = bus_.ppu.dbgGetPatterntb(1, bus_.ppu.dbg_pal);
     window_->draw(patterntb1.data(), patterntb1.size(), sf::Quads);
@@ -104,10 +104,26 @@ void NES::onEvent()
     case sf::Event::KeyPressed:
         onKeyPressed();
         break;
+
+    case sf::Event::KeyReleased:
+        onKeyReleased();
+        break;
     }
 }
 
 void NES::onKeyPressed()
+{
+    if (event_.key.code == sf::Keyboard::Escape)
+        window_->close();
+    else if (event_.key.code == sf::Keyboard::Right)
+        ++bus_.ppu.dbg_pal &= 0x07;
+    else if (event_.key.code == sf::Keyboard::Left)
+        --bus_.ppu.dbg_pal &= 0x07;
+    else if (event_.key.code == sf::Keyboard::Space)
+        pause_ = !pause_;
+}
+
+void NES::onKeyReleased()
 {
     if (event_.key.code == sf::Keyboard::Escape)
         window_->close();

@@ -28,8 +28,8 @@ public:
 	MirrorType getMirrorType() const;
 
 private:
-	std::vector<u8> prg_rom_;
-	std::vector<u8> chr_rom_;
+	std::vector<u8> prg_mem_;
+	std::vector<u8> chr_mem_;
 
 	std::unique_ptr<Mapper> mapper_;
 
