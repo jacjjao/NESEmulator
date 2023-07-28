@@ -489,10 +489,12 @@ void CPU6502::irq()
 void CPU6502::nmi()
 {
 	pushStack(reg_.PC);
+	setBreakFlag(false);
+	setBitN(reg_.Status, 5, true);
+	setInterruptDisableFlag(true);
 	pushStack(reg_.Status);
 	reg_.PC = getTwoBytesFromMem(0xFFFA);
-	setInterruptDisableFlag(true);
-	cycles_ += 7;
+	cycles_ += 8;
 }
 
 void CPU6502::ADC()

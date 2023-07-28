@@ -77,7 +77,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     switch (mapper_type)
     {
     case 0x00:
-        mapper_.reset(new Mapper000{header.prg_rom_size});
+        mapper_.reset(new Mapper000{header.prg_rom_size, header.chr_rom_size});
         break;
 
     default:
@@ -95,8 +95,15 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     it += prg_rom_size;
 
     // load CHR ROM
-    std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
-    chr_mem_.assign(it, it + chr_rom_size);
+    if (header.chr_rom_size == 0)
+    {
+        chr_mem_.resize(8192);
+    }
+    else
+    {
+        std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
+        chr_mem_.assign(it, it + chr_rom_size);
+    }
 
 
     return true;
@@ -114,7 +121,7 @@ const std::vector<u8>& Cartridge::getCHRRom() const
 
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->cpuMapRead(addr);
+    const auto adr = mapper_->cpuMapWrite(addr);
     if (adr.has_value())
     {
         prg_mem_[*adr] = data;
@@ -135,7 +142,7 @@ std::optional<u8> Cartridge::cpuRead(const u16 addr)
 
 bool Cartridge::ppuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->cpuMapRead(addr);
+    const auto adr = mapper_->ppuMapWrite(addr);
     if (adr.has_value())
     {
         chr_mem_[*adr] = data;

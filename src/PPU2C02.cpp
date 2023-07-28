@@ -1,5 +1,8 @@
 #include "PPU2C02.hpp"
 #include "common/bitHelper.hpp"
+#include <cassert>
+
+#include <SFML/System/Clock.hpp>
 
 
 PPU2C02::PPU2C02() :
@@ -252,9 +255,9 @@ void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 	cart_ = std::move(cartridge);
 }
 
-u8 PPU2C02::regRead(u16 addr)
+u8 PPU2C02::regRead(const u16 addr)
 {
-	addr &= 0x07;
+	assert(addr <= 7);
 
 	u8 data = 0;
 
@@ -282,19 +285,17 @@ u8 PPU2C02::regRead(u16 addr)
 	return data;
 }
 
-void PPU2C02::regWrite(u16 addr, const u8 data)
+void PPU2C02::regWrite(const u16 addr, const u8 data)
 {
-	addr &= 0x07;
+	assert(addr <= 7);
 
 	switch (addr)
 	{
 	case 0x00:
-	{
 		PPUCTRL.reg = data;
 		tvram_addr_.scroll.nametable_x = PPUCTRL.bit.nametable_x;
 		tvram_addr_.scroll.nametable_y = PPUCTRL.bit.nametable_y;
 		break;
-	}
 
 	case 0x01:
 		PPUMASK.reg = data;
@@ -311,8 +312,8 @@ void PPU2C02::regWrite(u16 addr, const u8 data)
 	case 0x05:
 		if (!write_latch_) // first write
 		{
-			tvram_addr_.scroll.coarse_x = (data >> 3);
 			fine_x = data & 0x07;
+			tvram_addr_.scroll.coarse_x = (data >> 3);
 		}
 		else // second write
 		{
@@ -371,10 +372,7 @@ u8* PPU2C02::mirroring(u16 addr)
 {
 	if (0x2000 <= addr && addr <= 0x3EFF)
 	{
-		if (0x3000 <= addr && addr <= 0x3EFF)
-		{
-			addr &= 0x2EFF;
-		}
+		addr &= 0x2FFF;
 		if (cart_->getMirrorType() == MirrorType::Vertical)
 		{
 			if (0x2800 <= addr && addr <= 0x2FFF)
@@ -384,10 +382,17 @@ u8* PPU2C02::mirroring(u16 addr)
 		}
 		else if (cart_->getMirrorType() == MirrorType::Horizontal)
 		{
-			if ((0x2400 <= addr && addr <= 0x27FF) ||
-				(0x2C00 <= addr && addr <= 0x2FFF))
+			if (0x2400 <= addr && addr <= 0x27FF)
 			{
 				addr -= 0x0400;
+			}
+			else if (0x2800 <= addr && addr <= 0x2BFF)
+			{
+				addr -= 0x0400;
+			}
+			else if (0x2C00 <= addr && addr <= 0x2FFF)
+			{
+				addr -= 0x0800;
 			}
 		}
 	}
@@ -460,13 +465,32 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 
 void PPU2C02::dbgDrawNametb(const u8 which)
 {
+	/*
+	static sf::Clock clock;
+	static int cnt = 30 * 32;
+	static bool print = false;
+
+	if (cnt > 0 && clock.getElapsedTime().asSeconds() > 30.0f)
+		print = true;
+	else
+		print = false;
+	*/
 	u16 addr = 0x2000;
 	for (int row = 0; row < 30; ++row)
-	{
+	{/*
+		if (print)
+		{
+			std::printf("\n");
+		}*/
 		for (int col = 0; col < 32; ++col, ++addr)
 		{
 			std::array<u8, 8> lower{}, upper{};
-			const u8 patterntb_index = memRead(addr);
+			const u8 patterntb_index = memRead(addr);/*
+			if (print)
+			{
+				std::printf("%02X ", (int)patterntb_index);
+				--cnt;
+			}*/
 			const u16 patterntb_addr = 0x1000 * which + u16(patterntb_index) * 16;
 
 			for (int i = 0; i < 8; ++i)

@@ -11,7 +11,7 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	if (cart_->cpuWrite(addr, data))
 	{
 	}
-	else if (0x0800 <= addr && addr <= 0x1FFF)
+	else if (addr <= 0x1FFF)
 	{
 		cpu_mem_[addr & 0x07FF] = data;
 	}
@@ -24,10 +24,6 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 		joystick.setStrobe(data);
 		joystick_cache_ = joystick;
 	}
-	else
-	{
-		cpu_mem_[addr] = data;
-	}
 }
 
 u8 Bus::cpuRead(const u16 addr)
@@ -36,7 +32,7 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return data.value();
 	}
-	else if (0x0800 <= addr && addr <= 0x1FFF)
+	else if (addr <= 0x1FFF)
 	{
 		return cpu_mem_[addr & 0x07FF];
 	}
@@ -48,7 +44,7 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return joystick_cache_.report();
 	}
-	return cpu_mem_[addr];
+	return 0;
 }
 
 void Bus::ppuWrite(const u16 addr, const u8 data)
@@ -63,8 +59,8 @@ u8 Bus::ppuRead(const u16 addr)
 
 void Bus::clock()
 {
-	//ppu.dummyUpdate();
-	ppu.update();
+	ppu.dummyUpdate();
+	// ppu.update();
 	if (cycle_ % 3 == 0)
 	{
 		cpu.update();

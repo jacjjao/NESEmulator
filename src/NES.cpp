@@ -74,7 +74,7 @@ void NES::onDraw()
 
     window_->clear(background_color);
 
-    // bus_.ppu.dbgDrawNametb(1);
+    bus_.ppu.dbgDrawNametb(1);
     
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
