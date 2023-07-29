@@ -109,7 +109,6 @@ void PPU2C02::update()
 		pixels_[pixel_index_++].setColor(getColorFromPaletteRam(pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
-		if (256 < cycle_ && cycle_ < 321 || (337 <= cycle_ && cycle_ < 341)) return;
 		shift_reg_.pat_high  <<= 1;
 		shift_reg_.pat_low   <<= 1;
 		shift_reg_.attr_high <<= 1;
@@ -123,33 +122,6 @@ void PPU2C02::update()
 		}
 		else
 			++vram_addr_.scroll.coarse_x;
-	};
-	const auto fetch = [&] {
-		if ((256 < cycle_ && cycle_ < 321) || (337 <= cycle_ && cycle_ < 341)) return;
-		shiftRegisters();
-		switch ((cycle_ - 1) % 8)
-		{
-		case 0:
-			loadRegisters();
-			fetchName();
-			break;
-
-		case 2:
-			fetchAttribute();
-			break;
-
-		case 4:
-			fetchLowerPattern();
-			break;
-
-		case 6:
-			fetchUpperPattern();
-			break;
-
-		case 7:
-			incCoarseX();
-			break;
-		}
 	};
 	const auto incY = [this] {
 		if (cycle_ != 256) return;
@@ -176,23 +148,46 @@ void PPU2C02::update()
 		{
 			loadRegisters();
 			vram_addr_.scroll.nametable_x = tvram_addr_.scroll.nametable_x;
-			vram_addr_.scroll.coarse_x    = tvram_addr_.scroll.coarse_x;
+			vram_addr_.scroll.coarse_x = tvram_addr_.scroll.coarse_x;
 		}
 		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304))
 		{
-			vram_addr_.scroll.fine_y      = tvram_addr_.scroll.fine_y;
+			vram_addr_.scroll.fine_y = tvram_addr_.scroll.fine_y;
 			vram_addr_.scroll.nametable_y = tvram_addr_.scroll.nametable_y;
-			vram_addr_.scroll.coarse_y    = tvram_addr_.scroll.coarse_y;
+			vram_addr_.scroll.coarse_y = tvram_addr_.scroll.coarse_y;
+		}
+	};
+	const auto fetch = [&] {
+		if (!((cycle_ >= 2 && cycle_ < 258) || (cycle_ >= 321 && cycle_ < 338))) return;
+		shiftRegisters();
+		switch ((cycle_ - 1) % 8)
+		{
+		case 0:
+			loadRegisters();
+			fetchName();
+			break;
+
+		case 2:
+			fetchAttribute();
+			break;
+
+		case 4:
+			fetchLowerPattern();
+			break;
+
+		case 6:
+			fetchUpperPattern();
+			break;
+
+		case 7:
+			incCoarseX();
+			break;
 		}
 	};
 
 	if (cycle_ == 0)
 	{
 		cycle_ = 1;
-		if (!PPUMASK.bit.show_bg)
-		{
-			return;
-		}
 	}
 
 	if (240 <= scanline_ && scanline_ <= 260)
@@ -357,6 +352,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 u8 PPU2C02::memRead(u16 addr)
 {
 	addr &= 0x3FFF;
+
 	if (const auto data = cart_->ppuRead(addr); data.has_value())
 	{
 		return *data;
@@ -370,8 +366,12 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 	if (cart_->ppuWrite(addr, data))
 	{
 		return;
-	}/*
-	if (0x2000 <= addr && addr <= 0x3EFF)
+	}
+	else if (addr < 0x2000)
+	{
+		mem_[addr] = data;
+	}
+	else if (0x2000 <= addr && addr <= 0x3EFF)
 	{
 		addr &= 0x2FFF;
 		if (cart_->getMirrorType() == MirrorType::Vertical)
@@ -396,9 +396,12 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 				addr -= 0x0800;
 			}
 		}
-		dbgLogMemWrite(addr, data);
-	}*/
-	*mirroring(addr) = data;
+		mem_[addr] = data;
+	}
+	else if (0x3F00 <= addr && addr <= 0x3FFF)
+	{
+		palette_[addr] = data;
+	}
 }
 
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
@@ -503,32 +506,13 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 
 void PPU2C02::dbgDrawNametb(const u8 which)
 {
-	/*
-	static sf::Clock clock;
-	static int cnt = 30 * 32;
-	static bool print = false;
-
-	if (cnt > 0 && clock.getElapsedTime().asSeconds() > 30.0f)
-		print = true;
-	else
-		print = false;
-	*/
 	u16 addr = 0x2000;
 	for (int row = 0; row < 30; ++row)
-	{/*
-		if (print)
-		{
-			std::printf("\n");
-		}*/
+	{
 		for (int col = 0; col < 32; ++col, ++addr)
 		{
 			std::array<u8, 8> lower{}, upper{};
-			const u8 patterntb_index = memRead(addr);/*
-			if (print)
-			{
-				std::printf("%02X ", (int)patterntb_index);
-				--cnt;
-			}*/
+			const u8 patterntb_index = memRead(addr);
 			const u16 patterntb_addr = 0x1000 * which + u16(patterntb_index) * 16;
 
 			for (int i = 0; i < 8; ++i)
@@ -606,9 +590,9 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	return frame_palette[index];
 }
 
-void PPU2C02::dbgLogMemWrite(u16 addr, u8 data)
+void PPU2C02::dbgLogMemWrite(const u16 addr, const u8 data)
 {
 	static std::ofstream file{"mem_log.txt"};
-	file << std::hex << std::setfill('0') << std::setw(4) << (int)addr << ' ';
-	file << std::hex << std::setfill('0') << std::setw(2) << (int)data << std::endl;
+	file << std::hex << std::setfill('0') << std::setw(4) << int(addr) << ' ';
+	file << std::hex << std::setfill('0') << std::setw(2) << int(data) << std::endl;
 }

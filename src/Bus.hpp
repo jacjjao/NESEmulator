@@ -17,9 +17,6 @@ public:
 	void cpuWrite(u16 addr, u8 data);
 	u8 cpuRead(u16 addr);
 
-	void ppuWrite(u16 addr, u8 data);
-	u8 ppuRead(u16 addr);
-
 	void clock();
 
 	void reset();

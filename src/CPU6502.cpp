@@ -104,7 +104,7 @@ CPU6502::CPU6502()
 	instrs_[0x10] = { rel, BPL, 2, 1 };
 
 	const auto BRK = [this]() { this->BRK(); };
-	instrs_[0x00] = { none, BRK, 7, 0 };
+	instrs_[0x00] = { imm, BRK, 7, 0 };
 
 	const auto BVC = [this]() { this->BVC(); };
 	instrs_[0x50] = { rel, BVC, 2, 1 };
@@ -323,8 +323,13 @@ CPU6502::CPU6502()
 
 	const auto ANC = [this]() { this->ANC(); };
 	instrs_[0x0B] = { imm, ANC, 2, 0 };
+	instrs_[0x2B] = { imm, ANC, 2, 0 };
+
+	const auto ARR = [this] { this->ARR(); };
+	instrs_[0x6B] = { imm, ARR, 2, 0 };
 
 	const auto LAX = [this]() { this->LAX(); };
+	instrs_[0xAB] = { imm   , LAX, 2, 0 };
 	instrs_[0xA7] = { zp    , LAX, 3, 0 };
 	instrs_[0xB7] = { zpy   , LAX, 4, 0 };
 	instrs_[0xAF] = { abs   , LAX, 4, 0 };
@@ -499,16 +504,17 @@ void CPU6502::nmi()
 
 void CPU6502::ADC()
 {
-	const u8 M = fetch();
-	const u8 C = getCarryFlag();
-	const u8 result = reg_.A + M + C;
+	const u16 M = fetch();
+	const u16 C = getCarryFlag();
+	const u16 A = reg_.A;
+	const u16 result = A + M + C;
 
-	setCarryFlag(result < reg_.A);
-	setZeroFlag(result == 0);
-	setOverflowFlag((result ^ reg_.A) & (result ^ M) & 0x80);
+	setCarryFlag(result > 255);
+	setZeroFlag((result & 0x00FF) == 0);
+	setOverflowFlag(((~(A ^ M) & (A ^ result))) & 0x0080);
 	setNegativeResultFlag(getBitN(result, 7));
 
-	reg_.A = result;
+	reg_.A = result & 0x00FF;
 }
 
 void CPU6502::AND()
@@ -580,8 +586,9 @@ void CPU6502::BPL()
 
 void CPU6502::BRK()
 {
+	const u8 status = reg_.Status | 0x30;
 	pushStack(reg_.PC);
-	pushStack(reg_.Status);
+	pushStack(status);
 	reg_.PC = getTwoBytesFromMem(0xFFFE);
 	setBreakFlag(true);
 }
@@ -797,6 +804,7 @@ void CPU6502::ROL()
 	M <<= 1;
 	setBitN(M, 0, new_bit0);
 	setNegativeResultFlag(getBitN(M, 7));
+	setZeroFlag(M == 0);
 
 	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
@@ -813,6 +821,7 @@ void CPU6502::ROR()
 	M >>= 1;
 	setBitN(M, 7, new_bit7);
 	setNegativeResultFlag(getBitN(M, 7));
+	setZeroFlag(M == 0);
 
 	if (addr_mode_ == AddrMode::Imp)
 		reg_.A = M;
@@ -928,6 +937,15 @@ void CPU6502::ANC()
 {
 	AND();
 	setCarryFlag(getNegativeResultFlag());
+}
+
+void CPU6502::ARR()
+{
+	AND();
+	addr_mode_ = AddrMode::Imp;
+	ROR();
+	setCarryFlag(getBitN(reg_.A, 6));
+	setOverflowFlag(getBitN(reg_.A, 6) ^ getBitN(reg_.A, 6));
 }
 
 void CPU6502::LAX()
@@ -1200,7 +1218,7 @@ void CPU6502::setNegativeResultFlag(const bool set)
 
 void CPU6502::pushStack(const u8 val)
 {
-	assert(reg_.SP > 0);
+	// assert(reg_.SP > 0);
 	write(stack_low + reg_.SP, val);
 	--reg_.SP;
 }
@@ -1215,7 +1233,7 @@ void CPU6502::pushStack(const u16 val)
 
 u8 CPU6502::popStack()
 {
-	assert(reg_.SP < 255);
+	// assert(reg_.SP < 255);
 	++reg_.SP;
 	return read(stack_low + reg_.SP);
 }

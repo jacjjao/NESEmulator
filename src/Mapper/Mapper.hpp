@@ -14,4 +14,6 @@ public:
 	
 	virtual std::optional<u16> ppuMapWrite(u16) { return std::nullopt; }
 	virtual std::optional<u16> ppuMapRead(u16) { return std::nullopt; }
+
+	virtual void reset() {};
 };

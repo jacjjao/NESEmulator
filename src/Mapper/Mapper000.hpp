@@ -11,7 +11,7 @@ public:
 	}
 	~Mapper000() override = default;
 
-	std::optional<u16> cpuMapRead(const u16 addr) override
+	std::optional<u16> cpuMapWrite(const u16 addr) override
 	{
 		if (0x8000 <= addr && addr <= 0xFFFF)
 		{
@@ -20,7 +20,7 @@ public:
 		return std::nullopt;
 	}
 
-	std::optional<u16> cpuMapWrite(const u16 addr) override
+	std::optional<u16> cpuMapRead(const u16 addr) override
 	{
 		if (0x8000 <= addr && addr <= 0xFFFF)
 		{

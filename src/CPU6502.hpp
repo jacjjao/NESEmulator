@@ -53,9 +53,9 @@ private:
 	void TSX();	void TXA();	void TXS();	void TYA();
 
 	// unofficial instructions
-	void ALR();	void ANC();	void LAX();	void SAX();
-	void DCP();	void ISC();	void RLA();	void RRA();
-	void SLO();	void SRE();
+	void ALR();	void ANC(); void ARR(); void LAX();
+	void SAX(); void DCP();	void ISC();	void RLA();	
+	void RRA(); void SLO();	void SRE();
 
 	void unknownOpcode();
 

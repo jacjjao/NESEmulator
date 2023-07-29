@@ -47,16 +47,6 @@ u8 Bus::cpuRead(const u16 addr)
 	return 0;
 }
 
-void Bus::ppuWrite(const u16 addr, const u8 data)
-{
-	ppu.memWrite(addr, data);
-}
-
-u8 Bus::ppuRead(const u16 addr)
-{
-	return ppu.memRead(addr);
-}
-
 void Bus::clock()
 {
 	// ppu.dummyUpdate();
