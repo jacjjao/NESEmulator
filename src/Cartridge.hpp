@@ -16,9 +16,6 @@ class Cartridge
 public:
 	bool loadiNESFile(const std::filesystem::path& path);
 
-	const std::vector<u8>& getPRGRom() const;
-	const std::vector<u8>& getCHRRom() const;
-
 	bool cpuWrite(const u16 addr, const u8 data);
 	std::optional<u8> cpuRead(const u16 addr);
 

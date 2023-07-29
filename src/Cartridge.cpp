@@ -109,16 +109,6 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     return true;
 }
 
-const std::vector<u8>& Cartridge::getPRGRom() const
-{
-    return prg_mem_;
-}
-
-const std::vector<u8>& Cartridge::getCHRRom() const
-{
-    return chr_mem_;
-}
-
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
     const auto adr = mapper_->cpuMapWrite(addr);

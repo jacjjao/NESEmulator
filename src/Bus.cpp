@@ -59,8 +59,8 @@ u8 Bus::ppuRead(const u16 addr)
 
 void Bus::clock()
 {
-	ppu.dummyUpdate();
-	// ppu.update();
+	// ppu.dummyUpdate();
+	ppu.update();
 	if (cycle_ % 3 == 0)
 	{
 		cpu.update();
@@ -84,4 +84,5 @@ void Bus::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 {
 	ppu.insertCartridge(cartridge);
 	cart_ = std::move(cartridge);
+	reset();
 }

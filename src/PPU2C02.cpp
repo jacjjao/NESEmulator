@@ -4,6 +4,9 @@
 
 #include <SFML/System/Clock.hpp>
 
+#include <fstream>
+#include <iomanip>
+
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
@@ -25,9 +28,13 @@ void PPU2C02::reset()
 {
 	PPUCTRL.reg = 0;
 	PPUMASK.reg = 0;
+	PPUSTATUS.reg = 0;
+	vram_addr_.reg = 0;
+	tvram_addr_.reg = 0;
 	write_latch_ = false;
 	PPUSCROLL = 0;
 	PPUDATA = 0;
+	scanline_ = cycle_ = 0;
 }
 
 void PPU2C02::update()
@@ -182,6 +189,10 @@ void PPU2C02::update()
 	if (cycle_ == 0)
 	{
 		cycle_ = 1;
+		if (!PPUMASK.bit.show_bg)
+		{
+			return;
+		}
 	}
 
 	if (240 <= scanline_ && scanline_ <= 260)
@@ -312,8 +323,8 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 	case 0x05:
 		if (!write_latch_) // first write
 		{
-			fine_x = data & 0x07;
 			tvram_addr_.scroll.coarse_x = (data >> 3);
+			fine_x = data & 0x07;
 		}
 		else // second write
 		{
@@ -359,7 +370,34 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 	if (cart_->ppuWrite(addr, data))
 	{
 		return;
-	}
+	}/*
+	if (0x2000 <= addr && addr <= 0x3EFF)
+	{
+		addr &= 0x2FFF;
+		if (cart_->getMirrorType() == MirrorType::Vertical)
+		{
+			if (0x2800 <= addr && addr <= 0x2FFF)
+			{
+				addr -= 0x0800;
+			}
+		}
+		else if (cart_->getMirrorType() == MirrorType::Horizontal)
+		{
+			if (0x2400 <= addr && addr <= 0x27FF)
+			{
+				addr -= 0x0400;
+			}
+			else if (0x2800 <= addr && addr <= 0x2BFF)
+			{
+				addr -= 0x0400;
+			}
+			else if (0x2C00 <= addr && addr <= 0x2FFF)
+			{
+				addr -= 0x0800;
+			}
+		}
+		dbgLogMemWrite(addr, data);
+	}*/
 	*mirroring(addr) = data;
 }
 
@@ -566,4 +604,11 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	}
 
 	return frame_palette[index];
+}
+
+void PPU2C02::dbgLogMemWrite(u16 addr, u8 data)
+{
+	static std::ofstream file{"mem_log.txt"};
+	file << std::hex << std::setfill('0') << std::setw(4) << (int)addr << ' ';
+	file << std::hex << std::setfill('0') << std::setw(2) << (int)data << std::endl;
 }

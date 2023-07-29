@@ -35,6 +35,7 @@ public: // for debug
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
+	void dbgLogMemWrite(u16 addr, u8 data);
 	u8 dbg_pal = 0;
 
 private:

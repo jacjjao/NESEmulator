@@ -52,7 +52,7 @@ bool NES::onUpdate(float)
     bus_.joystick.setBotton(Botton::B,      (event_.key.code == sf::Keyboard::J));
     bus_.joystick.setBotton(Botton::Start,  (event_.key.code == sf::Keyboard::H));
     bus_.joystick.setBotton(Botton::Select, (event_.key.code == sf::Keyboard::G));
-
+    
     return true;
 }
 
@@ -62,9 +62,12 @@ void NES::onDraw()
     static constexpr float frame_time_interval = 1.0f / 50.0f;
     static sf::Color background_color = sf::Color{ 0, 0, 50 };
 
-    if (!pause_ && clock.getElapsedTime().asSeconds() >= frame_time_interval)
+    if (clock.getElapsedTime().asSeconds() < frame_time_interval)
+        return;
+    clock.restart();
+
+    if (!pause_)
     {
-        clock.restart();
         do
         {
             bus_.clock();
@@ -74,7 +77,7 @@ void NES::onDraw()
 
     window_->clear(background_color);
 
-    bus_.ppu.dbgDrawNametb(1);
+    // bus_.ppu.dbgDrawNametb(1);
     
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
