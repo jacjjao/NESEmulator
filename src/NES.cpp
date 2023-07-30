@@ -20,6 +20,9 @@ void NES::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 
 void NES::run()
 {
+    static sf::Clock clock;
+    static constexpr float frame_time_interval = 1.0f / 60.0f;
+
     system_clock_.restart();
     while (window_->isOpen())
     {
@@ -27,6 +30,11 @@ void NES::run()
         {
             onEvent();
         }
+
+        if (clock.getElapsedTime().asSeconds() < frame_time_interval)
+            continue;
+
+        clock.restart();
 
         onUpdate(0.0f);
 
@@ -42,9 +50,6 @@ void NES::reset()
 
 bool NES::onUpdate(float)
 {
-    static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 50.0f;
-
     if (pause_) return true;
 
     bus_.joystick.setBotton(Botton::Up,     (event_.key.code == sf::Keyboard::W));
@@ -55,10 +60,6 @@ bool NES::onUpdate(float)
     bus_.joystick.setBotton(Botton::B,      (event_.key.code == sf::Keyboard::J));
     bus_.joystick.setBotton(Botton::Start,  (event_.key.code == sf::Keyboard::H));
     bus_.joystick.setBotton(Botton::Select, (event_.key.code == sf::Keyboard::G));
-
-    if (clock.getElapsedTime().asSeconds() < frame_time_interval)
-        return true;
-    clock.restart();
 
     if (!pause_)
     {

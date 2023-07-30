@@ -7,8 +7,9 @@
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
-	oam_ram_(oam_size, 0),
+	primary_oam(oam_size, 0),
 	pixels_(resolution),
+	second_oam(sprite_buf_size),
 	frame_(resolution)
 {
 	std::size_t i = 0;
@@ -102,7 +103,7 @@ void PPU2C02::update()
 		const u8 pal_low    = getBitN(shift_reg_.attr_low, pos);
 		const u8 pixel      = (pixel_high << 1) | pixel_low;
 		const u8 pal        = (pal_high << 1) | pal_low;
-		pixels_[pixel_index_++].setColor(getColorFromPaletteRam(false, pal, pixel));
+		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(false, pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
 		shift_reg_.pat_high  <<= 1;
@@ -180,6 +181,47 @@ void PPU2C02::update()
 			break;
 		}
 	};
+	const auto drawSprite = [this] {
+		if (cycle_ >= 64) return;
+		// TODO
+	};
+	const auto spriteEval = [this] {
+		if (!(65 <= cycle_ && cycle_ <= 256) && cycle_ % 2 == 1) return;
+		if (cycle_ > 65 && oam_byte.n == 0) // all spirte have been evaluate
+		{
+			return;
+		}
+		if (cycle_ == 65) // at the start of the evaluation
+		{
+			oam_byte.n = oam_byte.m = 0;
+			second_oam.clear();
+		}
+
+		u8 sprite_addr = oam_byte.n * 4 + oam_byte.m;
+		const u8 y_coord = primary_oam[sprite_addr];
+		const bool y_in_range = (y_coord == scanline_);
+		const bool second_oam_full = (second_oam.size() >= 32);
+		if (second_oam_full)
+		{
+			if (y_in_range)
+			{
+				PPUSTATUS.bit.sp_overflow = true;
+			}
+			else
+			{
+				++oam_byte.m; // hardware bug
+			}
+		}
+		else
+		{
+			second_oam.push_back(primary_oam[sprite_addr++]);
+			second_oam.push_back(primary_oam[sprite_addr++]);
+			second_oam.push_back(primary_oam[sprite_addr++]);
+			second_oam.push_back(primary_oam[sprite_addr]);
+			assert(second_oam.size() <= 32);
+		}
+		++oam_byte.n;
+	};
 
 	if (cycle_ == 0)
 	{
@@ -197,16 +239,19 @@ void PPU2C02::update()
 
 	else
 	{
-		if (PPUMASK.bit.show_bg)
+		if (PPUMASK.bit.render_bg)
 		{
 			fetch();
 			incY();
 			transferTtoV();
 			drawPixel();
 		}
+		if (PPUMASK.bit.render_sp)
+		{
+			
+		}
 		if (scanline_ == 261 && cycle_ == 1)
 		{
-			pixel_index_ = 0;
 			nmi_occured = false;
 			PPUSTATUS.bit.vb_start = 0;
 			PPUSTATUS.bit.sp0_hit = 0;
@@ -271,8 +316,10 @@ u8 PPU2C02::regRead(const u16 addr)
 		break;
 
 	case 0x04:
-		// TODO read when not in vertical blank
-		data = oam_ram_[oam_addr_]; // if in vertical blank
+		if (1 <= cycle_ && cycle_ <= 64)
+			data = 0xFF;
+		else 
+			data = primary_oam[oam_addr_]; 
 		break;
 
 	case 0x07:
@@ -308,10 +355,16 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x04:
-		oam_ram_[oam_addr_] = data;
-		++oam_addr_;
+	{
+		const bool rendering = ((scanline_ < 240 || scanline_ == 261) && 
+								(PPUMASK.bit.render_bg || PPUMASK.bit.render_sp));
+		if (!rendering)
+		{
+			primary_oam[oam_addr_] = data;
+			++oam_addr_;
+		}
 		break;
-
+	}
 	case 0x05:
 		if (!write_latch_) // first write
 		{
@@ -369,8 +422,8 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 
 void PPU2C02::OAMDMA(u8* data)
 {
-	for (std::size_t i = static_cast<std::size_t>(oam_addr_); i < oam_ram_.size(); ++i, ++data)
-		oam_ram_[i] = *data;
+	for (std::size_t i = 0; i < 256; ++i, ++oam_addr_, ++data)
+		primary_oam[oam_addr_] = *data;
 }
 
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
@@ -514,6 +567,27 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 			}
 		}
 	}
+}
+
+const std::vector<sf::Vertex>& PPU2C02::dbgGetOAM()
+{
+	static PixelArray sprites(64 * 8 * 8);
+	static bool init = false;
+
+	if (!init)
+	{
+
+	}
+
+	for (std::size_t i = 0; i < 256; i += 4)
+	{
+		const u8 tile_name = primary_oam[i + 1];
+		const u8 attr = primary_oam[i + 2];
+
+
+	}
+
+	return sprites.getVertexArray();
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)

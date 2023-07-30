@@ -36,6 +36,7 @@ public: // for debug
 	void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
+	const std::vector<sf::Vertex>& dbgGetOAM();
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
 	u8 dbg_pal = 0;
 
@@ -45,6 +46,7 @@ private:
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
 	static constexpr std::size_t oam_size = 256;
+	static constexpr std::size_t sprite_buf_size = 8 * 4;
 	static constexpr std::size_t resolution = 256 * 240;
 
 	union
@@ -69,10 +71,10 @@ private:
 		struct Foo
 		{
 			u8 grey_sacle : 1;
-			u8 show_bg_lm_8pixels : 1;
-			u8 show_sp_lm_8pixels : 1;
-			u8 show_bg : 1;
-			u8 show_sp : 1;
+			u8 render_bg_lm_8pixels : 1;
+			u8 render_sp_lm_8pixels : 1;
+			u8 render_bg : 1;
+			u8 render_sp : 1;
 			u8 empha_red : 1;
 			u8 empha_green : 1;
 			u8 empha_blue : 1;
@@ -120,10 +122,14 @@ private:
 
 	PixelArray pixels_, frame_;
 	Palette palette_;
-	std::vector<u8> mem_, oam_ram_;
+	std::vector<u8> mem_, primary_oam, second_oam;
 	u8 oam_addr_ = 0;
 
-	std::size_t pixel_index_ = 0;
+	struct OAMByte
+	{
+		u8 n : 6;
+		u8 m : 2;
+	} oam_byte;
 
 	std::shared_ptr<Cartridge> cart_;
 
