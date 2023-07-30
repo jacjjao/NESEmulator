@@ -24,6 +24,8 @@ public:
 	u8 memRead(u16 addr);
 	void memWrite(u16 addr, u8 data);
 
+	void OAMDMA(u8* data);
+
 	bool frame_complete = false;
 
 	const std::vector<sf::Vertex>& getVideoOutput();
@@ -35,14 +37,14 @@ public: // for debug
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
-	void dbgLogMemWrite(u16 addr, u8 data);
 	u8 dbg_pal = 0;
 
 private:
-	sf::Color getColorFromPaletteRam(u16 palette, u16 pixel);
+	sf::Color getColorFromPaletteRam(bool sprite, u16 palette, u16 pixel);
 	u8* mirroring(u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
+	static constexpr std::size_t oam_size = 256;
 	static constexpr std::size_t resolution = 256 * 240;
 
 	union
@@ -118,7 +120,8 @@ private:
 
 	PixelArray pixels_, frame_;
 	Palette palette_;
-	std::vector<u8> mem_;
+	std::vector<u8> mem_, oam_ram_;
+	u8 oam_addr_ = 0;
 
 	std::size_t pixel_index_ = 0;
 

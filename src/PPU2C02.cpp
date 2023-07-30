@@ -4,12 +4,10 @@
 
 #include <SFML/System/Clock.hpp>
 
-#include <fstream>
-#include <iomanip>
-
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
+	oam_ram_(oam_size, 0),
 	pixels_(resolution),
 	frame_(resolution)
 {
@@ -20,8 +18,6 @@ PPU2C02::PPU2C02() :
 			pixels_[i].setPosition({ static_cast<float>(col), static_cast<float>(row) });
 			pixels_[i].setColor(palette_.getColor(0x00));
 		}
-
-	PPUSTATUS.reg = 0;
 }
 
 void PPU2C02::reset()
@@ -106,7 +102,7 @@ void PPU2C02::update()
 		const u8 pal_low    = getBitN(shift_reg_.attr_low, pos);
 		const u8 pixel      = (pixel_high << 1) | pixel_low;
 		const u8 pal        = (pal_high << 1) | pal_low;
-		pixels_[pixel_index_++].setColor(getColorFromPaletteRam(pal, pixel));
+		pixels_[pixel_index_++].setColor(getColorFromPaletteRam(false, pal, pixel));
 	};
 	const auto shiftRegisters = [this] {
 		shift_reg_.pat_high  <<= 1;
@@ -208,15 +204,14 @@ void PPU2C02::update()
 			transferTtoV();
 			drawPixel();
 		}
-	}
-
-	if (scanline_ == 261 && cycle_ == 1)
-	{
-		pixel_index_ = 0;
-		nmi_occured = false;
-		PPUSTATUS.bit.vb_start = 0;
-		PPUSTATUS.bit.sp0_hit = 0;
-		PPUSTATUS.bit.sp_overflow = 0;
+		if (scanline_ == 261 && cycle_ == 1)
+		{
+			pixel_index_ = 0;
+			nmi_occured = false;
+			PPUSTATUS.bit.vb_start = 0;
+			PPUSTATUS.bit.sp0_hit = 0;
+			PPUSTATUS.bit.sp_overflow = 0;
+		}
 	}
 
 	++cycle_;
@@ -276,7 +271,8 @@ u8 PPU2C02::regRead(const u16 addr)
 		break;
 
 	case 0x04:
-		// TODO
+		// TODO read when not in vertical blank
+		data = oam_ram_[oam_addr_]; // if in vertical blank
 		break;
 
 	case 0x07:
@@ -308,11 +304,12 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x03:
-		// TODO
+		oam_addr_ = data;
 		break;
 
 	case 0x04:
-		// TODO
+		oam_ram_[oam_addr_] = data;
+		++oam_addr_;
 		break;
 
 	case 0x05:
@@ -367,41 +364,13 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 	{
 		return;
 	}
-	else if (addr < 0x2000)
-	{
-		mem_[addr] = data;
-	}
-	else if (0x2000 <= addr && addr <= 0x3EFF)
-	{
-		addr &= 0x2FFF;
-		if (cart_->getMirrorType() == MirrorType::Vertical)
-		{
-			if (0x2800 <= addr && addr <= 0x2FFF)
-			{
-				addr -= 0x0800;
-			}
-		}
-		else if (cart_->getMirrorType() == MirrorType::Horizontal)
-		{
-			if (0x2400 <= addr && addr <= 0x27FF)
-			{
-				addr -= 0x0400;
-			}
-			else if (0x2800 <= addr && addr <= 0x2BFF)
-			{
-				addr -= 0x0400;
-			}
-			else if (0x2C00 <= addr && addr <= 0x2FFF)
-			{
-				addr -= 0x0800;
-			}
-		}
-		mem_[addr] = data;
-	}
-	else if (0x3F00 <= addr && addr <= 0x3FFF)
-	{
-		palette_[addr] = data;
-	}
+	*mirroring(addr) = data;
+}
+
+void PPU2C02::OAMDMA(u8* data)
+{
+	for (std::size_t i = static_cast<std::size_t>(oam_addr_); i < oam_ram_.size(); ++i, ++data)
+		oam_ram_[i] = *data;
 }
 
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
@@ -444,9 +413,10 @@ u8* PPU2C02::mirroring(u16 addr)
 	return &mem_[addr];
 }
 
-sf::Color PPU2C02::getColorFromPaletteRam(const u16 palette, const u16 pixel)
+sf::Color PPU2C02::getColorFromPaletteRam(const bool sprite, const u16 palette, const u16 pixel)
 {
-	return palette_.getColor(memRead(0x3F00 + (palette << 2) + pixel) & 0x3F);
+	const u16 sp = static_cast<u16>(sprite);
+	return palette_.getColor(memRead(0x3F00 | (sprite << 4) | (palette << 2) | pixel) & 0x3F);
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
@@ -488,7 +458,7 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 				first[i] >>= 1;
 				second[i] >>= 1;
 
-				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(getColorFromPaletteRam(palette, pixel));
+				patterntb[index][(row + i) * 128 + col + (7 - j)].setColor(getColorFromPaletteRam(false, palette, pixel));
 			}
 		}
 
@@ -539,7 +509,7 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 					upper[i] >>= 1;
 					lower[i] >>= 1;
 
-					pixel.setColor(getColorFromPaletteRam(pal_sel, index));
+					pixel.setColor(getColorFromPaletteRam(false, pal_sel, index));
 				}
 			}
 		}
@@ -555,10 +525,10 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	if (!init)
 	{
 		sf::Vector2f pos{ 50.0f, 250.0f };
-		for (int i = 0; i < 8; ++i)
+		for (std::size_t i = 0; i < 8; ++i)
 		{
 			frame_palette[i].resize(16);
-			for (int j = 0; j < 4; ++j)
+			for (std::size_t j = 0; j < 4; ++j)
 			{
 				frame_palette[i][j * 4 + 0].position = pos;
 				frame_palette[i][j * 4 + 1].position = { pos.x + size, pos.y };
@@ -578,9 +548,9 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	}
 
 	u16 addr = 0x3F01 + index * 4;
-	for (int j = 0; j < 4; ++j)
+	for (std::size_t j = 0; j < 4; ++j)
 	{
-		sf::Color color = getColorFromPaletteRam(index, j);
+		sf::Color color = getColorFromPaletteRam(false, index, j);
 		frame_palette[index][j * 4].color = color;
 		frame_palette[index][j * 4 + 1].color = color;
 		frame_palette[index][j * 4 + 2].color = color;
@@ -588,11 +558,4 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 	}
 
 	return frame_palette[index];
-}
-
-void PPU2C02::dbgLogMemWrite(const u16 addr, const u8 data)
-{
-	static std::ofstream file{"mem_log.txt"};
-	file << std::hex << std::setfill('0') << std::setw(4) << int(addr) << ' ';
-	file << std::hex << std::setfill('0') << std::setw(2) << int(data) << std::endl;
 }

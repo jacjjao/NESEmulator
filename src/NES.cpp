@@ -42,6 +42,9 @@ void NES::reset()
 
 bool NES::onUpdate(float)
 {
+    static sf::Clock clock;
+    static constexpr float frame_time_interval = 1.0f / 50.0f;
+
     if (pause_) return true;
 
     bus_.joystick.setBotton(Botton::Up,     (event_.key.code == sf::Keyboard::W));
@@ -52,18 +55,9 @@ bool NES::onUpdate(float)
     bus_.joystick.setBotton(Botton::B,      (event_.key.code == sf::Keyboard::J));
     bus_.joystick.setBotton(Botton::Start,  (event_.key.code == sf::Keyboard::H));
     bus_.joystick.setBotton(Botton::Select, (event_.key.code == sf::Keyboard::G));
-    
-    return true;
-}
-
-void NES::onDraw()
-{
-    static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 50.0f;
-    static sf::Color background_color = sf::Color{ 0, 0, 50 };
 
     if (clock.getElapsedTime().asSeconds() < frame_time_interval)
-        return;
+        return true;
     clock.restart();
 
     if (!pause_)
@@ -74,8 +68,13 @@ void NES::onDraw()
         } while (!bus_.ppu.frame_complete);
         bus_.ppu.frame_complete = false;
     }
+    
+    return true;
+}
 
-    window_->clear(background_color);
+void NES::onDraw()
+{
+    window_->clear(sf::Color{ 0, 0, 50 });
 
     // bus_.ppu.dbgDrawNametb(1);
     
@@ -128,12 +127,4 @@ void NES::onKeyPressed()
 
 void NES::onKeyReleased()
 {
-    if (event_.key.code == sf::Keyboard::Escape)
-        window_->close();
-    else if (event_.key.code == sf::Keyboard::Right)
-        ++bus_.ppu.dbg_pal &= 0x07;
-    else if (event_.key.code == sf::Keyboard::Left)
-        --bus_.ppu.dbg_pal &= 0x07;
-    else if (event_.key.code == sf::Keyboard::Space)
-        pause_ = !pause_;
 }

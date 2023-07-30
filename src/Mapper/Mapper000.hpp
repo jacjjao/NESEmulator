@@ -11,15 +11,6 @@ public:
 	}
 	~Mapper000() override = default;
 
-	std::optional<u16> cpuMapWrite(const u16 addr) override
-	{
-		if (0x8000 <= addr && addr <= 0xFFFF)
-		{
-			return addr & (prg_bank_ > 1 ? 0x7FFF : 0x3FFF);
-		}
-		return std::nullopt;
-	}
-
 	std::optional<u16> cpuMapRead(const u16 addr) override
 	{
 		if (0x8000 <= addr && addr <= 0xFFFF)
@@ -40,7 +31,7 @@ public:
 
 	std::optional<u16> ppuMapWrite(const u16 addr) override
 	{
-		if (0x0000 <= addr && addr <= 0x1FFF && chr_bank_ == 0)
+		if (chr_bank_ == 0 && 0x0000 <= addr && addr <= 0x1FFF)
 		{
 			return addr;
 		}

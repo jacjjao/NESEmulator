@@ -19,6 +19,11 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	{
 		ppu.regWrite(addr & 0x0007, data);
 	}
+	else if (addr == 0x4014)
+	{
+		const u16 adr = (static_cast<u16>(data) << 8);
+		ppu.OAMDMA(&cpu_mem_[adr]);
+	}
 	else if (addr == 0x4016)
 	{
 		joystick.setStrobe(data);
@@ -30,7 +35,7 @@ u8 Bus::cpuRead(const u16 addr)
 {
 	if (const auto data = cart_->cpuRead(addr); data.has_value())
 	{
-		return data.value();
+		return *data;
 	}
 	else if (addr <= 0x1FFF)
 	{
