@@ -6,7 +6,7 @@ int main()
 {   
     auto cartridge = std::make_shared<Cartridge>();
     //if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/rom_singles/04-zero_page.nes"))
-    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/Donkey Kong.nes"))
+    if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/Super Mario Bros.nes"))
     {
         return EXIT_FAILURE;
     }

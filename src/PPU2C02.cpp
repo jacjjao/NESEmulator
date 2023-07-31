@@ -243,7 +243,7 @@ void PPU2C02::update()
 		{
 			if (sprite_in_range)
 			{
-				PPUSTATUS.bit.sp_overflow = true;
+				PPUSTATUS.bit.sp_overflow = 1;
 			}
 			else
 			{
@@ -269,12 +269,12 @@ void PPU2C02::update()
 			if (sprite.x > 0)
 				--sprite.x;
 	};
-	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority) {
+	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, int& idx) {
 		priority = true;
 		pal = 0; 
 		pat = 0;
 		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0) return;
-		for (auto& sprite : sprite_buf_)
+		for (int i = 0; auto& sprite : sprite_buf_)
 		{
 			if (sprite.x > 0)
 				continue;
@@ -286,8 +286,10 @@ void PPU2C02::update()
 				pat = pattern;
 				pal = sprite.palette;
 				priority = sprite.priority;
-				break;
+				idx = i;
+				return;
 			}
+			++i;
 		}
 	};
 	const auto shiftSpritePattern = [this] {
@@ -305,7 +307,11 @@ void PPU2C02::update()
 		u8 pal = 0, pat = 0;
 		if (sp_pat == 0 || bg_pat == 0)
 		{
-			if (sp_pat == 0)
+			if (sp_pat == 0 && bg_pat == 0)
+			{
+
+			}
+			else if (sp_pat == 0)
 			{
 				pat = bg_pat;
 				pal = bg_pal;
@@ -358,12 +364,20 @@ void PPU2C02::update()
 		}
 		u8 sp_pat = 0, sp_pal = 0;
 		bool sp_priority = false;
+		int sp_index = 0;
 		if (PPUMASK.bit.render_sp)
 		{
-			drawSprite(sp_pal, sp_pat, sp_priority);
+			drawSprite(sp_pal, sp_pat, sp_priority, sp_index);
 			shiftSpritePattern();
 			updateSpriteX();
 			spriteEval();
+		}
+
+		if (!PPUSTATUS.bit.sp0_hit && 
+			PPUMASK.bit.render_sp && PPUMASK.bit.render_bg &&
+			sp_index == 0 && sp_pat > 0 && bg_pat > 0)
+		{
+			PPUSTATUS.bit.sp0_hit = 1;
 		}
 
 		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority);
@@ -428,7 +442,7 @@ u8 PPU2C02::regRead(const u16 addr)
 	switch (addr)
 	{
 	case 0x02:
-		data = (0x1F & data_buf_) | (0xE0 & PPUSTATUS.reg);
+		data = (0xE0 & PPUSTATUS.reg) | (0x1F & data_buf_);
 		PPUSTATUS.bit.vb_start = 0;
 		write_latch_ = false;
 		break;

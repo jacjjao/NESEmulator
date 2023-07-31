@@ -124,6 +124,8 @@ void NES::onKeyPressed()
         --bus_.ppu.dbg_pal &= 0x07;
     else if (event_.key.code == sf::Keyboard::Space)
         pause_ = !pause_;
+    else if (event_.key.code == sf::Keyboard::L)
+        bus_.cpu.dbgCPULOG = true;
     else if (event_.key.code == sf::Keyboard::W)
         bus_.joystick.setBotton(Botton::Up, true);
     else if (event_.key.code == sf::Keyboard::S)

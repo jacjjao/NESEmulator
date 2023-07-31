@@ -447,7 +447,8 @@ void CPU6502::update()
 	instrs_[opcode_].addr_mode();
 
 #ifdef EMUCPULOG
-	print(reg_.PC - log_regs.PC);
+	if (dbgCPULOG)
+		print(reg_.PC - log_regs.PC);
 #endif
 
 	instrs_[opcode_].operate();
