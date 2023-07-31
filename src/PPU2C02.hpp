@@ -130,9 +130,12 @@ private:
 		u8 x;
 		u8 pat_high, pat_low;
 		bool priority;
+		bool is_sprite0;
 	};
 
 	std::vector<Sprite> sprite_buf_;
+	bool sprite0_hit_protential_next_ = false;
+	bool sprite0_hit_protential_cur_ = false;
 
 	struct OAMByte
 	{

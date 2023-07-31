@@ -182,6 +182,8 @@ void PPU2C02::update()
 	};
 	const auto createSprites = [this] {
 		if (scanline_ >= 240 || scanline_ == 0) return;
+		sprite0_hit_protential_cur_ = sprite0_hit_protential_next_;
+		sprite0_hit_protential_next_ = false;
 		const auto reverseByte = [](u8 b) {
 			b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
 			b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
@@ -202,16 +204,15 @@ void PPU2C02::update()
 			sprite_buf_[j].palette = attribute & 0x03;
 			sprite_buf_[j].priority = getBitN(attribute, 5);
 			
-			u8 tile_pos = (scanline_ - y_coord) % 17;
+			u8 tile_pos = scanline_ - y_coord;
 			if (flip_vert)
 			{
-				tile_pos ^= 0x0F;
-			}
-			tile_pos &= 0x0F;
-			if (tile_pos >= 8)
-			{
-				tile_pos -= 8;
-				++tile_index;
+				tile_pos ^= (PPUCTRL.bit.sp_size ? 0x0F : 0x07);
+				if (tile_pos >= 8)
+				{
+					tile_pos -= 8;
+					++tile_index;
+				}
 			}
 			const u16 tile_pat_addr = PPUCTRL.bit.sp_patterntb_addr * 0x1000 + (tile_index << 4) + tile_pos;
 			sprite_buf_[j].pat_low  = memRead(tile_pat_addr);
@@ -250,7 +251,7 @@ void PPU2C02::update()
 				++oam_byte.m; // hardware bug
 			}
 		}
-		else 
+		else
 		{
 			if (sprite_in_range)
 			{
@@ -259,6 +260,10 @@ void PPU2C02::update()
 				second_oam_.push_back(primary_oam_[sprite_addr++]);
 				second_oam_.push_back(primary_oam_[sprite_addr]);
 				assert(second_oam_.size() <= 32);
+				if (oam_byte.m == 0 && oam_byte.n == 0)
+				{
+					sprite0_hit_protential_next_ = true;
+				}
 			}
 		}
 		++oam_byte.n;
@@ -269,7 +274,7 @@ void PPU2C02::update()
 			if (sprite.x > 0)
 				--sprite.x;
 	};
-	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, int& idx) {
+	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, const u8 bg_pat) {
 		priority = true;
 		pal = 0; 
 		pat = 0;
@@ -286,7 +291,15 @@ void PPU2C02::update()
 				pat = pattern;
 				pal = sprite.palette;
 				priority = sprite.priority;
-				idx = i;
+
+				if (i == 0 && sprite0_hit_protential_cur_)
+				{
+					if (PPUMASK.bit.render_bg && PPUMASK.bit.render_sp)
+					{
+						PPUSTATUS.bit.sp0_hit = 1;
+					}
+				}
+
 				return;
 			}
 			++i;
@@ -364,23 +377,16 @@ void PPU2C02::update()
 		}
 		u8 sp_pat = 0, sp_pal = 0;
 		bool sp_priority = false;
-		int sp_index = 0;
 		if (PPUMASK.bit.render_sp)
 		{
-			drawSprite(sp_pal, sp_pat, sp_priority, sp_index);
+			drawSprite(sp_pal, sp_pat, sp_priority, bg_pat);
 			shiftSpritePattern();
 			updateSpriteX();
-			spriteEval();
-		}
-
-		if (!PPUSTATUS.bit.sp0_hit && 
-			PPUMASK.bit.render_sp && PPUMASK.bit.render_bg &&
-			sp_index == 0 && sp_pat > 0 && bg_pat > 0)
-		{
-			PPUSTATUS.bit.sp0_hit = 1;
 		}
 
 		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority);
+
+		spriteEval();
 
 		if (scanline_ == 261 && cycle_ == 1)
 		{
@@ -448,10 +454,7 @@ u8 PPU2C02::regRead(const u16 addr)
 		break;
 
 	case 0x04:
-		if (1 <= cycle_ && cycle_ <= 64)
-			data = 0xFF;
-		else 
-			data = primary_oam_[oam_addr_]; 
+		data = primary_oam_[oam_addr_]; 
 		break;
 
 	case 0x07:
@@ -488,13 +491,13 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 
 	case 0x04:
 	{
-		const bool rendering = ((scanline_ < 240 || scanline_ == 261) && 
-								(PPUMASK.bit.render_bg || PPUMASK.bit.render_sp));
-		if (!rendering)
-		{
+		//const bool rendering = ((scanline_ < 240 || scanline_ == 261) && 
+								//(PPUMASK.bit.render_bg || PPUMASK.bit.render_sp));
+		//if (!rendering)
+		//{
 			primary_oam_[oam_addr_] = data;
 			++oam_addr_;
-		}
+		//}
 		break;
 	}
 	case 0x05:
@@ -627,7 +630,7 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u
 	for (u16 addr = (index ? 0x1000 : 0x0000); addr < (index ? 0x2000 : 0x1000); addr += 16)
 	{
 		std::array<u8, 8> first{}, second{};
-		for (int i = 0; i < 8; ++i)
+		for (u16 i = 0; i < 8; ++i)
 		{
 			first[i] = memRead(addr + i);
 			second[i] = memRead(addr + i + 8);
