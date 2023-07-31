@@ -36,7 +36,6 @@ public: // for debug
 	void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
-	const std::vector<sf::Vertex>& dbgGetOAM();
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
 	u8 dbg_pal = 0;
 
@@ -45,8 +44,8 @@ private:
 	u8* mirroring(u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
-	static constexpr std::size_t oam_size = 256;
-	static constexpr std::size_t sprite_buf_size = 8 * 4;
+	static constexpr std::size_t primary_oam_size = 256;
+	static constexpr std::size_t second_oam_size = 8 * 4;
 	static constexpr std::size_t resolution = 256 * 240;
 
 	union
@@ -120,10 +119,20 @@ private:
 
 	u8 fine_x = 0;
 
-	PixelArray pixels_, frame_;
+	PixelArray pixels_;
 	Palette palette_;
-	std::vector<u8> mem_, primary_oam, second_oam;
+	std::vector<u8> mem_, primary_oam_, second_oam_;
 	u8 oam_addr_ = 0;
+
+	struct Sprite
+	{
+		u8 palette;
+		u8 x;
+		u8 pat_high, pat_low;
+		bool priority;
+	};
+
+	std::vector<Sprite> sprite_buf_;
 
 	struct OAMByte
 	{
@@ -135,16 +144,16 @@ private:
 
 	u8 data_buf_ = 0;
 
-	struct Latches
+	struct BackGroundLatches
 	{
 		u8 pat_high = 0;
 		u8 pat_low = 0;
 		u8 attr_low = 0;
 		u8 attr_high = 0;
 		u8 tile_name = 0;
-	} latches_;
+	} bg_latches_;
 
-	struct ShiftRegister
+	struct BackGroundShiftRegister
 	{
 		u16 pat_high = 0;
 		u16 pat_low = 0;

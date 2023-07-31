@@ -7,10 +7,10 @@
 
 PPU2C02::PPU2C02() :
 	mem_(mem_size, 0),
-	primary_oam(oam_size, 0),
+	primary_oam_(primary_oam_size, 0),
 	pixels_(resolution),
-	second_oam(sprite_buf_size),
-	frame_(resolution)
+	second_oam_(second_oam_size),
+	sprite_buf_(8)
 {
 	std::size_t i = 0;
 	for (int row = 0; row < 240; ++row)
@@ -38,7 +38,7 @@ void PPU2C02::update()
 {
 	const auto fetchName = [this] {
 		const u16 next_tile_addr = 0x2000 | (vram_addr_.reg & 0x0FFF);
-		latches_.tile_name = memRead(next_tile_addr);
+		bg_latches_.tile_name = memRead(next_tile_addr);
 	};
 	const auto fetchAttribute = [this] {
 		const u16 v = vram_addr_.reg;
@@ -71,39 +71,38 @@ void PPU2C02::update()
 			}
 		}
 		const u8 pal = (data >> offset);
-		latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
-		latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
+		bg_latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
+		bg_latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | latches_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | bg_latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x00;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
-		latches_.pat_low = memRead(next_pat_addr);
+		bg_latches_.pat_low = memRead(next_pat_addr);
 	};
 	const auto fetchUpperPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
-		next_pat_addr = (next_pat_addr << 8) | latches_.tile_name;
+		next_pat_addr = (next_pat_addr << 8) | bg_latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x01;
 		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
-		latches_.pat_high = memRead(next_pat_addr);
+		bg_latches_.pat_high = memRead(next_pat_addr);
 	};
 	const auto loadRegisters = [this] {
-		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | latches_.pat_high;
-		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | latches_.pat_low;
-		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | latches_.attr_high;
-		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | latches_.attr_low;
+		shift_reg_.pat_high  = (shift_reg_.pat_high  & 0xFF00) | bg_latches_.pat_high;
+		shift_reg_.pat_low   = (shift_reg_.pat_low   & 0xFF00) | bg_latches_.pat_low;
+		shift_reg_.attr_high = (shift_reg_.attr_high & 0xFF00) | bg_latches_.attr_high;
+		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | bg_latches_.attr_low;
 	};
-	const auto drawPixel = [this] {
-		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return;
+	const auto drawBGPixel = [this](u8& pal, u8& pat) {
+		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return 0;
 		const u8 pos        = 15 - (fine_x & 0x07);
 		const u8 pixel_high = getBitN(shift_reg_.pat_high, pos);
 		const u8 pixel_low  = getBitN(shift_reg_.pat_low, pos);
 		const u8 pal_high   = getBitN(shift_reg_.attr_high, pos);
 		const u8 pal_low    = getBitN(shift_reg_.attr_low, pos);
-		const u8 pixel      = (pixel_high << 1) | pixel_low;
-		const u8 pal        = (pal_high << 1) | pal_low;
-		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(false, pal, pixel));
+		pat = (pixel_high << 1) | pixel_low;
+		pal = (pal_high << 1)   | pal_low;
 	};
 	const auto shiftRegisters = [this] {
 		shift_reg_.pat_high  <<= 1;
@@ -181,12 +180,51 @@ void PPU2C02::update()
 			break;
 		}
 	};
-	const auto drawSprite = [this] {
-		if (cycle_ >= 64) return;
-		// TODO
+	const auto createSprites = [this] {
+		if (scanline_ >= 240 || scanline_ == 0) return;
+		const auto reverseByte = [](u8 b) {
+			b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+			b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+			b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+			return b;
+		};
+		sprite_buf_.clear();
+		for (std::size_t i = 0, j = 0; i < second_oam_.size(); i += 4, ++j)
+		{
+			sprite_buf_.emplace_back();
+			const u8 y_coord = second_oam_[i] + 1;
+			u16 tile_index = second_oam_[i + 1];
+			const u8 attribute = second_oam_[i + 2];
+			const bool flip_hor = getBitN(attribute, 6);
+			const bool flip_vert = getBitN(attribute, 7);
+			
+			sprite_buf_[j].x = second_oam_[i + 3];
+			sprite_buf_[j].palette = attribute & 0x03;
+			sprite_buf_[j].priority = getBitN(attribute, 5);
+			
+			u8 tile_pos = (scanline_ - y_coord) % 17;
+			if (flip_vert)
+			{
+				tile_pos ^= 0x0F;
+			}
+			tile_pos &= 0x0F;
+			if (tile_pos >= 8)
+			{
+				tile_pos -= 8;
+				++tile_index;
+			}
+			const u16 tile_pat_addr = PPUCTRL.bit.sp_patterntb_addr * 0x1000 + (tile_index << 4) + tile_pos;
+			sprite_buf_[j].pat_low  = memRead(tile_pat_addr);
+			sprite_buf_[j].pat_high = memRead(tile_pat_addr + 8);
+			if (flip_hor)
+			{
+				sprite_buf_[j].pat_low  = reverseByte(sprite_buf_[j].pat_low);
+				sprite_buf_[j].pat_high = reverseByte(sprite_buf_[j].pat_high);
+			}
+		}
 	};
 	const auto spriteEval = [this] {
-		if (!(65 <= cycle_ && cycle_ <= 256) && cycle_ % 2 == 1) return;
+		if (cycle_ % 2 == 0 || scanline_ >= 240 || cycle_ < 65 || cycle_ > 256) return;
 		if (cycle_ > 65 && oam_byte.n == 0) // all spirte have been evaluate
 		{
 			return;
@@ -194,16 +232,16 @@ void PPU2C02::update()
 		if (cycle_ == 65) // at the start of the evaluation
 		{
 			oam_byte.n = oam_byte.m = 0;
-			second_oam.clear();
+			second_oam_.clear();
 		}
 
 		u8 sprite_addr = oam_byte.n * 4 + oam_byte.m;
-		const u8 y_coord = primary_oam[sprite_addr];
-		const bool y_in_range = (y_coord == scanline_);
-		const bool second_oam_full = (second_oam.size() >= 32);
+		const u8 y_coord = primary_oam_[sprite_addr];
+		const bool sprite_in_range = ((y_coord <= scanline_) && ((scanline_ - y_coord) < (PPUCTRL.bit.sp_size ? 16 : 8)));
+		const bool second_oam_full = (second_oam_.size() >= 32);
 		if (second_oam_full)
 		{
-			if (y_in_range)
+			if (sprite_in_range)
 			{
 				PPUSTATUS.bit.sp_overflow = true;
 			}
@@ -212,19 +250,91 @@ void PPU2C02::update()
 				++oam_byte.m; // hardware bug
 			}
 		}
-		else
+		else 
 		{
-			second_oam.push_back(primary_oam[sprite_addr++]);
-			second_oam.push_back(primary_oam[sprite_addr++]);
-			second_oam.push_back(primary_oam[sprite_addr++]);
-			second_oam.push_back(primary_oam[sprite_addr]);
-			assert(second_oam.size() <= 32);
+			if (sprite_in_range)
+			{
+				second_oam_.push_back(primary_oam_[sprite_addr++]);
+				second_oam_.push_back(primary_oam_[sprite_addr++]);
+				second_oam_.push_back(primary_oam_[sprite_addr++]);
+				second_oam_.push_back(primary_oam_[sprite_addr]);
+				assert(second_oam_.size() <= 32);
+			}
 		}
 		++oam_byte.n;
 	};
+	const auto updateSpriteX = [this] {
+		if (cycle_ > 256 || scanline_ >= 240) return;
+		for (auto& sprite : sprite_buf_)
+			if (sprite.x > 0)
+				--sprite.x;
+	};
+	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority) {
+		priority = true;
+		pal = 0; 
+		pat = 0;
+		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0) return;
+		for (auto& sprite : sprite_buf_)
+		{
+			if (sprite.x > 0)
+				continue;
+			const u8 pat_low  = getBitN(sprite.pat_low, 7);
+			const u8 pat_high = getBitN(sprite.pat_high, 7);
+			const u8 pattern = (pat_high << 1) | pat_low;
+			if (pattern > 0)
+			{
+				pat = pattern;
+				pal = sprite.palette;
+				priority = sprite.priority;
+				break;
+			}
+		}
+	};
+	const auto shiftSpritePattern = [this] {
+		if (cycle_ > 256 || scanline_ >= 240) return;
+		for (auto& sprite : sprite_buf_)
+			if (sprite.x == 0)
+			{
+				sprite.pat_low  <<= 1;
+				sprite.pat_high <<= 1;
+			}
+	};
+	const auto muxColor = [this](const u8 bg_pat, const u8 bg_pal, const u8 sp_pat, const u8 sp_pal, const bool priority) {
+		if (cycle_ > 256 || scanline_ >= 240) return;
+		bool is_sprite = false;
+		u8 pal = 0, pat = 0;
+		if (sp_pat == 0 || bg_pat == 0)
+		{
+			if (sp_pat == 0)
+			{
+				pat = bg_pat;
+				pal = bg_pal;
+			}
+			else
+			{
+				is_sprite = true;
+				pat = sp_pat;
+				pal = sp_pal;
+			}
+		}
+		else if (priority)
+		{
+			pat = bg_pat;
+			pal = bg_pal;
+		}
+		else
+		{
+			is_sprite = true;
+			pat = sp_pat;
+			pal = sp_pal;
+		}
+		pixels_[scanline_ * 256 + cycle_ - 1].setColor(getColorFromPaletteRam(is_sprite, pal, pat));
+	};
+
 
 	if (cycle_ == 0)
 	{
+		createSprites();
 		cycle_ = 1;
 	}
 
@@ -236,20 +346,28 @@ void PPU2C02::update()
 			nmi_occured = PPUCTRL.bit.gen_nmi;
 		}
 	}
-
 	else
 	{
+		u8 bg_pat = 0, bg_pal = 0;
 		if (PPUMASK.bit.render_bg)
 		{
 			fetch();
 			incY();
 			transferTtoV();
-			drawPixel();
+			drawBGPixel(bg_pal, bg_pat);
 		}
+		u8 sp_pat = 0, sp_pal = 0;
+		bool sp_priority = false;
 		if (PPUMASK.bit.render_sp)
 		{
-			
+			drawSprite(sp_pal, sp_pat, sp_priority);
+			shiftSpritePattern();
+			updateSpriteX();
+			spriteEval();
 		}
+
+		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority);
+
 		if (scanline_ == 261 && cycle_ == 1)
 		{
 			nmi_occured = false;
@@ -319,7 +437,7 @@ u8 PPU2C02::regRead(const u16 addr)
 		if (1 <= cycle_ && cycle_ <= 64)
 			data = 0xFF;
 		else 
-			data = primary_oam[oam_addr_]; 
+			data = primary_oam_[oam_addr_]; 
 		break;
 
 	case 0x07:
@@ -360,7 +478,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 								(PPUMASK.bit.render_bg || PPUMASK.bit.render_sp));
 		if (!rendering)
 		{
-			primary_oam[oam_addr_] = data;
+			primary_oam_[oam_addr_] = data;
 			++oam_addr_;
 		}
 		break;
@@ -423,7 +541,7 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 void PPU2C02::OAMDMA(u8* data)
 {
 	for (std::size_t i = 0; i < 256; ++i, ++oam_addr_, ++data)
-		primary_oam[oam_addr_] = *data;
+		primary_oam_[oam_addr_] = *data;
 }
 
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
@@ -461,15 +579,16 @@ u8* PPU2C02::mirroring(u16 addr)
 	}
 	else if (0x3F00 <= addr && addr <= 0x3FFF)
 	{
-		return &palette_[addr];
+		return &palette_[addr & 0x00FF];
 	}
 	return &mem_[addr];
 }
 
 sf::Color PPU2C02::getColorFromPaletteRam(const bool sprite, const u16 palette, const u16 pixel)
 {
-	const u16 sp = static_cast<u16>(sprite);
-	return palette_.getColor(memRead(0x3F00 | (sprite << 4) | (palette << 2) | pixel) & 0x3F);
+	const u16 sp = sprite;
+	const u16 addr = ((sp << 4) | (palette << 2) | pixel);
+	return palette_.getColor(palette_[addr] & 0x3F);
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
@@ -567,27 +686,6 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 			}
 		}
 	}
-}
-
-const std::vector<sf::Vertex>& PPU2C02::dbgGetOAM()
-{
-	static PixelArray sprites(64 * 8 * 8);
-	static bool init = false;
-
-	if (!init)
-	{
-
-	}
-
-	for (std::size_t i = 0; i < 256; i += 4)
-	{
-		const u8 tile_name = primary_oam[i + 1];
-		const u8 attr = primary_oam[i + 2];
-
-
-	}
-
-	return sprites.getVertexArray();
 }
 
 const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)

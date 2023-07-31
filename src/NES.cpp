@@ -51,7 +51,7 @@ void NES::reset()
 bool NES::onUpdate(float)
 {
     if (pause_) return true;
-
+    /*
     bus_.joystick.setBotton(Botton::Up,     (event_.key.code == sf::Keyboard::W));
     bus_.joystick.setBotton(Botton::Down,   (event_.key.code == sf::Keyboard::S));
     bus_.joystick.setBotton(Botton::Left,   (event_.key.code == sf::Keyboard::A));
@@ -60,7 +60,7 @@ bool NES::onUpdate(float)
     bus_.joystick.setBotton(Botton::B,      (event_.key.code == sf::Keyboard::J));
     bus_.joystick.setBotton(Botton::Start,  (event_.key.code == sf::Keyboard::H));
     bus_.joystick.setBotton(Botton::Select, (event_.key.code == sf::Keyboard::G));
-
+    */
     if (!pause_)
     {
         do
@@ -124,8 +124,40 @@ void NES::onKeyPressed()
         --bus_.ppu.dbg_pal &= 0x07;
     else if (event_.key.code == sf::Keyboard::Space)
         pause_ = !pause_;
+    else if (event_.key.code == sf::Keyboard::W)
+        bus_.joystick.setBotton(Botton::Up, true);
+    else if (event_.key.code == sf::Keyboard::S)
+        bus_.joystick.setBotton(Botton::Down, true);
+    else if (event_.key.code == sf::Keyboard::A)
+        bus_.joystick.setBotton(Botton::Left, true);
+    else if (event_.key.code == sf::Keyboard::D)
+        bus_.joystick.setBotton(Botton::Right, true);
+    else if (event_.key.code == sf::Keyboard::G)
+        bus_.joystick.setBotton(Botton::Select, true);
+    else if (event_.key.code == sf::Keyboard::H)
+        bus_.joystick.setBotton(Botton::Start, true);
+    else if (event_.key.code == sf::Keyboard::J)
+        bus_.joystick.setBotton(Botton::B, true);
+    else if (event_.key.code == sf::Keyboard::K)
+        bus_.joystick.setBotton(Botton::A, true);
 }
 
 void NES::onKeyReleased()
 {
+     if (event_.key.code == sf::Keyboard::W)
+         bus_.joystick.setBotton(Botton::Up, false);
+     else if (event_.key.code == sf::Keyboard::S)
+         bus_.joystick.setBotton(Botton::Down, false);
+     else if (event_.key.code == sf::Keyboard::A)
+         bus_.joystick.setBotton(Botton::Left, false);
+     else if (event_.key.code == sf::Keyboard::D)
+         bus_.joystick.setBotton(Botton::Right, false);
+     else if (event_.key.code == sf::Keyboard::G)
+         bus_.joystick.setBotton(Botton::Select, false);
+     else if (event_.key.code == sf::Keyboard::H)
+         bus_.joystick.setBotton(Botton::Start, false);
+     else if (event_.key.code == sf::Keyboard::J)
+         bus_.joystick.setBotton(Botton::B, false);
+     else if (event_.key.code == sf::Keyboard::K)
+         bus_.joystick.setBotton(Botton::A, false);
 }
