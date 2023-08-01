@@ -9,11 +9,11 @@ class Mapper
 public:
 	virtual ~Mapper() = default;
 
-	virtual std::optional<u16> cpuMapWrite(u16) { return std::nullopt; }
-	virtual std::optional<u16> cpuMapRead(u16) { return std::nullopt; }
+	virtual std::optional<std::size_t> cpuMapWrite(u16, u8) { return std::nullopt; }
+	virtual std::optional<std::size_t> cpuMapRead(u16) { return std::nullopt; }
 	
-	virtual std::optional<u16> ppuMapWrite(u16) { return std::nullopt; }
-	virtual std::optional<u16> ppuMapRead(u16) { return std::nullopt; }
+	virtual std::optional<std::size_t> ppuMapWrite(u16, u8) { return std::nullopt; }
+	virtual std::optional<std::size_t> ppuMapRead(u16) { return std::nullopt; }
 
 	virtual void reset() {};
 };

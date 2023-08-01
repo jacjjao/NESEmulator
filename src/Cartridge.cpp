@@ -1,6 +1,7 @@
 #include "Cartridge.hpp"
 #include "common/bitHelper.hpp"
 #include "Mapper/Mapper000.hpp"
+#include "Mapper/Mapper003.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -80,6 +81,10 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         mapper_.reset(new Mapper000{header.prg_rom_size, header.chr_rom_size});
         break;
 
+    case 0x03:
+        mapper_.reset(new Mapper003{ header.prg_rom_size, header.chr_rom_size });
+        break;
+
     default:
         std::cerr << "[FALIED] unsupport mapper " << (int)mapper_type << '\n';
         return false;
@@ -111,7 +116,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
 
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->cpuMapWrite(addr);
+    const auto adr = mapper_->cpuMapWrite(addr, data);
     if (adr.has_value())
     {
         prg_mem_[*adr] = data;
@@ -132,7 +137,7 @@ std::optional<u8> Cartridge::cpuRead(const u16 addr)
 
 bool Cartridge::ppuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->ppuMapWrite(addr);
+    const auto adr = mapper_->ppuMapWrite(addr, data);
     if (adr.has_value())
     {
         chr_mem_[*adr] = data;

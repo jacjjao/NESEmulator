@@ -5,9 +5,9 @@
 int main()
 {   
     auto cartridge = std::make_shared<Cartridge>();
-    // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_writes_oam.nes"))
+    // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_reads.nes"))
     // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/vbl_clear_time.nes"))
-    if (!cartridge->loadiNESFile("../../../Super Mario Bros.nes"))
+    if (!cartridge->loadiNESFile("../../../Super Mario Bros 3.nes"))
     {
         return EXIT_FAILURE;
     }
