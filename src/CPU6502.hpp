@@ -25,9 +25,6 @@ public:
 	void irq();
 	void nmi();
 
-public: // debug
-	bool dbgCPULOG = false;
-
 private:
 	struct Instruction
 	{

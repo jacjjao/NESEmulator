@@ -134,8 +134,7 @@ private:
 	};
 
 	std::vector<Sprite> sprite_buf_;
-	bool sprite0_hit_protential_next_ = false;
-	bool sprite0_hit_protential_cur_ = false;
+	bool sprite_hit_potential_ = false;
 
 	struct OAMByte
 	{

@@ -3,6 +3,8 @@
 #include <SFML/Graphics.hpp>
 #include "Bus.hpp"
 
+// #define DEBUG_WINDOW
+
 class NES
 {
 public:
@@ -24,7 +26,6 @@ private:
 	Bus bus_{};
 
 	sf::RenderWindow* window_ = nullptr;
-	sf::Clock system_clock_{};
 	sf::Event event_{};
 
 	bool sim_timing_ = false;
