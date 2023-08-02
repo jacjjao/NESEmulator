@@ -4,6 +4,11 @@
 #include <optional>
 
 
+enum class MirrorType
+{
+	Vertical, Horizontal
+};
+
 class Mapper
 {
 public:
@@ -19,4 +24,10 @@ public:
 
 	virtual void loadPrgRom(u8* data_begin, u8* data_end) = 0;
 	virtual void loadChrRom(u8* data_begin, u8* data_end) = 0;
+
+	void setMirrortype(MirrorType type);
+	MirrorType getMirrortype() const;
+
+private:
+	MirrorType mirror_type_;
 };

@@ -4,6 +4,11 @@
 #include <vector>
 
 
+constexpr std::size_t operator ""_KB(unsigned long long val)
+{
+	return val * 1024;
+}
+
 class Memory
 {
 public:

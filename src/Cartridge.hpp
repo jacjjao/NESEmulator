@@ -6,10 +6,6 @@
 #include <memory>
 #include <vector>
 
-enum class MirrorType
-{
-	Vertical, Horizontal
-};
 
 class Cartridge
 {
@@ -26,6 +22,4 @@ public:
 
 private:
 	std::unique_ptr<Mapper> mapper_;
-
-	MirrorType mirror_type_;
 };

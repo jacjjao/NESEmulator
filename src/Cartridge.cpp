@@ -73,8 +73,6 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
-    mirror_type_ = getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal;
-
     std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16384;
     std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
     const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
@@ -93,7 +91,9 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
-    u8* it = &(*(data.begin() + 16));
+    mapper_->setMirrortype((getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal));
+
+    u8* it = &data[16];
 
     // load PRG ROM
     mapper_->loadPrgRom(it, it + prg_rom_size);
@@ -131,5 +131,5 @@ std::optional<u8> Cartridge::ppuRead(const u16 addr)
 
 MirrorType Cartridge::getMirrorType() const
 {
-    return mirror_type_;
+    return mapper_->getMirrortype();
 }
