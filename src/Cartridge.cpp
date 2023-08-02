@@ -73,87 +73,60 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
+    mirror_type_ = getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal;
 
+    std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16384;
+    std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
     const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
     switch (mapper_type)
     {
     case 0x00:
-        mapper_.reset(new Mapper000{ header.prg_rom_size, header.chr_rom_size });
+        mapper_.reset(new Mapper000{ prg_rom_size, chr_rom_size });
         break;
-
+    
     case 0x03:
-        mapper_.reset(new Mapper003{ header.prg_rom_size, header.chr_rom_size });
+        mapper_.reset(new Mapper003{ prg_rom_size, chr_rom_size });
         break;
-
+    
     default:
         std::cerr << "[FALIED] unsupport mapper " << (int)mapper_type << '\n';
         return false;
     }
 
-    mirror_type_ = getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal;
-
-    auto it = data.cbegin() + 16;
+    u8* it = &(*(data.begin() + 16));
 
     // load PRG ROM
-    std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16384;
-    prg_mem_.assign(it, it + prg_rom_size);
+    mapper_->loadPrgRom(it, it + prg_rom_size);
+
     it += prg_rom_size;
 
     // load CHR ROM
-    if (header.chr_rom_size == 0)
+    if (header.chr_rom_size > 0)
     {
-        chr_mem_.resize(8192);
+        mapper_->loadChrRom(it, it + chr_rom_size);
     }
-    else
-    {
-        std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
-        chr_mem_.assign(it, it + chr_rom_size);
-    }
-
 
     return true;
 }
 
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->cpuMapWrite(addr, data);
-    if (adr.has_value())
-    {
-        prg_mem_[*adr] = data;
-        return true;
-    }
-    return false;
+    return mapper_->cpuMapWrite(addr, data);
 }
 
 std::optional<u8> Cartridge::cpuRead(const u16 addr)
 {
-    const auto adr = mapper_->cpuMapRead(addr);
-    if (adr.has_value())
-    {
-        return prg_mem_[*adr];
-    }
-    return std::nullopt;
+    return mapper_->cpuMapRead(addr);
 }
 
 bool Cartridge::ppuWrite(const u16 addr, const u8 data)
 {
-    const auto adr = mapper_->ppuMapWrite(addr, data);
-    if (adr.has_value())
-    {
-        chr_mem_[*adr] = data;
-        return true;
-    }
-    return false;
+    return mapper_->ppuMapWrite(addr, data);
 }
 
 std::optional<u8> Cartridge::ppuRead(const u16 addr)
 {
-    const auto adr = mapper_->ppuMapRead(addr);
-    if (adr.has_value())
-    {
-        return chr_mem_[*adr];
-    }
-    return std::nullopt;
+    return mapper_->ppuMapRead(addr);
 }
 
 MirrorType Cartridge::getMirrorType() const

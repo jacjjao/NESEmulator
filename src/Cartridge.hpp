@@ -14,8 +14,6 @@ enum class MirrorType
 class Cartridge
 {
 public:
-	friend Mapper;
-
 	bool loadiNESFile(const std::filesystem::path& path);
 
 	bool cpuWrite(const u16 addr, const u8 data);
@@ -27,9 +25,6 @@ public:
 	MirrorType getMirrorType() const;
 
 private:
-	std::vector<u8> prg_mem_;
-	std::vector<u8> chr_mem_;
-
 	std::unique_ptr<Mapper> mapper_;
 
 	MirrorType mirror_type_;

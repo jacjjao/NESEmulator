@@ -6,16 +6,20 @@
 class Mapper003 : public Mapper
 {
 public:
-	Mapper003(unsigned prg_bank, unsigned chr_bank) : prg_bank_{ prg_bank }, chr_bank_{ chr_bank }
-	{
-	}
+	Mapper003(std::size_t prg_rom_size_in_byte, std::size_t chr_rom_size_in_byte);
 	~Mapper003() override = default;
 
-	std::optional<std::size_t> cpuMapWrite(const u16 addr, const u8 data) override;
-	std::optional<std::size_t> cpuMapRead(const u16 addr) override;
-	std::optional<std::size_t> ppuMapRead(const u16 addr) override;
+	bool cpuMapWrite(const u16 addr, const u8 data) override;
+	std::optional<u8> cpuMapRead(const u16 addr) override;
+
+	bool ppuMapWrite(const u16 addr, const u8 data) override;
+	std::optional<u8> ppuMapRead(const u16 addr) override;
+
+	void loadPrgRom(u8* data_begin, u8* data_end) override;
+	void loadChrRom(u8* data_begin, u8* data_end) override;
 
 private:
-	unsigned prg_bank_, chr_bank_;
 	u8 bank_idx_ = 0;
+	Memory prg_rom_, chr_mem_;
+	bool is_chr_ram_;
 };

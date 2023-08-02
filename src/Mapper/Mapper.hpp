@@ -1,16 +1,12 @@
 #pragma once
 
-#include "Rom.hpp"
-#include "Ram.hpp"
+#include "Memory.hpp"
 #include <optional>
 
 
 class Mapper
 {
 public:
-	Mapper(std::size_t prg_ram_size_in_byte = 0, std::size_t prg_ram_bank_size = 0,
-		   std::size_t chr_ram_size_in_byte = 0, std::size_t chr_ram_bank_size = 0);
-
 	virtual ~Mapper() = default;
 
 	virtual bool cpuMapWrite(u16, u8) { return false; }
@@ -21,10 +17,6 @@ public:
 
 	virtual void reset() {};
 
-	void assignPrgRom(Rom prg_rom);
-	void assignChrRom(Rom chr_rom);
-
-protected:
-	Rom prg_rom_, chr_rom_;
-	Ram prg_ram_, chr_ram_;
+	virtual void loadPrgRom(u8* data_begin, u8* data_end) = 0;
+	virtual void loadChrRom(u8* data_begin, u8* data_end) = 0;
 };
