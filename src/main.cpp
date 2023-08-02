@@ -7,7 +7,7 @@ int main()
     auto cartridge = std::make_shared<Cartridge>();
     // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_reads.nes"))
     // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/vbl_clear_time.nes"))
-    if (!cartridge->loadiNESFile("../../../Super Mario Bros 3.nes"))
+    if (!cartridge->loadiNESFile("../../../The Legend of Zelda.nes"))
     {
         return EXIT_FAILURE;
     }

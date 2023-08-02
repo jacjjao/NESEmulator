@@ -78,7 +78,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     switch (mapper_type)
     {
     case 0x00:
-        mapper_.reset(new Mapper000{header.prg_rom_size, header.chr_rom_size});
+        mapper_.reset(new Mapper000{ header.prg_rom_size, header.chr_rom_size });
         break;
 
     case 0x03:

@@ -14,6 +14,8 @@ enum class MirrorType
 class Cartridge
 {
 public:
+	friend Mapper;
+
 	bool loadiNESFile(const std::filesystem::path& path);
 
 	bool cpuWrite(const u16 addr, const u8 data);
