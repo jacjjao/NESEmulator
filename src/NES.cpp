@@ -26,7 +26,7 @@ void NES::insertCartridge(std::shared_ptr<Cartridge> cartridge)
 void NES::run()
 {
     static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 60.0f;
+    static constexpr float frame_time_interval = 1.0f / 50.0f;
 
     while (window_->isOpen())
     {

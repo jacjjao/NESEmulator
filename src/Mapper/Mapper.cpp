@@ -1,5 +1,6 @@
 #include "Mapper.hpp"
 
+
 void Mapper::setMirrortype(const MirrorType type)
 {
 	mirror_type_ = type;

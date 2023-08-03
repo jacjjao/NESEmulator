@@ -17,16 +17,20 @@ public:
 
 	void reset() override;
 
+	void loadPrgRom(u8* data_begin, u8* data_end) override;
+	void loadChrRom(u8* data_begin, u8* data_end) override;
+
 private:
 	void setControlMode(u8 data);
 
-	u8 prg_bank1_ = 0, prg_bank2_ = 0;
+	u8 prg_bank0_ = 0, prg_bank1_ = 0;
 	unsigned prg_bank_mode_ = 3;
 
-	u8 chr_bank1_ = 0, chr_bank2_ = 0;
+	u8 chr_bank0_ = 0, chr_bank1_ = 0;
 	unsigned chr_bank_mode_ = false;
 	
 	u8 shift_reg_ = 0x10;
 
 	Memory prg_rom_, chr_rom_;
+	bool is_chr_ram;
 };

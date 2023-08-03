@@ -2,7 +2,7 @@
 
 Mapper000::Mapper000(const std::size_t prg_rom_size_in_byte, const std::size_t chr_rom_size_in_byte) :
 	prg_rom_{ 0, prg_rom_size_in_byte },
-	chr_mem_{ 0, (chr_rom_size_in_byte ? chr_rom_size_in_byte : 8 * 1024) },
+	chr_mem_{ 0, (chr_rom_size_in_byte ? chr_rom_size_in_byte : 8_KB) },
 	is_chr_ram_{ chr_rom_size_in_byte == 0 }
 {
 }
@@ -11,8 +11,7 @@ std::optional<u8> Mapper000::cpuMapRead(const u16 addr)
 {
 	if (0x8000 <= addr && addr <= 0xFFFF)
 	{
-		constexpr std::size_t eight_kiB = 8 * 1024;
-		return prg_rom_[addr & (prg_rom_.getMemSize() > eight_kiB ? 0x7FFF : 0x3FFF)];
+		return prg_rom_[addr & (prg_rom_.getMemSize() > 16_KB ? 0x7FFF : 0x3FFF)];
 	}
 	return std::nullopt;
 }

@@ -5,7 +5,8 @@
 
 Mapper001::Mapper001(const std::size_t prg_rom_size_in_byte, const std::size_t chr_rom_size_in_byte) :
 	prg_rom_{ 16_KB, prg_rom_size_in_byte },
-	chr_rom_{  8_KB, chr_rom_size_in_byte }
+	chr_rom_{ 8_KB, (chr_rom_size_in_byte ? chr_rom_size_in_byte : 32_KB) },
+	is_chr_ram { chr_rom_size_in_byte == 0 }
 {
 }
 
@@ -16,18 +17,58 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)
 		if (getBitN(data, 7))
 		{
 			reset();
+			return true;
+		}
+
+		u8 cmd = 0;
+		if (getBitN(shift_reg_, 0))
+		{
+			cmd = (getBitN(data, 0) << 4) | (shift_reg_ >> 1);
+			shift_reg_ = 0x10;
 		}
 		else
 		{
-			if (getBitN(shift_reg_, 0))
+			shift_reg_ = (getBitN(data, 0) << 4) | (shift_reg_ >> 1);
+		}
+
+		if (addr <= 0x9FFF)
+		{
+			setControlMode(cmd);
+		}
+		else if (addr <= 0xBFFF)
+		{
+			if (chr_bank_mode_)
 			{
-				shift_reg_ = (getBitN(data, 0) << 4) | (shift_reg_ >> 1);
-				setControlMode(shift_reg_);
-				shift_reg_ = 0x10;
+				chr_bank0_ = cmd;
 			}
-			else
+			else // 8KB mode
 			{
-				shift_reg_ = (getBitN(data, 0) << 4) | (shift_reg_ >> 1);
+				chr_bank0_ = (cmd >> 1);
+			}
+		}
+		else if (addr <= 0xDFFF)
+		{
+			if (chr_bank_mode_) // 4KB mode
+			{
+				chr_bank0_ = cmd;
+			}
+		}
+		else
+		{
+			cmd &= 0x0F;
+			switch (prg_bank_mode_)
+			{
+			case 0: case 1: // 32KB mode
+				prg_bank0_ = (cmd >> 1);
+				break;
+
+			case 2: 
+				prg_bank1_ = cmd;
+				break;
+
+			case 3:
+				prg_bank0_ = cmd;
+				break;
 			}
 		}
 		return true;
@@ -37,23 +78,82 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)
 
 std::optional<u8> Mapper001::cpuMapRead(const u16 addr)
 {
-	return std::optional<u8>();
+	if (addr < 0x8000)
+	{
+		return std::nullopt;
+	}
+	
+	if (prg_bank_mode_ <= 1) // 32KB mode
+	{
+		prg_rom_.switchBank(prg_bank0_);
+		return prg_rom_[addr & 0x7FFF];
+	}
+	else
+	{
+		if (addr < 0xC000)
+		{
+			prg_rom_.switchBank(prg_bank0_);
+		}
+		else
+		{
+			prg_rom_.switchBank(prg_bank1_);
+		}
+		return prg_rom_[addr & 0x3FFF];
+	}
 }
 
 bool Mapper001::ppuMapWrite(const u16 addr, const u8 data)
 {
-	return false;
+	if (!is_chr_ram || addr >= 0x2000)
+	{
+		return false;
+	}
+	
+	chr_rom_.switchBank(chr_bank0_);
+	chr_rom_[addr] = data;
+	return true;
 }
 
 std::optional<u8> Mapper001::ppuMapRead(const u16 addr)
 {
-	return std::optional<u8>();
+	if (addr >= 0x2000)
+	{
+		return std::nullopt;
+	}
+
+	if (chr_bank_mode_)
+	{
+		if (addr < 0x1000)
+		{
+			chr_rom_.switchBank(chr_bank0_);
+		}
+		else
+		{
+			chr_rom_.switchBank(chr_bank1_);
+		}
+		return chr_rom_[addr & 0x0FFF];
+	}
+	else // 8KB mode
+	{
+		chr_rom_.switchBank(chr_bank0_);
+		return chr_rom_[addr];
+	}
 }
 
 void Mapper001::reset()
 {
 	shift_reg_ = 0x10;
 	prg_bank_mode_ = 3;
+}
+
+void Mapper001::loadPrgRom(u8* data_begin, u8* data_end)
+{
+	prg_rom_.assign(data_begin, data_end);
+}
+
+void Mapper001::loadChrRom(u8* data_begin, u8* data_end)
+{
+	chr_rom_.assign(data_begin, data_end);
 }
 
 void Mapper001::setControlMode(const u8 data)
