@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <vector>
+#include <optional>
 
 
 class Cartridge
@@ -22,4 +23,5 @@ public:
 
 private:
 	std::unique_ptr<Mapper> mapper_;
+	std::vector<u8> prg_rom_, chr_mem_;
 };

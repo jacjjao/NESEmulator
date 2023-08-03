@@ -29,6 +29,10 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 		joystick.setStrobe(data);
 		joystick_cache_ = joystick;
 	}
+	else
+	{
+		cpu_mem_[addr] = data;
+	}
 }
 
 u8 Bus::cpuRead(const u16 addr)
@@ -49,7 +53,7 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return joystick_cache_.report();
 	}
-	return 0;
+	return cpu_mem_[addr];
 }
 
 void Bus::clock()

@@ -1,47 +1,37 @@
 #include "Mapper000.hpp"
 
-Mapper000::Mapper000(const std::size_t prg_rom_size_in_byte, const std::size_t chr_rom_size_in_byte) :
-	prg_rom_{ 0, prg_rom_size_in_byte },
-	chr_mem_{ 0, (chr_rom_size_in_byte ? chr_rom_size_in_byte : 8_KB) },
-	is_chr_ram_{ chr_rom_size_in_byte == 0 }
+Mapper000::Mapper000(const usize prg_rom_size_in_byte, const usize chr_rom_size_in_byte) :
+	prg_banks_{ prg_rom_size_in_byte / 16_KB },
+	use_chr_ram_{ chr_rom_size_in_byte == 0 }
 {
 }
 
-std::optional<u8> Mapper000::cpuMapRead(const u16 addr)
+bool Mapper000::cpuMapRead(const u16 addr, usize& mapped_addr)
 {
 	if (0x8000 <= addr && addr <= 0xFFFF)
 	{
-		return prg_rom_[addr & (prg_rom_.getMemSize() > 16_KB ? 0x7FFF : 0x3FFF)];
-	}
-	return std::nullopt;
-}
-
-bool Mapper000::ppuMapWrite(const u16 addr, const u8 data)
-{
-	if (is_chr_ram_ && 0x0000 <= addr && addr <= 0x1FFF)
-	{
-		chr_mem_[addr] = data;
+		mapped_addr = addr & (prg_banks_ > 1 ? 0x7FFF : 0x3FFF);
 		return true;
 	}
 	return false;
 }
 
-std::optional<u8> Mapper000::ppuMapRead(const u16 addr)
+bool Mapper000::ppuMapWrite(const u16 addr, u8, usize& mapped_addr)
 {
-	if (0x0000 <= addr && addr <= 0x1FFF)
+	if (use_chr_ram_ && addr <= 0x1FFF)
 	{
-		return chr_mem_[addr];
+		mapped_addr = addr;
+		return true;
 	}
-	return std::nullopt;
+	return false;
 }
 
-void Mapper000::loadPrgRom(u8* data_begin, u8* data_end)
+bool Mapper000::ppuMapRead(const u16 addr, usize& mapped_addr)
 {
-	prg_rom_.assign(data_begin, data_end);
+	if (addr <= 0x1FFF)
+	{
+		mapped_addr = addr;
+		return true;
+	}
+	return false;
 }
-
-void Mapper000::loadChrRom(u8* data_begin, u8* data_end)
-{
-	chr_mem_.assign(data_begin, data_end);
-}
-

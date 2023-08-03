@@ -1,12 +1,17 @@
 #pragma once
 
-#include "Memory.hpp"
-#include <optional>
+#include "../common/type.hpp"
 
+
+constexpr usize operator ""_KB(unsigned long long val)
+{
+	return val * 1024;
+}
 
 enum class MirrorType
 {
-	Vertical, Horizontal
+	Vertical, Horizontal,
+	OneScreenLow, OneScreenHigh 
 };
 
 class Mapper
@@ -14,16 +19,13 @@ class Mapper
 public:
 	virtual ~Mapper() = default;
 
-	virtual bool cpuMapWrite(u16, u8) { return false; }
-	virtual std::optional<u8> cpuMapRead(u16) { return std::nullopt; }
+	virtual bool cpuMapWrite(u16, u8, usize&) { return false; }
+	virtual bool cpuMapRead(u16, usize&) { return false; }
 	
-	virtual bool ppuMapWrite(u16, u8) { return false; }
-	virtual std::optional<u8> ppuMapRead(u16) { return std::nullopt; }
+	virtual bool ppuMapWrite(u16, u8, usize&) { return false; }
+	virtual bool ppuMapRead(u16, usize&) { return false; }
 
 	virtual void reset() {};
-
-	virtual void loadPrgRom(u8* data_begin, u8* data_end) = 0;
-	virtual void loadChrRom(u8* data_begin, u8* data_end) = 0;
 
 	void setMirrortype(MirrorType type);
 	MirrorType getMirrortype() const;

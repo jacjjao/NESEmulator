@@ -82,9 +82,9 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     case 0x00:
         mapper_.reset(new Mapper000{ prg_rom_size, chr_rom_size });
         break;
-
+    
     case 0x01:
-        mapper_.reset(new Mapper001{ prg_rom_size, chr_rom_size });
+        mapper_.reset(new Mapper001{ chr_rom_size });
         break;
     
     case 0x03:
@@ -98,17 +98,21 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
 
     mapper_->setMirrortype((getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal));
 
-    u8* it = &data[16];
+    const u8* it = &data[16];
 
     // load PRG ROM
-    mapper_->loadPrgRom(it, it + prg_rom_size);
+    prg_rom_.assign(it, it + prg_rom_size);
 
     it += prg_rom_size;
 
     // load CHR ROM
     if (header.chr_rom_size > 0)
     {
-        mapper_->loadChrRom(it, it + chr_rom_size);
+        chr_mem_.assign(it, it + chr_rom_size);
+    }
+    else
+    {
+        chr_mem_.resize(8_KB);
     }
 
     return true;
@@ -116,22 +120,36 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
 
 bool Cartridge::cpuWrite(const u16 addr, const u8 data)
 {
-    return mapper_->cpuMapWrite(addr, data);
+    usize mapped_addr = 0; 
+    return mapper_->cpuMapWrite(addr, data, mapped_addr);
 }
 
 std::optional<u8> Cartridge::cpuRead(const u16 addr)
 {
-    return mapper_->cpuMapRead(addr);
+    if (usize mapped_addr = 0; mapper_->cpuMapRead(addr, mapped_addr))
+    {
+        return prg_rom_[mapped_addr];
+    }
+    return std::nullopt;
 }
 
 bool Cartridge::ppuWrite(const u16 addr, const u8 data)
 {
-    return mapper_->ppuMapWrite(addr, data);
+    if (usize mapped_addr = 0; mapper_->ppuMapWrite(addr, data, mapped_addr))
+    {
+        chr_mem_[mapped_addr] = data;
+        return true;
+    }
+    return false;
 }
 
 std::optional<u8> Cartridge::ppuRead(const u16 addr)
 {
-    return mapper_->ppuMapRead(addr);
+    if (usize mapped_addr = 0; mapper_->ppuMapRead(addr, mapped_addr))
+    {
+        return chr_mem_[mapped_addr];
+    }
+    return std::nullopt;
 }
 
 MirrorType Cartridge::getMirrorType() const

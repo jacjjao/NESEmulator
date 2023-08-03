@@ -587,6 +587,39 @@ u8* PPU2C02::mirroring(u16 addr)
 	if (0x2000 <= addr && addr <= 0x3EFF)
 	{
 		addr &= 0x2FFF;
+		switch (cart_->getMirrorType())
+		{
+		case MirrorType::Vertical:
+			if (0x2800 <= addr && addr <= 0x2FFF)
+			{
+				addr -= 0x0800;
+			}
+			break;
+
+		case MirrorType::Horizontal:
+			if (0x2400 <= addr && addr <= 0x27FF)
+			{
+				addr -= 0x0400;
+			}
+			else if (0x2800 <= addr && addr <= 0x2BFF)
+			{
+				addr -= 0x0400;
+			}
+			else if (0x2C00 <= addr && addr <= 0x2FFF)
+			{
+				addr -= 0x0800;
+			}
+			break;
+
+		case MirrorType::OneScreenLow:
+			addr &= 0x23FF;
+			break;
+
+		case MirrorType::OneScreenHigh:
+			addr = (addr & 0x03FF) | 0x2C00;
+			break;
+		}
+		/*
 		if (cart_->getMirrorType() == MirrorType::Vertical)
 		{
 			if (0x2800 <= addr && addr <= 0x2FFF)
@@ -608,7 +641,7 @@ u8* PPU2C02::mirroring(u16 addr)
 			{
 				addr -= 0x0800;
 			}
-		}
+		}*/
 	}
 	else if (0x3F00 <= addr && addr <= 0x3FFF)
 	{
