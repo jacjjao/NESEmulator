@@ -318,7 +318,7 @@ CPU6502::CPU6502()
 	instrs_[0x98] = { none, TYA, 2, 0 };
 
 	// unofficial instructions
-	
+	/*
 	const auto ALR = [this]() { this->ALR(); };
 	instrs_[0x4B] = { imm, ALR, 2, 0 };
 
@@ -433,7 +433,7 @@ CPU6502::CPU6502()
 	instrs_[0x54] = { zpx , NOP, 4, 0 };
 	instrs_[0x74] = { zpx , NOP, 4, 0 };
 	instrs_[0xD4] = { zpx , NOP, 4, 0 };
-	instrs_[0xF4] = { zpx , NOP, 4, 0 };
+	instrs_[0xF4] = { zpx , NOP, 4, 0 }; */
 } 
 
 void CPU6502::update()

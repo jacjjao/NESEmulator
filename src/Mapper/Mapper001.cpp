@@ -11,13 +11,9 @@ Mapper001::Mapper001(const std::size_t prg_rom_size_in_byte, const std::size_t c
 
 bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 {
-	if (addr < 0x6000)
-	{
-		return false;
-	}
 	if (addr < 0x8000)
 	{
-		return prg_ram_disable_;
+		return false;
 	}
 	if (getBitN(data, 7))
 	{
@@ -77,7 +73,6 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 	}
 	else
 	{
-		prg_ram_disable_ = getBitN(cmd, 4);
 		switch (prg_bank_mode_)
 		{
 		case 0: case 1: // 32KB mode
@@ -133,7 +128,6 @@ bool Mapper001::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	{
 		if (addr <= 0xBFFF)
 		{
-			prg_ram_disable_ = getBitN(data, 4);
 			if (chr_bank_mode_)
 			{
 				if (getBitN(chr_shift_reg_, 0))
@@ -149,7 +143,6 @@ bool Mapper001::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 		{
 			if (chr_bank_mode_)
 			{
-				prg_ram_disable_ = getBitN(data, 4);
 				if (getBitN(shift_reg_, 0))
 				{
 					chr4_bank_high_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);

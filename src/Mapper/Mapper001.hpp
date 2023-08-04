@@ -32,6 +32,4 @@ private:
 	
 	u8 shift_reg_ = 0x10, load_reg_ = 0;
 	bool use_chr_ram_;
-	
-	bool prg_ram_disable_ = false;
 };
