@@ -166,4 +166,6 @@ private:
 	unsigned scanline_ = 0;
 	int cycle_ = 0;
 	u64 total_cycle_ = 0;
+
+	u8 open_bus_ = 0;
 };

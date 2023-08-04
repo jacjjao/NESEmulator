@@ -2,6 +2,7 @@
 #include "common/bitHelper.hpp"
 #include "Mapper/Mapper000.hpp"
 #include "Mapper/Mapper001.hpp"
+#include "Mapper/Mapper002.hpp"
 #include "Mapper/Mapper003.hpp"
 #include <iostream>
 #include <fstream>
@@ -81,14 +82,22 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     {
     case 0x00:
         mapper_.reset(new Mapper000{ prg_rom_size, chr_rom_size });
+        std::printf("Mapper000\n");
         break;
     
     case 0x01:
         mapper_.reset(new Mapper001{ prg_rom_size, chr_rom_size });
+        std::printf("Mapper001\n");
+        break;
+
+    case 0x02:
+        mapper_.reset(new Mapper002{ prg_rom_size, chr_rom_size });
+        std::printf("Mapper002\n");
         break;
     
     case 0x03:
         mapper_.reset(new Mapper003{ prg_rom_size, chr_rom_size });
+        std::printf("Mapper003\n");
         break;
     
     default:

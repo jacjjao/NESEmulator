@@ -256,10 +256,10 @@ CPU6502::CPU6502()
 	instrs_[0x7E] = { abx , ROR, 7, 0 };
 
 	const auto RTI = [this]() { this->RTI(); };
-	instrs_[0x40] = { none, RTI, 6, 0 };
+	instrs_[0x40] = { imm, RTI, 6, 0 };
 
 	const auto RTS = [this]() { this->RTS(); };
-	instrs_[0x60] = { none, RTS, 6, 0 };
+	instrs_[0x60] = { imm, RTS, 6, 0 };
 
 	const auto SBC = [this]() { this->SBC(); };
 	instrs_[0xE9] = { imm   , SBC, 2, 0 }; 
@@ -318,7 +318,7 @@ CPU6502::CPU6502()
 	instrs_[0x98] = { none, TYA, 2, 0 };
 
 	// unofficial instructions
-	/*
+	
 	const auto ALR = [this]() { this->ALR(); };
 	instrs_[0x4B] = { imm, ALR, 2, 0 };
 
@@ -434,7 +434,6 @@ CPU6502::CPU6502()
 	instrs_[0x74] = { zpx , NOP, 4, 0 };
 	instrs_[0xD4] = { zpx , NOP, 4, 0 };
 	instrs_[0xF4] = { zpx , NOP, 4, 0 };
-	*/
 } 
 
 void CPU6502::update()

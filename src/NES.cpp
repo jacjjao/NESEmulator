@@ -66,6 +66,8 @@ void NES::onDraw()
 {
     window_->clear(sf::Color{ 0, 0, 50 });
     
+    // bus_.ppu.dbgDrawNametb(0);
+
     auto& video_output = bus_.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
 #ifdef DEBUG_WINDOW

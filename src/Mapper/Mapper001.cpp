@@ -17,7 +17,7 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 	}
 	if (addr < 0x8000)
 	{
-		return false;
+		return prg_ram_disable_;
 	}
 	if (getBitN(data, 7))
 	{
@@ -77,7 +77,7 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 	}
 	else
 	{
-		// prg_ram_disable_ = getBitN(cmd, 4);
+		prg_ram_disable_ = getBitN(cmd, 4);
 		switch (prg_bank_mode_)
 		{
 		case 0: case 1: // 32KB mode
@@ -128,38 +128,39 @@ bool Mapper001::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	{
 		mapped_addr = addr;
 		return true;
-	}/*
+	}
 	if (0xA000 <= addr && addr <= 0xDFFF)
 	{
-		// prg_ram_disable_ = getBitN(data, 4);
 		if (addr <= 0xBFFF)
 		{
+			prg_ram_disable_ = getBitN(data, 4);
 			if (chr_bank_mode_)
 			{
-				if (getBitN(shift_reg_, 0))
+				if (getBitN(chr_shift_reg_, 0))
 				{
-					chr4_bank_low_ = ((data & 0x01) << 4) | (shift_reg_ >> 1);
-					shift_reg_ = 0x10;
+					chr4_bank_low_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
+					chr_shift_reg_ = 0x10;
 					return true;
 				}
-				shift_reg_ = ((data & 0x01) << 4) | (shift_reg_ >> 1);
+				chr_shift_reg_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
 			}
 		}
 		else
 		{
 			if (chr_bank_mode_)
 			{
+				prg_ram_disable_ = getBitN(data, 4);
 				if (getBitN(shift_reg_, 0))
 				{
-					chr4_bank_high_ = ((data & 0x01) << 4) | (shift_reg_ >> 1);
-					shift_reg_ = 0x10;
+					chr4_bank_high_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
+					chr_shift_reg_ = 0x10;
 					return true;
 				}
-				shift_reg_ = ((data & 0x01) << 4) | (shift_reg_ >> 1);
+				chr_shift_reg_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
 			}
 		}
 		return true;
-	}*/
+	}
 	return false;
 }
 

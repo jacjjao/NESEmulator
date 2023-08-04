@@ -459,7 +459,7 @@ u8 PPU2C02::regRead(const u16 addr)
 {
 	assert(addr <= 7);
 
-	u8 data = 0;
+	u8 data = open_bus_;
 
 	switch (addr)
 	{
@@ -489,6 +489,8 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 {
 	assert(addr <= 7);
 
+	open_bus_ = data;
+
 	switch (addr)
 	{
 	case 0x00:
@@ -506,16 +508,10 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x04:
-	{
-		//const bool rendering = ((scanline_ < 240 || scanline_ == 261) && 
-								//(PPUMASK.bit.render_bg || PPUMASK.bit.render_sp));
-		//if (!rendering)
-		//{
 			primary_oam_[oam_addr_] = data;
 			++oam_addr_;
-		//}
 		break;
-	}
+
 	case 0x05:
 		if (!write_latch_) // first write
 		{
@@ -553,7 +549,6 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 u8 PPU2C02::memRead(u16 addr)
 {
 	addr &= 0x3FFF;
-
 	if (const auto data = cart_->ppuRead(addr); data.has_value())
 	{
 		return *data;
@@ -619,29 +614,6 @@ u8* PPU2C02::mirroring(u16 addr)
 			addr = (addr & 0x03FF) | 0x2C00;
 			break;
 		}
-		/*
-		if (cart_->getMirrorType() == MirrorType::Vertical)
-		{
-			if (0x2800 <= addr && addr <= 0x2FFF)
-			{
-				addr -= 0x0800;
-			}
-		}
-		else if (cart_->getMirrorType() == MirrorType::Horizontal)
-		{
-			if (0x2400 <= addr && addr <= 0x27FF)
-			{
-				addr -= 0x0400;
-			}
-			else if (0x2800 <= addr && addr <= 0x2BFF)
-			{
-				addr -= 0x0400;
-			}
-			else if (0x2C00 <= addr && addr <= 0x2FFF)
-			{
-				addr -= 0x0800;
-			}
-		}*/
 	}
 	else if (0x3F00 <= addr && addr <= 0x3FFF)
 	{
