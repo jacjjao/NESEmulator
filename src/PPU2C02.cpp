@@ -610,11 +610,11 @@ u8* PPU2C02::mirroring(u16 addr)
 				addr -= 0x0800;
 			}
 			break;
-
+			
 		case MirrorType::OneScreenLow:
 			addr &= 0x23FF;
 			break;
-
+			
 		case MirrorType::OneScreenHigh:
 			addr = (addr & 0x03FF) | 0x2C00;
 			break;

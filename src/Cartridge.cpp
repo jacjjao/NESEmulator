@@ -74,8 +74,8 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
-    std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16384;
-    std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8192;
+    std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16_KB;
+    std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8_KB;
     const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
     switch (mapper_type)
     {
@@ -84,7 +84,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         break;
     
     case 0x01:
-        mapper_.reset(new Mapper001{ chr_rom_size });
+        mapper_.reset(new Mapper001{ prg_rom_size, chr_rom_size });
         break;
     
     case 0x03:
