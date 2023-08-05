@@ -28,7 +28,7 @@ public:
 	void insertCartridge(std::shared_ptr<Mapper> cart);
 
 private:
-	static constexpr std::size_t cpu_mem_size = 64 * 1024; // 64 kB
+	static constexpr std::size_t cpu_mem_size = 2_KB; // 64 kB
 
 	StandardController joystick_cache_;
 

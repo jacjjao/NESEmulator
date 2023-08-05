@@ -21,8 +21,11 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	}
 	else if (addr == 0x4014)
 	{
-		const u16 adr = (static_cast<u16>(data) << 8);
-		ppu.OAMDMA(&cpu_mem_[adr]);
+		u16 adr = (static_cast<u16>(data) << 8);
+		for (int i = 0; i < 256; ++i, ++adr)
+		{
+			ppu.regWrite(0x04, cpuRead(adr));
+		}
 	}
 	else if (addr == 0x4016)
 	{

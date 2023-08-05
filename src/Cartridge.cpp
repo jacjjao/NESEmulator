@@ -86,11 +86,6 @@ u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
         use_chr_ram_ = true;
     }
 
-    if (const bool use_prg_ram = getBitN(header.flag6, 1); use_prg_ram)
-    {
-        prg_ram_.resize(8_KB);
-    }
-
     if (const bool ignore_mirror_control = getBitN(header.flag6, 3); !ignore_mirror_control)
     {
         mirror_type = (getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal);
@@ -115,11 +110,6 @@ u8* const Cartridge::CHRMem()
     return chr_mem_.data();
 }
 
-u8* const Cartridge::PRGRam()
-{
-    return prg_ram_.data();
-}
-
 usize Cartridge::PRGRomSize() const
 {
     return prg_rom_.size();
@@ -128,10 +118,5 @@ usize Cartridge::PRGRomSize() const
 usize Cartridge::CHRMemSize() const
 {
     return chr_mem_.size();
-}
-
-usize Cartridge::PRGRamSize() const
-{
-    return prg_ram_.size();
 }
 

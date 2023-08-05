@@ -104,7 +104,7 @@ CPU6502::CPU6502()
 	instrs_[0x10] = { rel, BPL, 2, 1 };
 
 	const auto BRK = [this]() { this->BRK(); };
-	instrs_[0x00] = { imm, BRK, 7, 0 };
+	instrs_[0x00] = { none, BRK, 7, 0 };
 
 	const auto BVC = [this]() { this->BVC(); };
 	instrs_[0x50] = { rel, BVC, 2, 1 };
@@ -256,10 +256,10 @@ CPU6502::CPU6502()
 	instrs_[0x7E] = { abx , ROR, 7, 0 };
 
 	const auto RTI = [this]() { this->RTI(); };
-	instrs_[0x40] = { imm, RTI, 6, 0 };
+	instrs_[0x40] = { none, RTI, 6, 0 };
 
 	const auto RTS = [this]() { this->RTS(); };
-	instrs_[0x60] = { imm, RTS, 6, 0 };
+	instrs_[0x60] = { none, RTS, 6, 0 };
 
 	const auto SBC = [this]() { this->SBC(); };
 	instrs_[0xE9] = { imm   , SBC, 2, 0 }; 
@@ -445,6 +445,10 @@ void CPU6502::update()
 
 	cycles_ = 0;
 	opcode_ = getByteFromPC();
+	if (opcode_ == 0x0F)
+	{
+		int a = 0;
+	}
 	instrs_[opcode_].addr_mode();
 
 #ifdef EMUCPULOG

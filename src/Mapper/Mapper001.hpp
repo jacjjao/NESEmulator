@@ -30,4 +30,6 @@ private:
 	bool chr_bank_mode_ = 0;
 	
 	u8 shift_reg_ = 0x10, load_reg_ = 0;
+
+	std::vector<u8> prg_ram_;
 };

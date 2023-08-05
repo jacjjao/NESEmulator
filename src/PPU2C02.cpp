@@ -181,6 +181,7 @@ void PPU2C02::update()
 		}
 	};
 	const auto createSprites = [this] {
+		if (cycle_ != 340 || scanline_ >= 240) return;
 		sprite_buf_.clear();
 		for (std::size_t i = 0; i < second_oam_.size(); i += 4)
 		{
@@ -233,7 +234,7 @@ void PPU2C02::update()
 			sprite_buf_.push_back(sprite);
 		}
 	};
-	const auto spriteEval = [this, &createSprites] {
+	const auto spriteEval = [this] {
 		if (cycle_ != 256 || scanline_ >= 240) return;
 		oam_byte.n = oam_byte.m = 0;
 		second_oam_.clear();
@@ -264,14 +265,13 @@ void PPU2C02::update()
 					second_oam_.push_back(primary_oam_[sprite_addr++]);
 					second_oam_.push_back(primary_oam_[sprite_addr]);
 					assert(second_oam_.size() <= 32);
-					if (oam_byte.n == 0 && oam_byte.m == 0)
+					if (oam_byte.n == 0)
 					{
 						sprite_hit_potential_ = true;
 					}
 				}
 			}
 		} while (++oam_byte.n > 0);
-		createSprites();
 	};
 	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, int& sprite_idx) {
 		priority = true;
@@ -348,7 +348,7 @@ void PPU2C02::update()
 
 			if (sprite_hit_potential_ && sprite_idx == 0 && sp_pat > 0 && bg_pat > 0)
 			{
-				if (~(PPUMASK.bit.render_bg_lm_8pixels | PPUMASK.bit.render_sp_lm_8pixels))
+				if (!PPUMASK.bit.render_bg_lm_8pixels && !PPUMASK.bit.render_sp_lm_8pixels)
 				{
 					if (cycle_ >= 9)
 					{
@@ -403,6 +403,7 @@ void PPU2C02::update()
 		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority, sprite_index);
 
 		spriteEval();
+		createSprites();
 
 		if (scanline_ == 261 && cycle_ == 1)
 		{
@@ -410,6 +411,7 @@ void PPU2C02::update()
 			PPUSTATUS.bit.vb_start = 0;
 			PPUSTATUS.bit.sp0_hit = 0;
 			PPUSTATUS.bit.sp_overflow = 0;
+			sprite_buf_.clear();
 		}
 	}
 
@@ -511,8 +513,8 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x04:
-			primary_oam_[oam_addr_] = data;
-			++oam_addr_;
+		primary_oam_[oam_addr_] = data;
+		++oam_addr_;
 		break;
 
 	case 0x05:

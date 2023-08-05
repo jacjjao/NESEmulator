@@ -5,7 +5,8 @@
 
 Mapper001::Mapper001(Cartridge cart) :
 	Mapper{ cart },
-	nprg_banks_{ cart.PRGRomSize() / 16_KB }
+	nprg_banks_{ cart.PRGRomSize() / 16_KB },
+	prg_ram_(8_KB)
 {
 }
 
@@ -18,7 +19,7 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)
 
 	if (addr < 0x8000)
 	{
-		cart_.PRGRam()[addr & 0x1FFF] = data;
+		prg_ram_[addr & 0x1FFF] = data;
 		return true;
 	}
 
@@ -116,7 +117,7 @@ std::optional<u8> Mapper001::cpuMapRead(const u16 addr)
 
 	if (addr < 0x8000)
 	{
-		return cart_.PRGRam()[addr & 0x1FFF];
+		return prg_ram_[addr & 0x1FFF];
 	}
 	if (prg_bank_mode_ <= 1) // 32KB mode
 	{

@@ -26,15 +26,13 @@ public:
 
 	u8* const PRGRom();
 	u8* const CHRMem();
-	u8* const PRGRam();
 
 	usize PRGRomSize() const;
 	usize CHRMemSize() const;
-	usize PRGRamSize() const;
 
 	MirrorType mirror_type = MirrorType::FourScreen;
 
 private:
 	bool use_chr_ram_ = false;
-	std::vector<u8> prg_rom_, chr_mem_, prg_ram_;
+	std::vector<u8> prg_rom_, chr_mem_;
 };

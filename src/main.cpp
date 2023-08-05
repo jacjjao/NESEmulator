@@ -43,7 +43,9 @@ int main()
     // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_hit_tests/01.basics.nes"))
     try
     {
-        auto cartridge = createCartridge("../../../Mega Man 2.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/dmc_dma_during_read4/read_write_2007.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/test_cpu_exec_space_ppuio.nes");
+        auto cartridge = createCartridge("../../../Super Mario Bros.nes");
         
         NES nes;
         nes.insertCartridge(cartridge);
