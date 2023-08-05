@@ -16,8 +16,6 @@ public:
 	bool ppuMapRead(u16 addr, usize& mapped_addr) override;
 
 private:
-	const usize chr_bank_size = 8_KB;
-
 	usize chr_bank_index_ = 0, prg_banks_;
 	bool use_chr_ram_;
 };

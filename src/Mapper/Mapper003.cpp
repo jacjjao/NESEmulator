@@ -48,7 +48,7 @@ bool Mapper003::ppuMapRead(const u16 addr, usize& mapped_addr)
 		}
 		else
 		{
-			mapped_addr = chr_bank_size * chr_bank_index_ + addr;
+			mapped_addr = chr_bank_index_ * 8_KB + addr;
 		}
 		return true;
 	}

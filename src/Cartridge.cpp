@@ -32,7 +32,7 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         u8 chr_rom_size;
         u8 flag6;
         u8 flag7;
-        u8 flag8;
+        u8 prg_ram_size;
         u8 flag9;
         u8 flag10;
         u8 u11, u12, u13, u14, u15; // unused bytes
@@ -46,11 +46,11 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     header.prg_rom_size = data[4];
     header.chr_rom_size = data[5];
 
-    header.flag6  = data[ 6];
-    header.flag7  = data[ 7];
-    header.flag8  = data[ 8];
-    header.flag9  = data[ 9];
-    header.flag10 = data[10];
+    header.flag6        = data[ 6];
+    header.flag7        = data[ 7];
+    header.prg_ram_size = data[ 8];
+    header.flag9        = data[ 9];
+    header.flag10       = data[10];
 
     header.u11 = data[11];
     header.u12 = data[12];
@@ -105,7 +105,10 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         return false;
     }
 
-    mapper_->setMirrortype((getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal));
+    if (const bool ignore_mirror_control = getBitN(header.flag6, 3); !ignore_mirror_control)
+    {
+        mapper_->setMirrortype((getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal));
+    }
 
     const u8* it = &data[16];
 

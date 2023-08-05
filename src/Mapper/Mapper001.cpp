@@ -50,7 +50,16 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 			break;
 		}
 
-		prg_bank_mode_ = ((cmd & 0x0C) >> 2);
+		prg_bank_mode_ = ((cmd >> 2) & 0x03);
+		if (prg_bank_mode_ == 2)
+		{
+			prg16_bank_low_ = 0;
+		}
+		else if (prg_bank_mode_ == 3)
+		{
+			prg16_bank_high_ = nprg_banks_ - 1;
+		}
+
 		chr_bank_mode_ = getBitN(cmd, 4);
 	}
 	else if (addr <= 0xBFFF)
@@ -61,7 +70,7 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 		}
 		else // 8KB mode
 		{
-			chr8_bank_ = ((cmd & 0x1E) >> 1);
+			chr8_bank_ = (cmd & 0x1E);
 		}
 	}
 	else if (addr <= 0xDFFF)
@@ -76,17 +85,15 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 		switch (prg_bank_mode_)
 		{
 		case 0: case 1: // 32KB mode
-			prg32_bank_ = ((cmd & 0x0E) >> 1);
+			prg32_bank_ = (cmd & 0x0E);
 			break;
 
 		case 2: 
-			prg16_bank_low_  = 0;
 			prg16_bank_high_ = (cmd & 0x0F);
 			break;
 
 		case 3:
 			prg16_bank_low_  = (cmd & 0x0F);
-			prg16_bank_high_ = nprg_banks_ - 1;
 			break;
 		}
 	}
@@ -122,36 +129,6 @@ bool Mapper001::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	if (use_chr_ram_ && addr <= 0x1FFF)
 	{
 		mapped_addr = addr;
-		return true;
-	}
-	if (0xA000 <= addr && addr <= 0xDFFF)
-	{
-		if (addr <= 0xBFFF)
-		{
-			if (chr_bank_mode_)
-			{
-				if (getBitN(chr_shift_reg_, 0))
-				{
-					chr4_bank_low_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
-					chr_shift_reg_ = 0x10;
-					return true;
-				}
-				chr_shift_reg_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
-			}
-		}
-		else
-		{
-			if (chr_bank_mode_)
-			{
-				if (getBitN(shift_reg_, 0))
-				{
-					chr4_bank_high_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
-					chr_shift_reg_ = 0x10;
-					return true;
-				}
-				chr_shift_reg_ = ((data & 0x01) << 4) | (chr_shift_reg_ >> 1);
-			}
-		}
 		return true;
 	}
 	return false;
@@ -190,4 +167,5 @@ void Mapper001::reset()
 {
 	shift_reg_ = 0x10;
 	prg_bank_mode_ = 3;
+	prg16_bank_high_ = nprg_banks_ - 1;
 }

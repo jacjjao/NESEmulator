@@ -11,7 +11,8 @@ constexpr usize operator ""_KB(unsigned long long val)
 enum class MirrorType
 {
 	Vertical, Horizontal,
-	OneScreenLow, OneScreenHigh 
+	OneScreenLow, OneScreenHigh,
+	FourScreen
 };
 
 class Mapper
@@ -31,5 +32,5 @@ public:
 	MirrorType getMirrortype() const;
 
 private:
-	MirrorType mirror_type_;
+	MirrorType mirror_type_ = MirrorType::FourScreen;
 };
