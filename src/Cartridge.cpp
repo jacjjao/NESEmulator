@@ -1,9 +1,6 @@
 #include "Cartridge.hpp"
 #include "common/bitHelper.hpp"
-#include "Mapper/Mapper000.hpp"
-#include "Mapper/Mapper001.hpp"
-#include "Mapper/Mapper002.hpp"
-#include "Mapper/Mapper003.hpp"
+#include "Mapper/AllMapper.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -35,7 +32,6 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
         u8 prg_ram_size;
         u8 flag9;
         u8 flag10;
-        u8 u11, u12, u13, u14, u15; // unused bytes
     } header{};
 
     header.cN   = data[0];
@@ -52,18 +48,12 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     header.flag9        = data[ 9];
     header.flag10       = data[10];
 
-    header.u11 = data[11];
-    header.u12 = data[12];
-    header.u13 = data[13];
-    header.u14 = data[14];
-    header.u15 = data[15];
-
 
     // verify the file
     if (header.cN != 'N' ||
         header.cE != 'E' ||
         header.cS != 'S' ||
-        static_cast<int>(header.cEOF) != 0x1A)
+        header.cEOF != 0x1A)
     {
         std::cerr << "[FAILED] header is invalid\n";
         return false;
