@@ -202,8 +202,8 @@ void PPU2C02::update()
 			}
 			if (PPUCTRL.bit.sp_size) // 8x16
 			{
-				u16 tile_pat_addr = getBitN(tile_index, 0) * 0x1000;
-				tile_index >>= 1;
+				u16 tile_pat_addr = (tile_index & 0x01) * 0x1000;
+				tile_index &= 0x00FE;
 				if (tile_pos >= 8)
 				{
 					tile_pos -= 8;
@@ -333,7 +333,7 @@ void PPU2C02::update()
 			}
 		}
 		else
-		{
+		{ 
 			if (priority)
 			{
 				pat = bg_pat;
