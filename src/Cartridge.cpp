@@ -1,25 +1,25 @@
 #include "Cartridge.hpp"
 #include "common/bitHelper.hpp"
-#include "Mapper/AllMapper.hpp"
+
+#include <stdexcept>
 #include <iostream>
 #include <fstream>
 
 
-bool Cartridge::loadiNESFile(const std::filesystem::path& path)
+u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
 {
 	std::ifstream file{path, std::ios::binary};
+    file.exceptions(std::ios::failbit | std::ios::badbit);
 	
     if (!file.is_open()) 
     {
-        std::cerr << "[FAILED] cannot open the file: " << path << '\n';
-        return false;
+        throw std::runtime_error{ "Cannot open the file" };
     }
 
     std::vector<u8> data(std::istreambuf_iterator<char>(file), {});
     if (data.size() < 16)
     {
-        std::cerr << "[FAILED] file is invalid, the file only contains " << data.size() << " bytes\n";
-        return false;
+        throw std::runtime_error{ "File is too small(less than 16 bytes)" };
     }
 
     struct
@@ -42,63 +42,31 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     header.prg_rom_size = data[4];
     header.chr_rom_size = data[5];
 
-    header.flag6        = data[ 6];
-    header.flag7        = data[ 7];
+    header.flag6 = data[6];
+    header.flag7 = data[7];
+
     header.prg_ram_size = data[ 8];
-    header.flag9        = data[ 9];
-    header.flag10       = data[10];
+
+    header.flag9  = data[ 9];
+    header.flag10 = data[10];
 
 
     // verify the file
-    if (header.cN != 'N' ||
-        header.cE != 'E' ||
-        header.cS != 'S' ||
+    if (header.cN   != 'N' ||
+        header.cE   != 'E' ||
+        header.cS   != 'S' ||
         header.cEOF != 0x1A)
     {
-        std::cerr << "[FAILED] header is invalid\n";
-        return false;
+        throw std::runtime_error{ "File does not follow .nes file format" };
     }
 
     if (getBitN(header.flag6, 3))
     {
-        std::cerr << "[FAILED] trainer contains\n";
-        return false;
+        throw std::runtime_error{ "Trainer data contains(Unsupported yet)" };
     }
 
     std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16_KB;
     std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8_KB;
-    const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
-    switch (mapper_type)
-    {
-    case 0x00:
-        mapper_.reset(new Mapper000{ prg_rom_size, chr_rom_size });
-        std::printf("Mapper000\n");
-        break;
-    
-    case 0x01:
-        mapper_.reset(new Mapper001{ prg_rom_size, chr_rom_size });
-        std::printf("Mapper001\n");
-        break;
-
-    case 0x02:
-        mapper_.reset(new Mapper002{ prg_rom_size, chr_rom_size });
-        std::printf("Mapper002\n");
-        break;
-    
-    case 0x03:
-        mapper_.reset(new Mapper003{ prg_rom_size, chr_rom_size });
-        std::printf("Mapper003\n");
-        break;
-    
-    default:
-        std::cerr << "[FALIED] unsupport mapper " << (int)mapper_type << '\n';
-        return false;
-    }
-
-    if (const bool ignore_mirror_control = getBitN(header.flag6, 3); !ignore_mirror_control)
-    {
-        mapper_->setMirrortype((getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal));
-    }
 
     const u8* it = &data[16];
 
@@ -115,46 +83,55 @@ bool Cartridge::loadiNESFile(const std::filesystem::path& path)
     else
     {
         chr_mem_.resize(8_KB);
+        use_chr_ram_ = true;
     }
 
-    return true;
-}
-
-bool Cartridge::cpuWrite(const u16 addr, const u8 data)
-{
-    usize mapped_addr = 0; 
-    return mapper_->cpuMapWrite(addr, data, mapped_addr);
-}
-
-std::optional<u8> Cartridge::cpuRead(const u16 addr)
-{
-    if (usize mapped_addr = 0; mapper_->cpuMapRead(addr, mapped_addr))
+    if (const bool use_prg_ram = getBitN(header.flag6, 1); use_prg_ram)
     {
-        return prg_rom_[mapped_addr];
+        prg_ram_.resize(8_KB);
     }
-    return std::nullopt;
-}
 
-bool Cartridge::ppuWrite(const u16 addr, const u8 data)
-{
-    if (usize mapped_addr = 0; mapper_->ppuMapWrite(addr, data, mapped_addr))
+    if (const bool ignore_mirror_control = getBitN(header.flag6, 3); !ignore_mirror_control)
     {
-        chr_mem_[mapped_addr] = data;
-        return true;
+        mirror_type = (getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal);
     }
-    return false;
+
+    const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
+    return mapper_type;
 }
 
-std::optional<u8> Cartridge::ppuRead(const u16 addr)
+bool Cartridge::useCHRRam() const
 {
-    if (usize mapped_addr = 0; mapper_->ppuMapRead(addr, mapped_addr))
-    {
-        return chr_mem_[mapped_addr];
-    }
-    return std::nullopt;
+    return use_chr_ram_;
 }
 
-MirrorType Cartridge::getMirrorType() const
+u8* const Cartridge::PRGRom()
 {
-    return mapper_->getMirrortype();
+    return prg_rom_.data();
 }
+
+u8* const Cartridge::CHRMem()
+{
+    return chr_mem_.data();
+}
+
+u8* const Cartridge::PRGRam()
+{
+    return prg_ram_.data();
+}
+
+usize Cartridge::PRGRomSize() const
+{
+    return prg_rom_.size();
+}
+
+usize Cartridge::CHRMemSize() const
+{
+    return chr_mem_.size();
+}
+
+usize Cartridge::PRGRamSize() const
+{
+    return prg_ram_.size();
+}
+

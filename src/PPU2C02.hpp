@@ -3,7 +3,7 @@
 #include "common/type.hpp"
 #include "Tile.hpp"
 #include "Palette.hpp"
-#include "Cartridge.hpp"
+#include "Mapper/Mapper.hpp"
 #include <SFML/Graphics/Vertex.hpp>
 #include <vector>
 
@@ -17,7 +17,7 @@ public:
 
 	void update();
 
-	void insertCartridge(std::shared_ptr<Cartridge> cartridge);
+	void insertCartridge(std::shared_ptr<Mapper> cartridge);
 
 	u8 regRead(u16 addr);
 	void regWrite(u16 addr, u8 data);
@@ -142,7 +142,7 @@ private:
 		u8 m : 2;
 	} oam_byte;
 
-	std::shared_ptr<Cartridge> cart_;
+	std::shared_ptr<Mapper> cart_;
 
 	u8 data_buf_ = 0;
 

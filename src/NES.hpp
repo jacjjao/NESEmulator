@@ -11,7 +11,7 @@ public:
 	NES();
 	~NES();
 
-	void insertCartridge(std::shared_ptr<Cartridge> cartridge);
+	void insertCartridge(std::shared_ptr<Mapper> cartridge);
 	void run();
 
 	void reset();

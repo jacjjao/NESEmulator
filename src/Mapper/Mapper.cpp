@@ -1,12 +1,17 @@
 #include "Mapper.hpp"
 
 
-void Mapper::setMirrortype(const MirrorType type)
+Mapper::Mapper(Cartridge cart) : 
+	cart_{ std::move(cart) }
 {
-	mirror_type_ = type;
 }
 
-MirrorType Mapper::getMirrortype() const
+MirrorType Mapper::getMirrorType()
 {
-	return mirror_type_;
+	return cart_.mirror_type;
+}
+
+std::shared_ptr<Mapper> createMapper()
+{
+	return nullptr;
 }

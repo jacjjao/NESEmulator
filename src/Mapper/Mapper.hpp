@@ -1,36 +1,29 @@
 #pragma once
 
-#include "../common/type.hpp"
+#include "../Cartridge.hpp"
 
+#include <memory>
+#include <optional>
 
-constexpr usize operator ""_KB(unsigned long long val)
-{
-	return val * 1024;
-}
-
-enum class MirrorType
-{
-	Vertical, Horizontal,
-	OneScreenLow, OneScreenHigh,
-	FourScreen
-};
 
 class Mapper
 {
 public:
+	Mapper(Cartridge cart);
 	virtual ~Mapper() = default;
 
-	virtual bool cpuMapWrite(u16, u8, usize&) { return false; }
-	virtual bool cpuMapRead(u16, usize&) { return false; }
+	virtual bool cpuMapWrite(u16, u8) { return false; }
+	virtual std::optional<u8> cpuMapRead(u16) { return false; }
 	
-	virtual bool ppuMapWrite(u16, u8, usize&) { return false; }
-	virtual bool ppuMapRead(u16, usize&) { return false; }
+	virtual bool ppuMapWrite(u16, u8) { return false; }
+	virtual std::optional<u8> ppuMapRead(u16) { return false; }
 
 	virtual void reset() {};
 
-	void setMirrortype(MirrorType type);
-	MirrorType getMirrortype() const;
+	MirrorType getMirrorType();
 
-private:
-	MirrorType mirror_type_ = MirrorType::FourScreen;
+	bool irq_occurred = false;
+
+protected:
+	Cartridge cart_;
 };

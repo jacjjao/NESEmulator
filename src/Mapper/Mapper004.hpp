@@ -2,7 +2,7 @@
 
 #include "Mapper.hpp"
 
-
+/*
 class Mapper004 : public Mapper
 {
 public:
@@ -33,3 +33,4 @@ private:
 	bool reload_flag_ = false;
 	bool irq_enable_ = true;
 };
+*/

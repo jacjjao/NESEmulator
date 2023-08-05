@@ -1,27 +1,40 @@
 #pragma once
 
 #include "common/type.hpp"
-#include "Mapper/Mapper.hpp"
 #include <filesystem>
-#include <memory>
 #include <vector>
-#include <optional>
 
+
+constexpr usize operator ""_KB(unsigned long long val)
+{
+	return val * 1024;
+}
+
+enum class MirrorType
+{
+	Vertical, Horizontal,
+	OneScreenLow, OneScreenHigh,
+	FourScreen
+};
 
 class Cartridge
 {
 public:
-	bool loadiNESFile(const std::filesystem::path& path);
+	u8 loadiNESFile(const std::filesystem::path& path);
 
-	bool cpuWrite(const u16 addr, const u8 data);
-	std::optional<u8> cpuRead(const u16 addr);
+	bool useCHRRam() const;
 
-	bool ppuWrite(const u16 addr, const u8 data);
-	std::optional<u8> ppuRead(const u16 addr);
+	u8* const PRGRom();
+	u8* const CHRMem();
+	u8* const PRGRam();
 
-	MirrorType getMirrorType() const;
+	usize PRGRomSize() const;
+	usize CHRMemSize() const;
+	usize PRGRamSize() const;
+
+	MirrorType mirror_type = MirrorType::FourScreen;
 
 private:
-	std::unique_ptr<Mapper> mapper_;
-	std::vector<u8> prg_rom_, chr_mem_;
+	bool use_chr_ram_ = false;
+	std::vector<u8> prg_rom_, chr_mem_, prg_ram_;
 };

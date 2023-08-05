@@ -1,13 +1,12 @@
 #include "Mapper002.hpp"
 
-Mapper002::Mapper002(const std::size_t prg_rom_size_in_byte, const std::size_t chr_rom_size_in_byte) :
-	nprg_banks_{ prg_rom_size_in_byte / 16_KB },
-	use_chr_ram_{ chr_rom_size_in_byte == 0 }
+Mapper002::Mapper002(Cartridge cart) :
+	Mapper{ std::move(cart) }
 {
-	prg_high_ = nprg_banks_ - 1;
+	prg_high_ = (cart_.PRGRomSize() / 16_KB) - 1;
 }
 
-bool Mapper002::cpuMapWrite(const u16 addr, const u8 data, usize&)
+bool Mapper002::cpuMapWrite(const u16 addr, const u8 data)
 {
 	if (addr < 0x8000)
 	{
@@ -17,39 +16,34 @@ bool Mapper002::cpuMapWrite(const u16 addr, const u8 data, usize&)
 	return true;
 }
 
-bool Mapper002::cpuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper002::cpuMapRead(const u16 addr)
 {
 	if (addr < 0x8000)
 	{
-		return false;
+		return std::nullopt;
 	}
 	if (addr < 0xC000)
 	{
-		mapped_addr = prg_low_ * 16_KB  + (addr & 0x3FFF);
+		return cart_.PRGRom()[prg_low_ * 16_KB  + (addr & 0x3FFF)];
 	}
-	else
-	{
-		mapped_addr = prg_high_ * 16_KB + (addr & 0x3FFF);
-	}
-	return true;
+	return cart_.PRGRom()[prg_high_ * 16_KB + (addr & 0x3FFF)];
 }
 
-bool Mapper002::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
+bool Mapper002::ppuMapWrite(const u16 addr, const u8 data)
 {
-	if (!use_chr_ram_ || addr >= 0x2000)
+	if (!cart_.useCHRRam() || addr >= 0x2000)
 	{
 		return false;
 	}
-	mapped_addr = addr;
+	cart_.CHRMem()[addr] = data;
 	return true;
 }
 
-bool Mapper002::ppuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper002::ppuMapRead(const u16 addr)
 {
 	if (addr <= 0x1FFF)
 	{
-		mapped_addr = addr;
-		return true;
+		return cart_.CHRMem()[addr];
 	}
-	return false;
+	return std::nullopt;
 }

@@ -450,9 +450,9 @@ void PPU2C02::dummyUpdate()
 	}
 }
 
-void PPU2C02::insertCartridge(std::shared_ptr<Cartridge> cartridge)
+void PPU2C02::insertCartridge(std::shared_ptr<Mapper> cart)
 {
-	cart_ = std::move(cartridge);
+	cart_ = std::move(cart);
 }
 
 u8 PPU2C02::regRead(const u16 addr)
@@ -552,7 +552,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 u8 PPU2C02::memRead(u16 addr)
 {
 	addr &= 0x3FFF;
-	if (const auto data = cart_->ppuRead(addr); data.has_value())
+	if (const auto data = cart_->ppuMapRead(addr); data.has_value())
 	{
 		return *data;
 	}
@@ -562,7 +562,7 @@ u8 PPU2C02::memRead(u16 addr)
 void PPU2C02::memWrite(u16 addr, const u8 data)
 {
 	addr &= 0x3FFF;
-	if (cart_->ppuWrite(addr, data))
+	if (cart_->ppuMapWrite(addr, data))
 	{
 		return;
 	}

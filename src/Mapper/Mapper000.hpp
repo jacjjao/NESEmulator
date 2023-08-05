@@ -6,15 +6,11 @@
 class Mapper000 : public Mapper
 {
 public:
-	Mapper000(usize prg_rom_size_in_byte, usize chr_rom_size_in_byte);
+	Mapper000(Cartridge cart);
 	~Mapper000() override = default;
 
-	bool cpuMapRead(u16 addr, usize& mapped_addr) override;
+	std::optional<u8> cpuMapRead(u16 addr) override;
 
-	bool ppuMapWrite(u16 addr, u8 data, usize& mapped_addr) override;
-	bool ppuMapRead(u16 addr, usize& mapped_addr) override;
-
-private:
-	usize prg_banks_;
-	bool use_chr_ram_;
+	bool ppuMapWrite(u16 addr, u8 data) override;
+	std::optional<u8> ppuMapRead(u16 addr) override;
 };

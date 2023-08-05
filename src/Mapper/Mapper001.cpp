@@ -3,18 +3,25 @@
 
 
 
-Mapper001::Mapper001(const std::size_t prg_rom_size_in_byte, const std::size_t chr_rom_size_in_byte) :
-	nprg_banks_{ prg_rom_size_in_byte / 16_KB },
-	use_chr_ram_{ chr_rom_size_in_byte == 0 }
+Mapper001::Mapper001(Cartridge cart) :
+	Mapper{ cart },
+	nprg_banks_{ cart.PRGRomSize() / 16_KB }
 {
 }
 
-bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
+bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)
 {
-	if (addr < 0x8000)
+	if (addr < 0x6000)
 	{
 		return false;
 	}
+
+	if (addr < 0x8000)
+	{
+		cart_.PRGRam()[addr & 0x1FFF] = data;
+		return true;
+	}
+
 	if (getBitN(data, 7))
 	{
 		reset();
@@ -34,19 +41,19 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 		switch (cmd & 0x03)
 		{
 		case 0:
-			setMirrortype(MirrorType::OneScreenLow);
+			cart_.mirror_type = MirrorType::OneScreenLow;
 			break;
 
 		case 1:
-			setMirrortype(MirrorType::OneScreenHigh);
+			cart_.mirror_type = MirrorType::OneScreenHigh;
 			break;
 
 		case 2:
-			setMirrortype(MirrorType::Vertical);
+			cart_.mirror_type = MirrorType::Vertical;
 			break;
 
 		case 3:
-			setMirrortype(MirrorType::Horizontal);
+			cart_.mirror_type = MirrorType::Horizontal;
 			break;
 		}
 
@@ -100,67 +107,57 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data, usize&)
 	return true;
 }
 
-bool Mapper001::cpuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper001::cpuMapRead(const u16 addr)
 {
+	if (addr < 0x6000)
+	{
+		return std::nullopt;
+	}
+
 	if (addr < 0x8000)
 	{
-		return false;
+		return cart_.PRGRam()[addr & 0x1FFF];
 	}
 	if (prg_bank_mode_ <= 1) // 32KB mode
 	{
-		mapped_addr = prg32_bank_ * 32_KB + (addr & 0x7FFF);
+		return cart_.PRGRom()[prg32_bank_ * 32_KB + (addr & 0x7FFF)];
 	}
-	else
+	if (addr < 0xC000)
 	{
-		if (addr < 0xC000)
-		{
-			mapped_addr = prg16_bank_low_ * 16_KB + (addr & 0x3FFF);
-		}
-		else
-		{
-			mapped_addr = prg16_bank_high_ * 16_KB + (addr & 0x3FFF);
-		}
+		return cart_.PRGRom()[prg16_bank_low_ * 16_KB + (addr & 0x3FFF)];
 	}
-	return true;
+	return cart_.PRGRom()[prg16_bank_high_ * 16_KB + (addr & 0x3FFF)];
 }
 
-bool Mapper001::ppuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
+bool Mapper001::ppuMapWrite(const u16 addr, const u8 data)
 {
-	if (use_chr_ram_ && addr <= 0x1FFF)
+	if (cart_.useCHRRam() && addr <= 0x1FFF)
 	{
-		mapped_addr = addr;
+		cart_.CHRMem()[addr] = data;
 		return true;
 	}
 	return false;
 }
 
-bool Mapper001::ppuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper001::ppuMapRead(const u16 addr)
 {
 	if (addr >= 0x2000)
 	{
-		return false;
+		return std::nullopt;
 	}
-	if (use_chr_ram_)
+	if (cart_.useCHRRam())
 	{
-		mapped_addr = addr;
-		return true;
+		return cart_.CHRMem()[addr];
 	}
 	if (chr_bank_mode_)
 	{
 		if (addr < 0x1000)
 		{
-			mapped_addr = chr4_bank_low_ * 4_KB + (addr & 0x0FFF);
+			return cart_.CHRMem()[chr4_bank_low_ * 4_KB + (addr & 0x0FFF)];
 		}
-		else
-		{
-			mapped_addr = chr4_bank_high_ * 4_KB + (addr & 0x0FFF);
-		}
+		return cart_.CHRMem()[chr4_bank_high_ * 4_KB + (addr & 0x0FFF)];
 	}
-	else // 8KB mode
-	{
-		mapped_addr = chr8_bank_ * 8_KB + addr;
-	}
-	return true;
+	return cart_.CHRMem()[chr8_bank_ * 8_KB + addr];
 }
 
 void Mapper001::reset()

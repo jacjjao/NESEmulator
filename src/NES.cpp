@@ -17,7 +17,7 @@ NES::~NES()
 	delete window_;
 }
 
-void NES::insertCartridge(std::shared_ptr<Cartridge> cartridge)
+void NES::insertCartridge(std::shared_ptr<Mapper> cartridge)
 {
     bus_.insertCartridge(std::move(cartridge));
     reset();

@@ -1,37 +1,34 @@
 #include "Mapper000.hpp"
 
-Mapper000::Mapper000(const usize prg_rom_size_in_byte, const usize chr_rom_size_in_byte) :
-	prg_banks_{ prg_rom_size_in_byte / 16_KB },
-	use_chr_ram_{ chr_rom_size_in_byte == 0 }
+Mapper000::Mapper000(Cartridge cart) :
+	Mapper{ std::move(cart) }
 {
 }
 
-bool Mapper000::cpuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper000::cpuMapRead(const u16 addr)
 {
 	if (0x8000 <= addr && addr <= 0xFFFF)
 	{
-		mapped_addr = addr & (prg_banks_ > 1 ? 0x7FFF : 0x3FFF);
-		return true;
+		return cart_.PRGRom()[addr & (cart_.PRGRomSize() > 16_KB ? 0x7FFF : 0x3FFF)];
 	}
-	return false;
+	return std::nullopt;
 }
 
-bool Mapper000::ppuMapWrite(const u16 addr, u8, usize& mapped_addr)
+bool Mapper000::ppuMapWrite(const u16 addr, const u8 data)
 {
-	if (use_chr_ram_ && addr <= 0x1FFF)
+	if (cart_.useCHRRam() && addr <= 0x1FFF)
 	{
-		mapped_addr = addr;
+		cart_.CHRMem()[addr] = data;
 		return true;
 	}
 	return false;
 }
 
-bool Mapper000::ppuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper000::ppuMapRead(const u16 addr)
 {
 	if (addr <= 0x1FFF)
 	{
-		mapped_addr = addr;
-		return true;
+		return cart_.CHRMem()[addr];
 	}
-	return false;
+	return std::nullopt;
 }

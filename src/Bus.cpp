@@ -8,7 +8,7 @@ Bus::Bus() :
 
 void Bus::cpuWrite(const u16 addr, const u8 data)
 {
-	if (cart_->cpuWrite(addr, data))
+	if (cart_->cpuMapWrite(addr, data))
 	{
 	}
 	else if (addr <= 0x1FFF)
@@ -29,15 +29,11 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 		joystick.setStrobe(data);
 		joystick_cache_ = joystick;
 	}
-	else
-	{
-		cpu_mem_[addr] = data;
-	}
 }
 
 u8 Bus::cpuRead(const u16 addr)
 {
-	if (const auto data = cart_->cpuRead(addr); data.has_value())
+	if (const auto data = cart_->cpuMapRead(addr); data.has_value())
 	{
 		return *data;
 	}
@@ -53,7 +49,7 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return joystick_cache_.report();
 	}
-	return cpu_mem_[addr];
+	return 0;
 }
 
 void Bus::clock()
@@ -69,6 +65,11 @@ void Bus::clock()
 		ppu.nmi_occured = false;
 		cpu.nmi();
 	}
+	if (cart_->irq_occurred)
+	{
+		cart_->irq_occurred = false;
+		cpu.irq();
+	}
 	++cycle_;
 }
 
@@ -79,9 +80,8 @@ void Bus::reset()
 	ppu.reset();
 }
 
-void Bus::insertCartridge(std::shared_ptr<Cartridge> cartridge)
+void Bus::insertCartridge(std::shared_ptr<Mapper> cart)
 {
-	ppu.insertCartridge(cartridge);
-	cart_ = std::move(cartridge);
-	reset();
+	ppu.insertCartridge(cart);
+	cart_ = std::move(cart);
 }

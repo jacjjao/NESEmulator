@@ -1,7 +1,7 @@
 #include "Mapper004.hpp"
 #include "../common/bitHelper.hpp"
 
-
+/*
 Mapper004::Mapper004(const usize prg_rom_size) : 
 	nprg_banks_{ prg_rom_size / 8_KB }
 {
@@ -225,3 +225,4 @@ bool Mapper004::ppuMapRead(const u16 addr, usize& mapped_addr)
 	}
 	return true;
 }
+*/

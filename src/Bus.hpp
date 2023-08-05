@@ -5,7 +5,7 @@
 #include "PPU2C02.hpp"
 #include "CPU6502.hpp"
 #include "Controller/StandardController.hpp"
-
+#include "Mapper/Mapper.hpp"
 #include <vector>
 
 
@@ -25,7 +25,7 @@ public:
 	CPU6502 cpu;
 	StandardController joystick;
 
-	void insertCartridge(std::shared_ptr<Cartridge> cartridge);
+	void insertCartridge(std::shared_ptr<Mapper> cart);
 
 private:
 	static constexpr std::size_t cpu_mem_size = 64 * 1024; // 64 kB
@@ -34,7 +34,7 @@ private:
 
 	std::vector<u8> cpu_mem_;
 
-	std::shared_ptr<Cartridge> cart_;
+	std::shared_ptr<Mapper> cart_;
 
 	u64 cycle_ = 0;
 };
