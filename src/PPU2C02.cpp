@@ -378,7 +378,10 @@ void PPU2C02::update()
 		if (scanline_ == 241 && cycle_ == 1)
 		{
 			PPUSTATUS.bit.vb_start = 1;
-			nmi_occured = PPUCTRL.bit.gen_nmi;
+			if (PPUCTRL.bit.gen_nmi)
+			{
+				Bus::instance().cpu.nmi();
+			}
 		}
 	}
 	else
@@ -410,7 +413,6 @@ void PPU2C02::update()
 
 		if (scanline_ == 261 && cycle_ == 1)
 		{
-			nmi_occured = false;
 			PPUSTATUS.bit.vb_start = 0;
 			PPUSTATUS.bit.sp0_hit = 0;
 			PPUSTATUS.bit.sp_overflow = 0;
@@ -434,7 +436,6 @@ void PPU2C02::dummyUpdate()
 {
 	if (scanline_ == 261 && cycle_ == 1)
 	{
-		nmi_occured = false;
 		PPUSTATUS.bit.vb_start = 0;
 		scanline_ = cycle_ = 0;
 		frame_complete = true;
@@ -445,9 +446,8 @@ void PPU2C02::dummyUpdate()
 		PPUSTATUS.bit.vb_start = 1;
 		if (PPUCTRL.bit.gen_nmi)
 		{
-			
+			Bus::instance().cpu.nmi();
 		}
-		nmi_occured = PPUCTRL.bit.gen_nmi;
 	}
 
 	++cycle_;

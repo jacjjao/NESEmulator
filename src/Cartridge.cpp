@@ -82,7 +82,7 @@ u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
     }
     else
     {
-        chr_mem_.resize(8_KB);
+        chr_mem_.resize(8_KB); // CHR RAM
         use_chr_ram_ = true;
     }
 

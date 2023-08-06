@@ -1,11 +1,11 @@
 #include "Bus.hpp"
 
 Bus::Bus() : 
-	cpu_mem_(cpu_mem_size, 0)
+	cpu_mem_(cpu_mem_size)
 {
 }
 
-Bus& const Bus::instance()
+Bus& Bus::instance()
 {
 	static Bus bus;
 	return bus;
@@ -91,11 +91,6 @@ void Bus::clock()
 		{
 			cpu.update();
 		}
-	}
-	if (ppu.nmi_occured)
-	{
-		ppu.nmi_occured = false;
-		cpu.nmi();
 	}
 	if (cart_->irq_occurred)
 	{
