@@ -12,7 +12,7 @@
 class Bus
 {
 public:
-	Bus();
+	static Bus& instance();
 
 	void cpuWrite(u16 addr, u8 data);
 	u8 cpuRead(u16 addr);
@@ -24,17 +24,20 @@ public:
 	PPU2C02 ppu;
 	CPU6502 cpu;
 	StandardController joystick;
+	Mapper& cartridge();
 
-	void insertCartridge(std::shared_ptr<Mapper> cart);
+	void insertCartridge(std::unique_ptr<Mapper> cart);
 
 private:
-	static constexpr std::size_t cpu_mem_size = 2_KB; // 64 kB
+	static constexpr std::size_t cpu_mem_size = 2_KB;
+
+	Bus();
 
 	StandardController joystick_cache_;
 
 	std::vector<u8> cpu_mem_;
 
-	std::shared_ptr<Mapper> cart_;
+	std::unique_ptr<Mapper> cart_;
 
 	bool dma_transfer = false, dma_start = false;
 	u16 dma_addr = 0;

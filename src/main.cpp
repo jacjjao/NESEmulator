@@ -3,7 +3,7 @@
 #include "Mapper/AllMapper.hpp"
 
 
-std::shared_ptr<Mapper> createCartridge(const std::filesystem::path& path)
+std::unique_ptr<Mapper> createCartridge(const std::filesystem::path& path)
 {
     Cartridge cart;
     u8 mapper_type = cart.loadiNESFile(path);
@@ -46,7 +46,7 @@ int main()
         auto cartridge = createCartridge("../../../Mega Man 2.nes");
         
         NES nes;
-        nes.insertCartridge(cartridge);
+        nes.bus.insertCartridge(std::move(cartridge));
         nes.run();
     }
     catch (std::exception& e)

@@ -1,6 +1,7 @@
 #include "NES.hpp"
 
-NES::NES()
+NES::NES() : 
+    bus{ Bus::instance() }
 {
 #ifdef DEBUG_WINDOW
 	window_ = new sf::RenderWindow(sf::VideoMode(256 + 150, 240 + 50), "NES", sf::Style::Titlebar | sf::Style::Close);
@@ -15,12 +16,6 @@ NES::NES()
 NES::~NES()
 {
 	delete window_;
-}
-
-void NES::insertCartridge(std::shared_ptr<Mapper> cartridge)
-{
-    bus_.insertCartridge(std::move(cartridge));
-    reset();
 }
 
 void NES::run()
@@ -44,20 +39,15 @@ void NES::run()
     }
 }
 
-void NES::reset()
-{
-    bus_.reset();
-}
-
 bool NES::onUpdate(float)
 {
     if (pause_) return true;
     
     do
     {
-        bus_.clock();
-    } while (!bus_.ppu.frame_complete);
-    bus_.ppu.frame_complete = false;
+        bus.clock();
+    } while (!bus.ppu.frame_complete);
+    bus.ppu.frame_complete = false;
     
     return true;
 }
@@ -68,17 +58,17 @@ void NES::onDraw()
     
     // bus_.ppu.dbgDrawNametb(0);
 
-    auto& video_output = bus_.ppu.getVideoOutput();
+    auto& video_output = bus.ppu.getVideoOutput();
     window_->draw(video_output.data(), video_output.size(), sf::Quads);
 #ifdef DEBUG_WINDOW
-    auto& patterntb1 = bus_.ppu.dbgGetPatterntb(0, bus_.ppu.dbg_pal);
-    auto& patterntb2 = bus_.ppu.dbgGetPatterntb(1, bus_.ppu.dbg_pal);
+    auto& patterntb1 = bus.ppu.dbgGetPatterntb(0, bus.ppu.dbg_pal);
+    auto& patterntb2 = bus.ppu.dbgGetPatterntb(1, bus.ppu.dbg_pal);
     window_->draw(patterntb1.data(), patterntb1.size(), sf::Quads);
     window_->draw(patterntb2.data(), patterntb2.size(), sf::Quads);
     
     for (int i = 0; i < 8; ++i)
     {
-        auto& palette = bus_.ppu.dbgGetFramePalette(i);
+        auto& palette = bus.ppu.dbgGetFramePalette(i);
         window_->draw(palette.data(), palette.size(), sf::Quads);
     }
 #endif
@@ -109,46 +99,46 @@ void NES::onKeyPressed()
         window_->close();
 #ifdef DEBUG_WINDOW
     else if (event_.key.code == sf::Keyboard::Right)
-        ++bus_.ppu.dbg_pal &= 0x07;
+        ++bus.ppu.dbg_pal &= 0x07;
     else if (event_.key.code == sf::Keyboard::Left)
-        --bus_.ppu.dbg_pal &= 0x07;
+        --bus.ppu.dbg_pal &= 0x07;
     else if (event_.key.code == sf::Keyboard::Space)
         pause_ = !pause_;
 #endif
     else if (event_.key.code == sf::Keyboard::W)
-        bus_.joystick.setBotton(Botton::Up, true);
+        bus.joystick.setBotton(Botton::Up, true);
     else if (event_.key.code == sf::Keyboard::S)
-        bus_.joystick.setBotton(Botton::Down, true);
+        bus.joystick.setBotton(Botton::Down, true);
     else if (event_.key.code == sf::Keyboard::A)
-        bus_.joystick.setBotton(Botton::Left, true);
+        bus.joystick.setBotton(Botton::Left, true);
     else if (event_.key.code == sf::Keyboard::D)
-        bus_.joystick.setBotton(Botton::Right, true);
+        bus.joystick.setBotton(Botton::Right, true);
     else if (event_.key.code == sf::Keyboard::G)
-        bus_.joystick.setBotton(Botton::Select, true);
+        bus.joystick.setBotton(Botton::Select, true);
     else if (event_.key.code == sf::Keyboard::H)
-        bus_.joystick.setBotton(Botton::Start, true);
+        bus.joystick.setBotton(Botton::Start, true);
     else if (event_.key.code == sf::Keyboard::J)
-        bus_.joystick.setBotton(Botton::B, true);
+        bus.joystick.setBotton(Botton::B, true);
     else if (event_.key.code == sf::Keyboard::K)
-        bus_.joystick.setBotton(Botton::A, true);
+        bus.joystick.setBotton(Botton::A, true);
 }
 
 void NES::onKeyReleased()
 {
      if (event_.key.code == sf::Keyboard::W)
-         bus_.joystick.setBotton(Botton::Up, false);
+         bus.joystick.setBotton(Botton::Up, false);
      else if (event_.key.code == sf::Keyboard::S)
-         bus_.joystick.setBotton(Botton::Down, false);
+         bus.joystick.setBotton(Botton::Down, false);
      else if (event_.key.code == sf::Keyboard::A)
-         bus_.joystick.setBotton(Botton::Left, false);
+         bus.joystick.setBotton(Botton::Left, false);
      else if (event_.key.code == sf::Keyboard::D)
-         bus_.joystick.setBotton(Botton::Right, false);
+         bus.joystick.setBotton(Botton::Right, false);
      else if (event_.key.code == sf::Keyboard::G)
-         bus_.joystick.setBotton(Botton::Select, false);
+         bus.joystick.setBotton(Botton::Select, false);
      else if (event_.key.code == sf::Keyboard::H)
-         bus_.joystick.setBotton(Botton::Start, false);
+         bus.joystick.setBotton(Botton::Start, false);
      else if (event_.key.code == sf::Keyboard::J)
-         bus_.joystick.setBotton(Botton::B, false);
+         bus.joystick.setBotton(Botton::B, false);
      else if (event_.key.code == sf::Keyboard::K)
-         bus_.joystick.setBotton(Botton::A, false);
+         bus.joystick.setBotton(Botton::A, false);
 }

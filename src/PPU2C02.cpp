@@ -1,8 +1,7 @@
 #include "PPU2C02.hpp"
 #include "common/bitHelper.hpp"
+#include "Bus.hpp"
 #include <cassert>
-
-#include <SFML/System/Clock.hpp>
 
 
 PPU2C02::PPU2C02() :
@@ -430,7 +429,7 @@ void PPU2C02::update()
 		}
 	}
 }
-
+#ifdef EMU_DEBUG
 void PPU2C02::dummyUpdate()
 {
 	if (scanline_ == 261 && cycle_ == 1)
@@ -444,6 +443,10 @@ void PPU2C02::dummyUpdate()
 	if (scanline_ == 241 && cycle_ == 1)
 	{
 		PPUSTATUS.bit.vb_start = 1;
+		if (PPUCTRL.bit.gen_nmi)
+		{
+			
+		}
 		nmi_occured = PPUCTRL.bit.gen_nmi;
 	}
 
@@ -454,12 +457,7 @@ void PPU2C02::dummyUpdate()
 		++scanline_;
 	}
 }
-
-void PPU2C02::insertCartridge(std::shared_ptr<Mapper> cart)
-{
-	cart_ = std::move(cart);
-}
-
+#endif
 u8 PPU2C02::regRead(const u16 addr)
 {
 	assert(addr <= 7);
@@ -559,7 +557,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 u8 PPU2C02::memRead(u16 addr)
 {
 	addr &= 0x3FFF;
-	if (const auto data = cart_->ppuMapRead(addr); data.has_value())
+	if (const auto data = Bus::instance().cartridge().ppuMapRead(addr); data.has_value())
 	{
 		return *data;
 	}
@@ -569,7 +567,7 @@ u8 PPU2C02::memRead(u16 addr)
 void PPU2C02::memWrite(u16 addr, const u8 data)
 {
 	addr &= 0x3FFF;
-	if (cart_->ppuMapWrite(addr, data))
+	if (Bus::instance().cartridge().ppuMapWrite(addr, data))
 	{
 		return;
 	}
@@ -596,7 +594,7 @@ u8* PPU2C02::mirroring(u16 addr)
 	if (0x2000 <= addr && addr <= 0x3EFF)
 	{
 		addr &= 0x2FFF;
-		switch (cart_->getMirrorType())
+		switch (Bus::instance().cartridge().getMirrorType())
 		{
 		case MirrorType::Vertical:
 			if (0x2800 <= addr && addr <= 0x2FFF)
@@ -642,7 +640,7 @@ sf::Color PPU2C02::getColorFromPaletteRam(const bool sprite, const u16 palette, 
 	const u16 addr = ((sp << 4) | (palette << 2) | pixel);
 	return palette_.getColor(palette_[addr] & 0x3F);
 }
-
+#ifdef EMU_DEBUG
 const std::vector<sf::Vertex>& PPU2C02::dbgGetPatterntb(const int index, const u8 palette)
 {
 	static PixelArray patterntb[2]{ (128 * 128), (128 * 128) };
@@ -782,3 +780,4 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 
 	return frame_palette[index];
 }
+#endif

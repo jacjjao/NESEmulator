@@ -17,8 +17,6 @@ public:
 
 	void update();
 
-	void insertCartridge(std::shared_ptr<Mapper> cartridge);
-
 	u8 regRead(u16 addr);
 	void regWrite(u16 addr, u8 data);
 	u8 memRead(u16 addr);
@@ -32,15 +30,14 @@ public:
 
 	u8 getOAMAddr() const;
 
-	bool nmi_occured = false;
-
+#ifdef EMU_DEBUG
 public: // for debug
 	void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
 	u8 dbg_pal = 0;
-
+#endif
 private:
 	sf::Color getColorFromPaletteRam(bool sprite, u16 palette, u16 pixel);
 	u8* mirroring(u16 addr);
@@ -137,8 +134,6 @@ private:
 
 	std::vector<Sprite> sprite_buf_;
 	bool sprite_hit_potential_ = false;
-
-	std::shared_ptr<Mapper> cart_;
 
 	u8 data_buf_ = 0;
 

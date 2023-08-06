@@ -456,19 +456,14 @@ void CPU6502::update()
 	total_cycles_ += cycles_;
 }
 
-void CPU6502::connectToBus(Bus* bus)
-{
-	bus_ = bus;
-}
-
 void CPU6502::write(const u16 addr, const u8 data)
 {
-	bus_->cpuWrite(addr, data);
+	Bus::instance().cpuWrite(addr, data);
 }
 
 u8 CPU6502::read(const u16 addr)
 {
-	return bus_->cpuRead(addr);
+	return Bus::instance().cpuRead(addr);
 }
 
 void CPU6502::reset()

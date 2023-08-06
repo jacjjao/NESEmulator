@@ -6,16 +6,12 @@
 
 // #define EMUCPULOG
 
-class Bus;
-
 class CPU6502
 {
 public:
 	CPU6502();
 
 	void update();
-
-	void connectToBus(Bus* bus);
 
 	void write(u16 addr, u8 data);
 	u8 read(u16 addr);
@@ -136,6 +132,4 @@ private:
 
 	u8 cycles_ = 0;
 	u64 total_cycles_ = 0;
-
-	Bus* bus_ = nullptr;
 };

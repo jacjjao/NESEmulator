@@ -3,7 +3,12 @@
 Bus::Bus() : 
 	cpu_mem_(cpu_mem_size, 0)
 {
-	cpu.connectToBus(this);
+}
+
+Bus& const Bus::instance()
+{
+	static Bus bus;
+	return bus;
 }
 
 void Bus::cpuWrite(const u16 addr, const u8 data)
@@ -107,8 +112,13 @@ void Bus::reset()
 	ppu.reset();
 }
 
-void Bus::insertCartridge(std::shared_ptr<Mapper> cart)
+Mapper& Bus::cartridge()
 {
-	ppu.insertCartridge(cart);
+	return *cart_;
+}
+
+void Bus::insertCartridge(std::unique_ptr<Mapper> cart)
+{
 	cart_ = std::move(cart);
+	reset();
 }
