@@ -235,15 +235,16 @@ void PPU2C02::update()
 		}
 	};
 	const auto spriteEval = [this] {
-		if (cycle_ != 256 || scanline_ >= 240) return;
-		oam_byte.n = oam_byte.m = 0;
+		if (cycle_ != 257 || scanline_ >= 240) return;
+		u8 oam_n = 0, oam_m = 0;
 		second_oam_.clear();
 		sprite_hit_potential_ = false;
 		do
 		{
-			u8 sprite_addr = oam_byte.n * 4 + oam_byte.m;
+			u8 sprite_addr = oam_n * 4 + oam_m;
 			const u8 y_coord = primary_oam_[sprite_addr];
-			const bool sprite_in_range = ((y_coord <= scanline_) && ((scanline_ - y_coord) < (PPUCTRL.bit.sp_size ? 16 : 8)));
+			const int diff = static_cast<int>(scanline_) - static_cast<int>(y_coord);
+			const bool sprite_in_range = (diff >= 0 && diff < (PPUCTRL.bit.sp_size ? 16 : 8));
 			const bool second_oam_full = (second_oam_.size() >= 32);
 			if (second_oam_full)
 			{
@@ -253,7 +254,7 @@ void PPU2C02::update()
 				}
 				else
 				{
-					++oam_byte.m; // hardware bug
+					++oam_m; // hardware bug
 				}
 			}
 			else
@@ -265,19 +266,19 @@ void PPU2C02::update()
 					second_oam_.push_back(primary_oam_[sprite_addr++]);
 					second_oam_.push_back(primary_oam_[sprite_addr]);
 					assert(second_oam_.size() <= 32);
-					if (oam_byte.n == 0)
+					if (oam_n == 0)
 					{
 						sprite_hit_potential_ = true;
 					}
 				}
 			}
-		} while (++oam_byte.n > 0);
+		} while (++oam_n < 64);
 	};
 	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, int& sprite_idx) {
+		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0 || cycle_ == 0) return;
 		priority = true;
 		pal = 0; 
 		pat = 0;
-		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0) return;
 		for (std::size_t i = 0; i < sprite_buf_.size(); ++i)
 		{
 			if (sprite_buf_[i].x > 0)
@@ -296,7 +297,7 @@ void PPU2C02::update()
 		}
 	};
 	const auto updateSpriteShifter = [this] {
-		if (cycle_ > 256 || scanline_ >= 240) return;
+		if (cycle_ > 256 || scanline_ >= 240 || cycle_ == 0) return;
 		for (auto& sprite : sprite_buf_)
 		{
 			if (sprite.x == 0)
@@ -311,7 +312,7 @@ void PPU2C02::update()
 		}
 	};
 	const auto muxColor = [this](const u8 bg_pat, const u8 bg_pal, const u8 sp_pat, const u8 sp_pal, const bool priority, const int sprite_idx) {
-		if (cycle_ > 256 || scanline_ >= 240) return;
+		if (cycle_ > 256 || scanline_ >= 240 || cycle_ == 0) return;
 		bool is_sprite = false;
 		u8 pal = 0, pat = 0;
 		if (sp_pat == 0 || bg_pat == 0)
@@ -368,7 +369,7 @@ void PPU2C02::update()
 	};
 
 
-	if (cycle_ == 0)
+	if (cycle_ == 0 && scanline_ == 0)
 	{
 		cycle_ = 1;
 	}
@@ -402,8 +403,11 @@ void PPU2C02::update()
 		
 		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority, sprite_index);
 
-		spriteEval();
-		createSprites();
+		if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
+		{
+			spriteEval();
+			createSprites();
+		}
 
 		if (scanline_ == 261 && cycle_ == 1)
 		{
@@ -411,7 +415,6 @@ void PPU2C02::update()
 			PPUSTATUS.bit.vb_start = 0;
 			PPUSTATUS.bit.sp0_hit = 0;
 			PPUSTATUS.bit.sp_overflow = 0;
-			sprite_buf_.clear();
 		}
 	}
 
@@ -486,6 +489,8 @@ u8 PPU2C02::regRead(const u16 addr)
 		vram_addr_.reg += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
 		break;
 	}
+
+	open_bus_ = data;
 
 	return data;
 }

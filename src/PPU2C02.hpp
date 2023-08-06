@@ -136,12 +136,6 @@ private:
 	std::vector<Sprite> sprite_buf_;
 	bool sprite_hit_potential_ = false;
 
-	struct OAMByte
-	{
-		u8 n : 6;
-		u8 m : 2;
-	} oam_byte;
-
 	std::shared_ptr<Mapper> cart_;
 
 	u8 data_buf_ = 0;

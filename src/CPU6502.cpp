@@ -1003,7 +1003,7 @@ void CPU6502::SRE()
 
 void CPU6502::unknownOpcode()
 {
-	std::fprintf(stderr, "[Warning] Unknown opcode: %X\n", (int)opcode_);
+	std::fprintf(stderr, "[Warning] Unknown opcode: %02X\n", (int)opcode_);
 }
 
 void CPU6502::relativeDisplace()
