@@ -24,11 +24,13 @@ public:
 	u8 memRead(u16 addr);
 	void memWrite(u16 addr, u8 data);
 
-	void OAMDMA(u8* data);
-
 	bool frame_complete = false;
 
 	const std::vector<sf::Vertex>& getVideoOutput();
+
+	u8* const OAM();
+
+	u8 getOAMAddr() const;
 
 	bool nmi_occured = false;
 

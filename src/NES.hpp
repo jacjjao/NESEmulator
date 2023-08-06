@@ -3,7 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include "Bus.hpp"
 
-#define DEBUG_WINDOW
+// #define DEBUG_WINDOW
 
 class NES
 {

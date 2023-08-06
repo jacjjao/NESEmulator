@@ -21,11 +21,10 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 	}
 	else if (addr == 0x4014)
 	{
-		u16 adr = (static_cast<u16>(data) << 8);
-		for (int i = 0; i < 256; ++i, ++adr)
-		{
-			ppu.regWrite(0x04, cpuRead(adr));
-		}
+		dma_transfer = true;
+		dma_addr = (static_cast<u16>(data) << 8);
+		oam_addr = ppu.getOAMAddr();
+		dma_start = false;
 	}
 	else if (addr == 0x4016)
 	{
@@ -61,7 +60,32 @@ void Bus::clock()
 	ppu.update();
 	if (cycle_ % 3 == 0)
 	{
-		cpu.update();
+		if (dma_transfer)
+		{
+			if (!dma_start)
+			{
+				if (cycle_ % 2 == 1)
+				{
+					dma_start = true;
+				}
+			}
+			else
+			{
+				if (cycle_ % 2 == 1)
+				{
+					const u8 data = cpuRead(dma_addr++);
+					ppu.OAM()[oam_addr++] = data;
+					if ((dma_addr & 0x00FF) == 0x0000)
+					{
+						dma_transfer = false;
+					}
+				}
+			}
+		}
+		else
+		{
+			cpu.update();
+		}
 	}
 	if (ppu.nmi_occured)
 	{

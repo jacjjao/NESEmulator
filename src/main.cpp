@@ -39,13 +39,11 @@ std::shared_ptr<Mapper> createCartridge(const std::filesystem::path& path)
 
 int main()
 {   
-    // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/official_only.nes"))
-    // if (!cartridge->loadiNESFile("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_hit_tests/01.basics.nes"))
     try
     {
-        auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_writes_oam.nes");
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/ppu_vbl_nmi.nes");
-        // auto cartridge = createCartridge("../../../Battletoads.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_writes_oam.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_overflow_tests/1.Basics.nes");
+        auto cartridge = createCartridge("../../../Mega Man 2.nes");
         
         NES nes;
         nes.insertCartridge(cartridge);

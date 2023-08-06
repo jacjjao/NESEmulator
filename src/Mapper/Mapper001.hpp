@@ -21,12 +21,12 @@ public:
 private:
 	const usize nprg_banks_;
 
-	u8 prg16_bank_low_ = 0, prg16_bank_high_ = 0;
-	u8 prg32_bank_ = 0;
+	usize prg16_bank_low_ = 0, prg16_bank_high_ = 0;
+	usize prg32_bank_ = 0;
 	u8 prg_bank_mode_ = 0;
 
-	u8 chr4_bank_low_ = 0, chr4_bank_high_ = 0;
-	u8 chr8_bank_ = 0;
+	usize chr4_bank_low_ = 0, chr4_bank_high_ = 0;
+	usize chr8_bank_ = 0;
 	bool chr_bank_mode_ = 0;
 	
 	u8 shift_reg_ = 0x10, load_reg_ = 0;

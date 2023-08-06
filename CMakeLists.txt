@@ -31,6 +31,10 @@ if(MSVC)
 			"/MP"
 	)
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		target_compile_definitions(${PROJECT_NAME} 
+			PRIVATE
+				"EMU_DEBUG"
+		)
 		target_compile_options(${PROJECT_NAME} 
 			PRIVATE 
 				"/fsanitize=address"

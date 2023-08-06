@@ -95,7 +95,7 @@ void PPU2C02::update()
 		shift_reg_.attr_low  = (shift_reg_.attr_low  & 0xFF00) | bg_latches_.attr_low;
 	};
 	const auto drawBGPixel = [this](u8& pal, u8& pat) {
-		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return 0;
+		if (cycle_ > 256 || scanline_ == 261 || cycle_ == 0) return;
 		const u8 pos        = 15 - (fine_x & 0x07);
 		const u8 pixel_high = getBitN(shift_reg_.pat_high, pos);
 		const u8 pixel_low  = getBitN(shift_reg_.pat_low, pos);
@@ -274,12 +274,12 @@ void PPU2C02::update()
 			}
 		} while (++oam_n < 64);
 	};
-	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, int& sprite_idx) {
+	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, usize& sprite_idx) {
 		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0 || cycle_ == 0) return;
 		priority = true;
 		pal = 0; 
 		pat = 0;
-		for (std::size_t i = 0; i < sprite_buf_.size(); ++i)
+		for (usize i = 0; i < sprite_buf_.size(); ++i)
 		{
 			if (sprite_buf_[i].x > 0)
 				continue;
@@ -311,7 +311,7 @@ void PPU2C02::update()
 			}
 		}
 	};
-	const auto muxColor = [this](const u8 bg_pat, const u8 bg_pal, const u8 sp_pat, const u8 sp_pal, const bool priority, const int sprite_idx) {
+	const auto muxColor = [this](const u8 bg_pat, const u8 bg_pal, const u8 sp_pat, const u8 sp_pal, const bool priority, const usize sprite_idx) {
 		if (cycle_ > 256 || scanline_ >= 240 || cycle_ == 0) return;
 		bool is_sprite = false;
 		u8 pal = 0, pat = 0;
@@ -394,7 +394,7 @@ void PPU2C02::update()
 		}
 		u8 sp_pat = 0, sp_pal = 0;
 		bool sp_priority = false;
-		int sprite_index = 0;
+		usize sprite_index = 0;
 		if (PPUMASK.bit.render_sp)
 		{
 			drawSprite(sp_pal, sp_pat, sp_priority, sprite_index);
@@ -576,15 +576,19 @@ void PPU2C02::memWrite(u16 addr, const u8 data)
 	*mirroring(addr) = data;
 }
 
-void PPU2C02::OAMDMA(u8* data)
-{
-	for (std::size_t i = 0; i < 256; ++i, ++oam_addr_, ++data)
-		primary_oam_[oam_addr_] = *data;
-}
-
 const std::vector<sf::Vertex>& PPU2C02::getVideoOutput()
 {
 	return pixels_.getVertexArray();
+}
+
+u8* const PPU2C02::OAM()
+{
+	return primary_oam_.data();
+}
+
+u8 PPU2C02::getOAMAddr() const
+{
+	return oam_addr_;
 }
 
 u8* PPU2C02::mirroring(u16 addr)
@@ -705,7 +709,7 @@ void PPU2C02::dbgDrawNametb(const u8 which)
 			const u8 patterntb_index = memRead(addr);
 			const u16 patterntb_addr = 0x1000 * which + u16(patterntb_index) * 16;
 
-			for (int i = 0; i < 8; ++i)
+			for (u16 i = 0; i < 8; ++i)
 			{
 				lower[i] = memRead(patterntb_addr + i);
 				upper[i] = memRead(patterntb_addr + i + 8);
@@ -767,7 +771,6 @@ const std::vector<sf::Vertex>& PPU2C02::dbgGetFramePalette(const u8 index)
 		init = true;
 	}
 
-	u16 addr = 0x3F01 + index * 4;
 	for (std::size_t j = 0; j < 4; ++j)
 	{
 		sf::Color color = getColorFromPaletteRam(false, index, j);

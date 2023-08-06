@@ -36,5 +36,9 @@ private:
 
 	std::shared_ptr<Mapper> cart_;
 
+	bool dma_transfer = false, dma_start = false;
+	u16 dma_addr = 0;
+	u8 oam_addr = 0;
+
 	u64 cycle_ = 0;
 };

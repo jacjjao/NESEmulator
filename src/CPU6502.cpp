@@ -51,8 +51,7 @@ CPU6502::CPU6502()
 	const auto indIdx  = [this]() { this->indIdx(); };
 
 	const Instruction unknownInstr = { none, unknown, 0, 0 };
-	for (auto& instr : instrs_)
-		instr = unknownInstr;
+	instrs_.resize(instrs_size, unknownInstr);
 
 	const auto ADC = [this]() { this->ADC(); };
 	instrs_[0x69] = { imm,    ADC, 2, 0 };
@@ -445,10 +444,6 @@ void CPU6502::update()
 
 	cycles_ = 0;
 	opcode_ = getByteFromPC();
-	if (opcode_ == 0x0F)
-	{
-		int a = 0;
-	}
 	instrs_[opcode_].addr_mode();
 
 #ifdef EMUCPULOG
@@ -1003,7 +998,9 @@ void CPU6502::SRE()
 
 void CPU6502::unknownOpcode()
 {
+#ifdef EMU_DEBUG
 	std::fprintf(stderr, "[Warning] Unknown opcode: %02X\n", (int)opcode_);
+#endif
 }
 
 void CPU6502::relativeDisplace()
@@ -1223,7 +1220,6 @@ void CPU6502::setNegativeResultFlag(const bool set)
 
 void CPU6502::pushStack(const u8 val)
 {
-	// assert(reg_.SP > 0);
 	write(stack_low + reg_.SP, val);
 	--reg_.SP;
 }
@@ -1238,7 +1234,6 @@ void CPU6502::pushStack(const u16 val)
 
 u8 CPU6502::popStack()
 {
-	// assert(reg_.SP < 255);
 	++reg_.SP;
 	return read(stack_low + reg_.SP);
 }
