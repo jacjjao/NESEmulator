@@ -70,8 +70,8 @@ void PPU2C02::update()
 			}
 		}
 		const u8 pal = (data >> offset);
-		bg_latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
-		bg_latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
+		bg_latches_.attr_low = (getBitN(pal, 0) ? 0x0F : 0x00);
+		bg_latches_.attr_high = (getBitN(pal, 1) ? 0x0F : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
@@ -253,7 +253,7 @@ void PPU2C02::update()
 				}
 				else
 				{
-					++oam_m; // hardware bug
+					oam_m = (oam_m + 1) % 4; // hardware bug
 				}
 			}
 			else
@@ -264,7 +264,6 @@ void PPU2C02::update()
 					second_oam_.push_back(primary_oam_[sprite_addr++]);
 					second_oam_.push_back(primary_oam_[sprite_addr++]);
 					second_oam_.push_back(primary_oam_[sprite_addr]);
-					assert(second_oam_.size() <= 32);
 					if (oam_n == 0)
 					{
 						sprite_hit_potential_ = true;
@@ -419,12 +418,12 @@ void PPU2C02::update()
 		}
 	}
 
+	Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
 	++cycle_;
 	if (cycle_ > 340)
 	{
 		cycle_ = 0;
 		++scanline_;
-		Bus::instance().cartridge().updateIRQCounter(scanline_);
 		if (scanline_ > 261)
 		{
 			frame_complete = true;
@@ -451,12 +450,16 @@ void PPU2C02::dummyUpdate()
 		PPUSTATUS.bit.sp_overflow = 0;
 	}
 
+	if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
+	{
+		Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
+	}
+
 	++cycle_;
 	if (cycle_ > 340)
 	{
 		cycle_ = 0;
 		++scanline_;
-		Bus::instance().cartridge().updateIRQCounter(scanline_);
 		if (scanline_ > 261)
 		{
 			frame_complete = true;

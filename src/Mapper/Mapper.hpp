@@ -20,7 +20,7 @@ public:
 
 	virtual void reset() {};
 
-	virtual void updateIRQCounter(unsigned) {};
+	virtual void updateIRQCounter(u8, unsigned, unsigned, unsigned) {};
 
 	MirrorType getMirrorType();
 

@@ -11,6 +11,10 @@ Mapper004::Mapper004(Cartridge cart) :
 	const usize prg_banks = cart_.PRGRomSize() / 8_KB;
 	fix_prg_second_last_ = &cart_.PRGRom()[(prg_banks - 2) * 8_KB];
 	fix_prg_last_ = &cart_.PRGRom()[(prg_banks - 1) * 8_KB];
+	prg_banks_[0] = prg_banks_[1] = &cart_.PRGRom()[0];
+	chr_2kbanks_[0] = chr_2kbanks_[1] = &cart_.CHRMem()[0];
+	chr_1kbanks_[0] = chr_1kbanks_[1] = &cart_.CHRMem()[0];
+	chr_1kbanks_[2] = chr_1kbanks_[3] = &cart_.CHRMem()[0];
 }
 
 bool Mapper004::cpuMapWrite(const u16 addr, const u8 data)
@@ -43,11 +47,11 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data)
 			switch (bank_select_)
 			{
 			case 0b000:
-				chr_2kbanks_[0] = &cart_.CHRMem()[(data & 0xFE) * 2_KB];
+				chr_2kbanks_[0] = &cart_.CHRMem()[(data & 0xFE) * 1_KB];
 				break;
 
 			case 0b001:
-				chr_2kbanks_[1] = &cart_.CHRMem()[(data & 0xFE) * 2_KB];
+				chr_2kbanks_[1] = &cart_.CHRMem()[(data & 0xFE) * 1_KB];
 				break;
 
 			case 0b010:
@@ -102,6 +106,10 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data)
 				Bus::instance().cpu.irq();
 			}
 			irq_counter_ = irq_latch_;
+			if (irq_counter_ == 0 && irq_enable_)
+			{
+				Bus::instance().cpu.irq();
+			}
 		}
 	}
 	else
@@ -207,8 +215,52 @@ std::optional<u8> Mapper004::ppuMapRead(const u16 addr)
 	return chr_2kbanks_[1][addr & 0x07FF];
 }
 
-void Mapper004::updateIRQCounter(const unsigned scanline)
+void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, const unsigned scanline, const unsigned cycle)
 {
-	assert(irq_counter_ > 0);
+	if (scanline >= 240) return;
 
+	if (irq_counter_ > 0)
+	{
+		const bool sp_pat_tb = getBitN(PPUCTRL, 3);
+		const bool bg_pat_tb = getBitN(PPUCTRL, 4);
+		const bool sp_size = getBitN(PPUCTRL, 5);
+
+		if (!sp_size) // 8x8 sprite
+		{
+			if (!bg_pat_tb && sp_pat_tb)
+			{
+				if (cycle == 260)
+				{
+					--irq_counter_;
+				}
+			}
+			else if (bg_pat_tb && !sp_pat_tb)
+			{
+				if (cycle == 324)
+				{
+					--irq_counter_;
+				}
+			}
+		}
+		else
+		{
+			if (sprite_count < 8)
+			{
+				--irq_counter_;
+			}
+		}
+	}
+
+	if (irq_counter_ == 0)
+	{
+		if (irq_enable_)
+		{
+			Bus::instance().cpu.irq();
+		}
+		irq_counter_ = irq_latch_;
+		if (irq_counter_ == 0 && irq_enable_)
+		{
+			Bus::instance().cpu.irq();
+		}
+	}
 }

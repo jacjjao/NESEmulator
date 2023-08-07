@@ -14,7 +14,7 @@ public:
 
 	std::optional<u8> ppuMapRead(u16 addr) override;
 
-	void updateIRQCounter(unsigned scanline) override;
+	void updateIRQCounter(u8 PPUCTRL, unsigned sprite_count, unsigned scanline, unsigned cycle) override;
 
 private:
 	u8* prg_banks_[2]{};
@@ -36,6 +36,4 @@ private:
 	bool irq_enable_ = false;
 
 	std::vector<u8> prg_ram_;
-
-	unsigned scanline_ = 0;
 };
