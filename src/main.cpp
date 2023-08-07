@@ -26,10 +26,6 @@ std::unique_ptr<Mapper> createCartridge(const std::filesystem::path& path)
         mapper.reset(new Mapper003{ std::move(cart) });
         break;
 
-    case 004:
-        mapper.reset(new Mapper004{ std::move(cart) });
-        break;
-
     default:
     {
         char err_msg[50] = "";
@@ -45,10 +41,10 @@ int main()
 {   
     try
     {
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_writes_oam.nes");
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_overflow_tests/1.Basics.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/instr_timing.nes");
+        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_hit_tests/01.basics.nes");
         // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/mapper_test_rom/mmc3_test_2/5-MMC3.nes");
-        auto cartridge = createCartridge("../../../Super Mario Bros 3.nes");
+        auto cartridge = createCartridge("../../../Mega Man.nes");
         
         NES nes;
         nes.bus.insertCartridge(std::move(cartridge));

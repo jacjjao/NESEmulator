@@ -3,7 +3,9 @@
 #include <SFML/Graphics.hpp>
 #include "Bus.hpp"
 
+#ifdef EMU_DEBUG
 #define DEBUG_WINDOW
+#endif
 
 class NES
 {
