@@ -70,8 +70,8 @@ void PPU2C02::update()
 			}
 		}
 		const u8 pal = (data >> offset);
-		bg_latches_.attr_low = (getBitN(pal, 0) ? 0x0F : 0x00);
-		bg_latches_.attr_high = (getBitN(pal, 1) ? 0x0F : 0x00);
+		bg_latches_.attr_low = (getBitN(pal, 0) ? 0xFF : 0x00);
+		bg_latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
 		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
@@ -418,7 +418,11 @@ void PPU2C02::update()
 		}
 	}
 
-	Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
+	if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
+	{
+		Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
+	}
+
 	++cycle_;
 	if (cycle_ > 340)
 	{
@@ -555,6 +559,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 			vram_addr_ = tvram_addr_;
 		}
 		write_latch_ = !write_latch_;
+		Bus::instance().cartridge().updateIRQCounterNoCheck();
 		break;
 
 	case 0x07:

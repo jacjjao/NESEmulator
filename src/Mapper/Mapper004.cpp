@@ -101,15 +101,7 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data)
 		else
 		{
 			irq_counter_ = 0;
-			if (irq_enable_)
-			{
-				Bus::instance().cpu.irq();
-			}
-			irq_counter_ = irq_latch_;
-			if (irq_counter_ == 0 && irq_enable_)
-			{
-				Bus::instance().cpu.irq();
-			}
+			reload_flag_ = true;
 		}
 	}
 	else
@@ -217,50 +209,44 @@ std::optional<u8> Mapper004::ppuMapRead(const u16 addr)
 
 void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, const unsigned scanline, const unsigned cycle)
 {
-	if (scanline >= 240) return;
+	if (scanline >= 240 || scanline_tracker_ == scanline) return;
 
-	if (irq_counter_ > 0)
+	const bool sp_pat_tb = getBitN(PPUCTRL, 3);
+	const bool bg_pat_tb = getBitN(PPUCTRL, 4);
+	const bool sp_size = getBitN(PPUCTRL, 5);
+
+	if (!sp_size) // 8x8 sprite
 	{
-		const bool sp_pat_tb = getBitN(PPUCTRL, 3);
-		const bool bg_pat_tb = getBitN(PPUCTRL, 4);
-		const bool sp_size = getBitN(PPUCTRL, 5);
-
-		if (!sp_size) // 8x8 sprite
+		if (!bg_pat_tb && sp_pat_tb)
 		{
-			if (!bg_pat_tb && sp_pat_tb)
-			{
-				if (cycle == 260)
-				{
-					--irq_counter_;
-				}
-			}
-			else if (bg_pat_tb && !sp_pat_tb)
-			{
-				if (cycle == 324)
-				{
-					--irq_counter_;
-				}
-			}
+			if (cycle != 260) return;
 		}
-		else
+		else if (bg_pat_tb && !sp_pat_tb)
 		{
-			if (sprite_count < 8)
-			{
-				--irq_counter_;
-			}
+			if (cycle != 324) return;
 		}
 	}
-
-	if (irq_counter_ == 0)
+	else
 	{
-		if (irq_enable_)
-		{
-			Bus::instance().cpu.irq();
-		}
+		if (sprite_count >= 8) return;
+	}
+
+	updateIRQCounterNoCheck();
+}
+
+void Mapper004::updateIRQCounterNoCheck()
+{
+	if (reload_flag_ || irq_counter_ == 0)
+	{
 		irq_counter_ = irq_latch_;
-		if (irq_counter_ == 0 && irq_enable_)
-		{
-			Bus::instance().cpu.irq();
-		}
+	}
+	else if (irq_counter_ > 0)
+	{
+		--irq_counter_;
+	}
+	
+	if (irq_counter_ == 0 && irq_enable_)
+	{
+		Bus::instance().cpu.irq();
 	}
 }

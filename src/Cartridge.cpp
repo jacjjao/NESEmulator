@@ -86,10 +86,7 @@ u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
         use_chr_ram_ = true;
     }
 
-    if (const bool ignore_mirror_control = getBitN(header.flag6, 3); !ignore_mirror_control)
-    {
-        mirror_type = (getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal);
-    }
+    mirror_type = (getBitN(header.flag6, 0) ? MirrorType::Vertical : MirrorType::Horizontal);
 
     const u8 mapper_type = (header.flag7 & 0xF0) | ((header.flag6 & 0xF0) >> 4);
     return mapper_type;
