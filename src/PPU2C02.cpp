@@ -559,7 +559,6 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 			vram_addr_ = tvram_addr_;
 		}
 		write_latch_ = !write_latch_;
-		Bus::instance().cartridge().updateIRQCounterNoCheck();
 		break;
 
 	case 0x07:

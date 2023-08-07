@@ -228,10 +228,12 @@ void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, 
 	}
 	else
 	{
-		if (sprite_count >= 8) return;
+		if (sprite_count >= 8 || scanline_tracker_ == scanline) return;
 	}
 
 	updateIRQCounterNoCheck();
+
+	scanline_tracker_ = scanline;
 }
 
 void Mapper004::updateIRQCounterNoCheck()
@@ -239,6 +241,7 @@ void Mapper004::updateIRQCounterNoCheck()
 	if (reload_flag_ || irq_counter_ == 0)
 	{
 		irq_counter_ = irq_latch_;
+		reload_flag_ = false;
 	}
 	else if (irq_counter_ > 0)
 	{
