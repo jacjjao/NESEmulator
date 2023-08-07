@@ -43,7 +43,7 @@ int main()
     {
         // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/cpu_dummy_writes_oam.nes");
         // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_overflow_tests/1.Basics.nes");
-        auto cartridge = createCartridge("../../../The Legend of Zelda.nes");
+        auto cartridge = createCartridge("../../../Mega Man 2.nes");
         
         NES nes;
         nes.bus.insertCartridge(std::move(cartridge));

@@ -2,24 +2,27 @@
 
 #include "Mapper.hpp"
 
-/*
+
 class Mapper004 : public Mapper
 {
 public:
-	Mapper004(usize prg_rom_size);
+	Mapper004(Cartridge cart);
 	~Mapper004() override = default;
 
-	bool cpuMapWrite(u16 addr, u8 data, usize& mapped_addr) override;
-	bool cpuMapRead(u16 addr, usize& mapped_addr) override;
+	bool cpuMapWrite(u16 addr, u8 data) override;
+	std::optional<u8> cpuMapRead(u16 addr) override;
 
-	bool ppuMapRead(u16 addr, usize& mapped_addr) override;
+	std::optional<u8> ppuMapRead(u16 addr) override;
+
+	void updateIRQCounter(unsigned scanline) override;
 
 private:
-	const usize nprg_banks_;
-	usize prg_banks_[2]{};
+	u8* prg_banks_[2]{};
+	u8* fix_prg_second_last_;
+	u8* fix_prg_last_;
 
-	usize chr_2kbanks_[2]{};
-	usize chr_1kbanks_[4]{};
+	u8* chr_2kbanks_[2]{};
+	u8* chr_1kbanks_[4]{};
 
 	u8 bank_select_ = 0;
 	bool prg_bank_mode_ = false;
@@ -30,7 +33,9 @@ private:
 
 	u8 irq_counter_ = 0;
 	u8 irq_latch_ = 0;
-	bool reload_flag_ = false;
-	bool irq_enable_ = true;
+	bool irq_enable_ = false;
+
+	std::vector<u8> prg_ram_;
+
+	unsigned scanline_ = 0;
 };
-*/

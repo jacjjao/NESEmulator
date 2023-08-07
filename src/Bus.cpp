@@ -92,11 +92,6 @@ void Bus::clock()
 			cpu.update();
 		}
 	}
-	if (cart_->irq_occurred)
-	{
-		cart_->irq_occurred = false;
-		cpu.irq();
-	}
 	++cycle_;
 }
 

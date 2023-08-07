@@ -20,9 +20,9 @@ public:
 
 	virtual void reset() {};
 
-	MirrorType getMirrorType();
+	virtual void updateIRQCounter(unsigned) {};
 
-	bool irq_occurred = false;
+	MirrorType getMirrorType();
 
 protected:
 	Cartridge cart_;

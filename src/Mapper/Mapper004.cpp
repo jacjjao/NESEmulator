@@ -1,13 +1,19 @@
 #include "Mapper004.hpp"
+#include "../Bus.hpp"
 #include "../common/bitHelper.hpp"
+#include <cassert>	
 
-/*
-Mapper004::Mapper004(const usize prg_rom_size) : 
-	nprg_banks_{ prg_rom_size / 8_KB }
+
+Mapper004::Mapper004(Cartridge cart) :
+	Mapper{ std::move(cart) },
+	prg_ram_(8_KB)
 {
+	const usize prg_banks = cart_.PRGRomSize() / 8_KB;
+	fix_prg_second_last_ = &cart_.PRGRom()[(prg_banks - 2) * 8_KB];
+	fix_prg_last_ = &cart_.PRGRom()[(prg_banks - 1) * 8_KB];
 }
 
-bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
+bool Mapper004::cpuMapWrite(const u16 addr, const u8 data)
 {
 	if (addr < 0x6000)
 	{
@@ -16,7 +22,11 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	
 	if (addr < 0x8000)
 	{
-		return ram_write_protect_;
+		if (!ram_write_protect_)
+		{
+			prg_ram_[addr & 0x1FFF] = data;
+		}
+		return true;
 	}
 	
 	const bool addr_is_even = (addr % 2 == 0);
@@ -33,35 +43,35 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 			switch (bank_select_)
 			{
 			case 0b000:
-				chr_2kbanks_[0] = data;
+				chr_2kbanks_[0] = &cart_.CHRMem()[(data & 0xFE) * 2_KB];
 				break;
 
 			case 0b001:
-				chr_2kbanks_[1] = data;
+				chr_2kbanks_[1] = &cart_.CHRMem()[(data & 0xFE) * 2_KB];
 				break;
 
 			case 0b010:
-				chr_1kbanks_[0] = data;
+				chr_1kbanks_[0] = &cart_.CHRMem()[data * 1_KB];
 				break;
 
 			case 0b011:
-				chr_1kbanks_[1] = data;
+				chr_1kbanks_[1] = &cart_.CHRMem()[data * 1_KB];
 				break;
 
 			case 0b100:
-				chr_1kbanks_[2] = data;
+				chr_1kbanks_[2] = &cart_.CHRMem()[data * 1_KB];
 				break;
 
 			case 0b101:
-				chr_1kbanks_[3] = data;
+				chr_1kbanks_[3] = &cart_.CHRMem()[data * 1_KB];
 				break;
 
 			case 0b110:
-				prg_banks_[0] = data;
+				prg_banks_[0] = &cart_.PRGRom()[(data & 0x3F) * 8_KB];
 				break;
 
 			case 0b111:
-				prg_banks_[1] = data;
+				prg_banks_[1] = &cart_.PRGRom()[(data & 0x3F) * 8_KB];
 				break;
 			}
 		}
@@ -70,7 +80,7 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	{
 		if (addr_is_even)
 		{
-			setMirrortype((data & 0x01 ? MirrorType::Horizontal : MirrorType::Vertical));
+			cart_.mirror_type = (data & 0x01 ? MirrorType::Horizontal : MirrorType::Vertical);
 		}
 		else
 		{
@@ -87,7 +97,11 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 		else
 		{
 			irq_counter_ = 0;
-			reload_flag_ = true;
+			if (irq_enable_)
+			{
+				Bus::instance().cpu.irq();
+			}
+			irq_counter_ = irq_latch_;
 		}
 	}
 	else
@@ -104,125 +118,97 @@ bool Mapper004::cpuMapWrite(const u16 addr, const u8 data, usize& mapped_addr)
 	return true;
 }
 
-bool Mapper004::cpuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper004::cpuMapRead(const u16 addr)
 {
+	if (addr < 0x6000)
+	{
+		return std::nullopt;
+	}
+
 	if (addr < 0x8000)
 	{
-		return false;
+		return prg_ram_[addr & 0x1FFF];
 	}
 
 	if (addr <= 0x9FFF)
 	{
 		if (!prg_bank_mode_)
 		{
-			mapped_addr = prg_banks_[0] * 8_KB + (addr & 0x1FFF);
+			return prg_banks_[0][addr & 0x1FFF];
 		}
-		else
-		{
-			mapped_addr = (nprg_banks_ - 2) * 8_KB + (addr & 0x1FFF);
-		}
+		return fix_prg_second_last_[addr & 0x1FFF];
 	}
-	else if (addr <= 0xBFFF)
+	if (addr <= 0xBFFF)
 	{
-		mapped_addr = prg_banks_[1] * 8_KB + (addr & 0x1FFF);
+		return prg_banks_[1][addr & 0x1FFF];
 	}
-	else if (addr <= 0xDFFF)
+	if (addr <= 0xDFFF)
 	{
 		if (!prg_bank_mode_)
 		{
-			mapped_addr = (nprg_banks_ - 2) * 8_KB + (addr & 0x1FFF);
+			return fix_prg_second_last_[addr & 0x1FFF];
 		}
-		else
-		{
-			mapped_addr = prg_banks_[0] * 8_KB + (addr & 0x1FFF);
-		}
+		return prg_banks_[0][addr & 0x1FFF];
 	}
-	else
-	{
-		mapped_addr = (nprg_banks_ - 1) * 8_KB + (addr & 0x1FFF);
-	}
-	return true;
+	return fix_prg_last_[addr & 0x1FFF];
 }
 
-bool Mapper004::ppuMapRead(const u16 addr, usize& mapped_addr)
+std::optional<u8> Mapper004::ppuMapRead(const u16 addr)
 {
 	if (addr >= 0x2000)
 	{
-		return false;
+		return std::nullopt;
 	}
 
 	if (addr <= 0x07FF)
 	{
-		if (!chr_bank_inversion_)
-		{
-			mapped_addr = chr_2kbanks_[0] * 2_KB + addr;
-		}
-		else
+		if (chr_bank_inversion_)
 		{
 			if (addr <= 0x03FF)
 			{
-				mapped_addr = chr_1kbanks_[0] * 1_KB + addr;
+				return chr_1kbanks_[0][addr & 0x03FF];
 			}
-			else
-			{
-				mapped_addr = chr_1kbanks_[1] * 1_KB + (addr & 0x03FF);
-			}
+			return chr_1kbanks_[1][addr & 0x03FF];
 		}
+		return chr_2kbanks_[0][addr & 0x07FF];
 	}
-	else if (addr <= 0x0FFF)
-	{
-		if (!chr_bank_inversion_)
-		{
-			mapped_addr = chr_2kbanks_[1] * 2_KB + (addr & 0x07FF);
-		}
-		else
-		{
-			if (addr <= 0x03FF)
-			{
-				mapped_addr = chr_1kbanks_[2] * 1_KB + (addr & 0x03FF);
-			}
-			else
-			{
-				mapped_addr = chr_1kbanks_[3] * 1_KB + (addr & 0x03FF);
-			}
-		}
-	}
-	else if (addr <= 0x17FF)
+	if (addr <= 0x0FFF)
 	{
 		if (chr_bank_inversion_)
 		{
-			mapped_addr = chr_2kbanks_[0] * 2_KB + (addr & 0x07FF);
-		}
-		else
-		{
-			if (addr <= 0x03FF)
+			if (addr <= 0x0BFF)
 			{
-				mapped_addr = chr_1kbanks_[0] * 1_KB + (addr & 0x03FF);
+				return chr_1kbanks_[2][addr & 0x03FF];
 			}
-			else
-			{
-				mapped_addr = chr_1kbanks_[1] * 1_KB + (addr & 0x03FF);
-			}
+			return chr_1kbanks_[3][addr & 0x03FF];
 		}
+		return chr_2kbanks_[1][addr & 0x07FF];
 	}
-	else if (addr <= 0x1FFF)
+	if (addr <= 0x17FF)
 	{
-		if (chr_bank_inversion_)
+		if (!chr_bank_inversion_)
 		{
-			mapped_addr = chr_2kbanks_[1] * 2_KB + (addr & 0x07FF);
-		}
-		else
-		{
-			if (addr <= 0x03FF)
+			if (addr <= 0x13FF)
 			{
-				mapped_addr = chr_1kbanks_[2] * 1_KB + (addr & 0x03FF);
+				return chr_1kbanks_[0][addr & 0x03FF];
 			}
-			else
-			{
-				mapped_addr = chr_1kbanks_[3] * 1_KB + (addr & 0x03FF);
-			}
+			return chr_1kbanks_[1][addr & 0x03FF];
 		}
+		return chr_2kbanks_[0][addr & 0x07FF];
 	}
-	return true;
+	if (!chr_bank_inversion_)
+	{
+		if (addr <= 0x1BFF)
+		{
+			return chr_1kbanks_[2][addr & 0x03FF];
+		}
+		return chr_1kbanks_[3][addr & 0x03FF];
+	}
+	return chr_2kbanks_[1][addr & 0x07FF];
 }
-*/
+
+void Mapper004::updateIRQCounter(const unsigned scanline)
+{
+	assert(irq_counter_ > 0);
+
+}

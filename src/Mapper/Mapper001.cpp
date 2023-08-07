@@ -4,10 +4,10 @@
 
 
 Mapper001::Mapper001(Cartridge cart) :
-	Mapper{ cart },
-	nprg_banks_{ cart.PRGRomSize() / 16_KB },
+	Mapper{ std::move(cart) },
 	prg_ram_(8_KB)
 {
+	nprg_banks_ = cart_.PRGRomSize() / 16_KB;
 }
 
 bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)

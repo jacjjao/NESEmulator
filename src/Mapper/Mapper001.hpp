@@ -19,7 +19,7 @@ public:
 	void reset() override;
 
 private:
-	const usize nprg_banks_;
+	usize nprg_banks_;
 
 	usize prg16_bank_low_ = 0, prg16_bank_high_ = 0;
 	usize prg32_bank_ = 0;
