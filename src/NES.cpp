@@ -20,29 +20,31 @@ NES::~NES()
 
 void NES::run()
 {
+    static sf::Clock clock;
+    static constexpr float frame_time_interval = 1.0f / 60.0f;
+
     while (window_->isOpen())
     {
         while (window_->pollEvent(event_))
         {
             onEvent();
         }
-        onUpdate(0.0f);
-        onDraw();
+
+        if (clock.getElapsedTime().asSeconds() >= frame_time_interval)
+        {
+            clock.restart();
+            onUpdate(0.0f);
+            onDraw();
+        }
     }
 }
 
 bool NES::onUpdate(float)
 {
     if (pause_) return true;
-    
-    static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 50.0f;
 
-    if (clock.getElapsedTime().asSeconds() < frame_time_interval)
-    {
-        return true;
-    }
-    clock.restart();
+    static sf::Clock clock;
+    static constexpr float frame_time_interval = 1.0f / 60.0f;
 
     do
     {
@@ -55,15 +57,6 @@ bool NES::onUpdate(float)
 
 void NES::onDraw()
 {
-    static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 60.0f;
-
-    if (clock.getElapsedTime().asSeconds() < frame_time_interval)
-    {
-        return;
-    }
-    clock.restart();
-
     window_->clear(sf::Color{ 0, 0, 50 });
     
     // bus_.ppu.dbgDrawNametb(0);

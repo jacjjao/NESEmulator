@@ -61,8 +61,8 @@ u8 Bus::cpuRead(const u16 addr)
 
 void Bus::clock()
 {
-	// ppu.dummyUpdate();
 	ppu.update();
+
 	if (cycle_ % 3 == 0)
 	{
 		if (dma_transfer)
@@ -92,6 +92,7 @@ void Bus::clock()
 			cpu.update();
 		}
 	}
+
 	++cycle_;
 }
 

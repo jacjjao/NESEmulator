@@ -345,7 +345,7 @@ void PPU2C02::update()
 				pal = sp_pal;
 			}
 
-			if (sprite_hit_potential_ && sprite_idx == 0 && sp_pat > 0 && bg_pat > 0)
+			if (sprite_hit_potential_ && sprite_idx == 0)
 			{
 				if (!PPUMASK.bit.render_bg_lm_8pixels && !PPUMASK.bit.render_sp_lm_8pixels)
 				{
@@ -386,20 +386,34 @@ void PPU2C02::update()
 	}
 	else
 	{
+		if (scanline_ == 261 && cycle_ == 1)
+		{
+			PPUSTATUS.bit.vb_start = 0;
+			PPUSTATUS.bit.sp0_hit = 0;
+			PPUSTATUS.bit.sp_overflow = 0;
+			sprite_buf_.clear();
+		}
+
 		u8 bg_pat = 0, bg_pal = 0;
 		if (PPUMASK.bit.render_bg)
 		{
 			fetch();
 			incY();
 			transferTtoV();
-			drawBGPixel(bg_pal, bg_pat);
+			if (PPUMASK.bit.render_bg_lm_8pixels || cycle_ > 8)
+			{
+				drawBGPixel(bg_pal, bg_pat);
+			}
 		}
 		u8 sp_pat = 0, sp_pal = 0;
 		bool sp_priority = false;
 		usize sprite_index = 0;
 		if (PPUMASK.bit.render_sp)
 		{
-			drawSprite(sp_pal, sp_pat, sp_priority, sprite_index);
+			if (PPUMASK.bit.render_sp_lm_8pixels || cycle_ > 8)
+			{
+				drawSprite(sp_pal, sp_pat, sp_priority, sprite_index);
+			}
 			updateSpriteShifter();
 		}
 		
@@ -410,13 +424,6 @@ void PPU2C02::update()
 			spriteEval();
 			createSprites();
 			Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
-		}
-
-		if (scanline_ == 261 && cycle_ == 1)
-		{
-			PPUSTATUS.bit.vb_start = 0;
-			PPUSTATUS.bit.sp0_hit = 0;
-			PPUSTATUS.bit.sp_overflow = 0;
 		}
 	}
 
