@@ -22,8 +22,6 @@ public:
 
 	virtual void updateIRQCounter(u8, unsigned, unsigned, unsigned) {};
 
-	virtual void updateIRQCounterNoCheck() {};
-
 	MirrorType getMirrorType();
 
 protected:

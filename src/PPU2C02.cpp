@@ -370,6 +370,7 @@ void PPU2C02::update()
 	if (cycle_ == 0 && scanline_ == 0)
 	{
 		cycle_ = 1;
+		return;
 	}
 
 	if (240 <= scanline_ && scanline_ <= 260)
@@ -408,6 +409,7 @@ void PPU2C02::update()
 		{
 			spriteEval();
 			createSprites();
+			Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
 		}
 
 		if (scanline_ == 261 && cycle_ == 1)
@@ -416,11 +418,6 @@ void PPU2C02::update()
 			PPUSTATUS.bit.sp0_hit = 0;
 			PPUSTATUS.bit.sp_overflow = 0;
 		}
-	}
-
-	if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
-	{
-		Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
 	}
 
 	++cycle_;
@@ -435,6 +432,7 @@ void PPU2C02::update()
 		}
 	}
 }
+/*
 #ifdef EMU_DEBUG
 void PPU2C02::dummyUpdate()
 {
@@ -472,6 +470,7 @@ void PPU2C02::dummyUpdate()
 	}
 }
 #endif
+*/
 u8 PPU2C02::regRead(const u16 addr)
 {
 	assert(addr <= 7);

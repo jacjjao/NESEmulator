@@ -44,14 +44,12 @@ std::unique_ptr<Mapper> createCartridge(const std::filesystem::path& path)
 int main()
 {   
     try
-    {
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/instr_timing.nes");
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/sprite_hit_tests/01.basics.nes");
-        // auto cartridge = createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/mapper_test_rom/mmc3_test_2/4-scanline_timing.nes");
-        auto cartridge = createCartridge("../../../Super Mario Bros 3.nes");
-        
+    {      
         NES nes;
-        nes.bus.insertCartridge(std::move(cartridge));
+        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/instr_timing.nes"));
+        nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/ppu_vbl_nmi/rom_singles/01-vbl_basics.nes"));
+        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/mapper_test_rom/mmc3_test_2/4-scanline_timing.nes"));
+        // nes.bus.insertCartridge(createCartridge("../../../Super Mario Bros.nes"));
         nes.run();
     }
     catch (std::exception& e)

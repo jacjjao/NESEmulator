@@ -32,7 +32,7 @@ public:
 
 #ifdef EMU_DEBUG
 public: // for debug
-	void dummyUpdate();
+	// void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
