@@ -61,7 +61,7 @@ u8 Bus::cpuRead(const u16 addr)
 
 void Bus::clock()
 {
-	ppu.update();
+	ppu.cycle();
 
 	if (cycle_ % 3 == 0)
 	{
@@ -89,7 +89,7 @@ void Bus::clock()
 		}
 		else
 		{
-			cpu.update();
+			cpu.cycle();
 		}
 	}
 

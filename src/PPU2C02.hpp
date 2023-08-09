@@ -15,7 +15,7 @@ public:
 
 	void reset();
 
-	void update();
+	void cycle();
 
 	u8 regRead(u16 addr);
 	void regWrite(u16 addr, u8 data);
@@ -159,4 +159,6 @@ private:
 	u64 total_cycle_ = 0;
 
 	u8 open_bus_ = 0;
+
+	bool odd_frame_ = true;
 };

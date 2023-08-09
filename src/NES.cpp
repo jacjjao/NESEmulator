@@ -43,9 +43,6 @@ bool NES::onUpdate(float)
 {
     if (pause_) return true;
 
-    static sf::Clock clock;
-    static constexpr float frame_time_interval = 1.0f / 60.0f;
-
     do
     {
         bus.clock();

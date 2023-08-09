@@ -33,7 +33,7 @@ void PPU2C02::reset()
 	scanline_ = cycle_ = 0;
 }
 
-void PPU2C02::update()
+void PPU2C02::cycle()
 {
 	const auto fetchName = [this] {
 		const u16 next_tile_addr = 0x2000 | (vram_addr_.reg & 0x0FFF);
@@ -234,7 +234,7 @@ void PPU2C02::update()
 		}
 	};
 	const auto spriteEval = [this] {
-		if (cycle_ != 257 || scanline_ >= 240) return;
+		if (cycle_ != 256 || scanline_ >= 240) return;
 		u8 oam_n = 0, oam_m = 0;
 		second_oam_.clear();
 		sprite_hit_potential_ = false;
@@ -273,7 +273,7 @@ void PPU2C02::update()
 		} while (++oam_n < 64);
 	};
 	const auto drawSprite = [this](u8& pal, u8& pat, bool& priority, usize& sprite_idx) {
-		if (cycle_ > 256 || scanline_ >= 240 || scanline_ == 0 || cycle_ == 0) return;
+		if (cycle_ > 255 || scanline_ >= 240 || scanline_ == 0 || cycle_ == 0) return;
 		priority = true;
 		pal = 0; 
 		pat = 0;
@@ -303,7 +303,7 @@ void PPU2C02::update()
 				sprite.pat_low  <<= 1;
 				sprite.pat_high <<= 1;
 			}
-			else
+			else 
 			{
 				--sprite.x;
 			}
@@ -370,7 +370,10 @@ void PPU2C02::update()
 	if (cycle_ == 0 && scanline_ == 0)
 	{
 		cycle_ = 1;
-		return;
+		if (odd_frame_)
+		{
+			return;
+		}
 	}
 
 	if (240 <= scanline_ && scanline_ <= 260)
@@ -438,6 +441,7 @@ void PPU2C02::update()
 		if (scanline_ > 261)
 		{
 			frame_complete = true;
+			odd_frame_ = !odd_frame_;
 			scanline_ = 0;
 		}
 	}

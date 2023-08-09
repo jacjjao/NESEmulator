@@ -3,6 +3,7 @@
 #include "common/type.hpp"
 #include <functional>
 #include <vector>
+#include <optional>
 
 // #define EMUCPULOG
 
@@ -11,7 +12,7 @@ class CPU6502
 public:
 	CPU6502();
 
-	void update();
+	void cycle();
 
 	void write(u16 addr, u8 data);
 	u8 read(u16 addr);
@@ -129,7 +130,14 @@ private:
 	static constexpr u16 stack_low = 0x0100;
 
 	std::vector<Instruction> instrs_;
-
-	u8 cycles_ = 0;
+	
 	u64 total_cycles_ = 0;
+	int cycle_remained_ = 0, penalty_ = 0;
+
+	enum class CycleState
+	{
+		Fetch,
+		Operate,
+		WaitForPenalty
+	} cycle_state_ = CycleState::Fetch;
 };
