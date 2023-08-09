@@ -14,7 +14,7 @@ public:
 
 	std::optional<u8> ppuMapRead(u16 addr) override;
 
-	void updateIRQCounter(u8 PPUCTRL, unsigned sprite_count, unsigned scanline, unsigned cycle) override;
+	void updateIRQCounter() override;
 
 private:
 	u8* prg_banks_[2]{};

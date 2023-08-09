@@ -69,7 +69,7 @@ void NES::onDraw()
     window_->draw(patterntb1.data(), patterntb1.size(), sf::Quads);
     window_->draw(patterntb2.data(), patterntb2.size(), sf::Quads);
     
-    for (int i = 0; i < 8; ++i)
+    for (u8 i = 0; i < 8; ++i)
     {
         auto& palette = bus.ppu.dbgGetFramePalette(i);
         window_->draw(palette.data(), palette.size(), sf::Quads);
@@ -100,6 +100,8 @@ void NES::onKeyPressed()
 {
     if (event_.key.code == sf::Keyboard::Escape)
         window_->close();
+    else if (event_.key.code == sf::Keyboard::Delete)
+        bus.reset();
 #ifdef DEBUG_WINDOW
     else if (event_.key.code == sf::Keyboard::Right)
         ++bus.ppu.dbg_pal &= 0x07;

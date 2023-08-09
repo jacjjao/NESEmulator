@@ -65,6 +65,11 @@ u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
         throw std::runtime_error{ "Trainer data contains(Unsupported yet)" };
     }
 
+    if (getBitN(header.flag9, 0))
+    {
+        throw std::runtime_error{ "Sorry. This emulator emulate NTSC system only" };
+    }
+
     std::size_t prg_rom_size = static_cast<std::size_t>(header.prg_rom_size) * 16_KB;
     std::size_t chr_rom_size = static_cast<std::size_t>(header.chr_rom_size) * 8_KB;
 

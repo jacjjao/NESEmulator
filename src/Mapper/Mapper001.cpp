@@ -25,7 +25,9 @@ bool Mapper001::cpuMapWrite(const u16 addr, const u8 data)
 
 	if (getBitN(data, 7))
 	{
-		reset();
+		shift_reg_ = 0x10;
+		prg_bank_mode_ = 3;
+		prg16_bank_high_ = nprg_banks_ - 1;
 		return true;
 	}
 
@@ -159,11 +161,4 @@ std::optional<u8> Mapper001::ppuMapRead(const u16 addr)
 		return cart_.CHRMem()[chr4_bank_high_ * 4_KB + (addr & 0x0FFF)];
 	}
 	return cart_.CHRMem()[chr8_bank_ * 8_KB + addr];
-}
-
-void Mapper001::reset()
-{
-	shift_reg_ = 0x10;
-	prg_bank_mode_ = 3;
-	prg16_bank_high_ = nprg_banks_ - 1;
 }

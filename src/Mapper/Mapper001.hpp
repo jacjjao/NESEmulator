@@ -16,8 +16,6 @@ public:
 	bool ppuMapWrite(u16 addr, u8 data) override;
 	std::optional<u8> ppuMapRead(u16 addr) override;
 
-	void reset() override;
-
 private:
 	usize nprg_banks_;
 

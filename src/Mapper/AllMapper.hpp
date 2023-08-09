@@ -5,3 +5,4 @@
 #include "Mapper002.hpp"
 #include "Mapper003.hpp"
 #include "Mapper004.hpp"
+#include "Mapper066.hpp"

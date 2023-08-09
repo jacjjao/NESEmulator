@@ -423,7 +423,10 @@ void PPU2C02::update()
 		{
 			spriteEval();
 			createSprites();
-			Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
+			if (cycle_ == 260)
+			{
+				Bus::instance().cartridge().updateIRQCounter();
+			}
 		}
 	}
 

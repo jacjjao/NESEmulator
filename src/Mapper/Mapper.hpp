@@ -18,9 +18,7 @@ public:
 	virtual bool ppuMapWrite(u16, u8) { return false; }
 	virtual std::optional<u8> ppuMapRead(u16) { return false; }
 
-	virtual void reset() {};
-
-	virtual void updateIRQCounter(u8, unsigned, unsigned, unsigned) {};
+	virtual void updateIRQCounter() {};
 
 	MirrorType getMirrorType();
 
