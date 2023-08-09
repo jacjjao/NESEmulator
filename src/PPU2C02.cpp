@@ -16,7 +16,7 @@ PPU2C02::PPU2C02() :
 		for (int col = 0; col < 256; ++col, ++i)
 		{
 			pixels_[i].setPosition({ static_cast<float>(col), static_cast<float>(row) });
-			pixels_[i].setColor(palette_.getColor(0x00));
+			pixels_[i].setColor(sf::Color::Black);
 		}
 }
 

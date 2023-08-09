@@ -245,7 +245,7 @@ void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, 
 	}
 	else
 	{
-		if (scanline_tracker_ != scanline)
+		if (scanline_tracker_ != scanline && sprite_count < 8)
 		{
 			scanline_tracker_ = scanline;
 			irq_dec();
