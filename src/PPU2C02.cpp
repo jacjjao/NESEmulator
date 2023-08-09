@@ -370,7 +370,7 @@ void PPU2C02::cycle()
 	if (cycle_ == 0 && scanline_ == 0)
 	{
 		cycle_ = 1;
-		if (odd_frame_)
+		if (!renderEnable() || !odd_frame_)
 		{
 			return;
 		}
@@ -426,10 +426,7 @@ void PPU2C02::cycle()
 		{
 			spriteEval();
 			createSprites();
-			if (cycle_ == 260)
-			{
-				Bus::instance().cartridge().updateIRQCounter();
-			}
+			Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
 		}
 	}
 
@@ -659,6 +656,11 @@ u8* PPU2C02::mirroring(u16 addr)
 		return &palette_[addr];
 	}
 	return &mem_[addr];
+}
+
+bool PPU2C02::renderEnable() const
+{
+	return (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp);
 }
 
 sf::Color PPU2C02::getColorFromPaletteRam(const bool sprite, const u16 palette, const u16 pixel)

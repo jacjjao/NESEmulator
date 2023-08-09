@@ -436,25 +436,7 @@ CPU6502::CPU6502()
 } 
 
 void CPU6502::cycle()
-{	/*
-#ifdef EMUCPULOG
-	log_regs = reg_;
-	log_cycles = total_cycles_;
-#endif
-
-	cycles_ = 0;
-	opcode_ = getByteFromPC();
-	instrs_[opcode_].addr_mode();
-
-#ifdef EMUCPULOG
-	print(reg_.PC - log_regs.PC);
-#endif
-
-	instrs_[opcode_].operate();
-	cycles_ += instrs_[opcode_].cycles;
-	setBitN(reg_.Status, 5, true);
-	total_cycles_ += cycles_; */
-
+{
 	switch (cycle_state_)
 	{
 	case CycleState::Fetch:

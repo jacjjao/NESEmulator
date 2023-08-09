@@ -207,20 +207,48 @@ std::optional<u8> Mapper004::ppuMapRead(const u16 addr)
 	return chr_2kbanks_[1][addr & 0x07FF];
 }
 
-void Mapper004::updateIRQCounter()
+void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, const unsigned scanline, const unsigned cycle)
 {
-	if (reload_flag_ || irq_counter_ <= 0)
+	const bool sp_addr = getBitN(PPUCTRL, 3);
+	const bool bg_addr = getBitN(PPUCTRL, 4);
+	const bool sp_size = getBitN(PPUCTRL, 5);
+	const auto irq_dec = [this] {
+		if (reload_flag_ || irq_counter_ <= 0)
+		{
+			irq_counter_ = irq_latch_;
+			reload_flag_ = false;
+		}
+		else
+		{
+			--irq_counter_;
+		}
+		if (irq_counter_ <= 0 && irq_enable_)
+		{
+			Bus::instance().cpu.irq();
+		}
+	};
+
+	if (!sp_size) // 8x8 sprite
 	{
-		irq_counter_ = irq_latch_;
-		reload_flag_ = false;
+		if (!bg_addr && sp_addr && cycle == 260)
+		{
+			irq_dec();
+		}
+		else if (bg_addr && !sp_addr && cycle == 324)
+		{
+			irq_dec();
+			if (scanline == 261)
+			{
+				irq_dec();
+			}
+		}
 	}
 	else
 	{
-		--irq_counter_;
-	}
-
-	if (irq_counter_ <= 0 && irq_enable_)
-	{
-		Bus::instance().cpu.irq();
+		if (scanline_tracker_ != scanline)
+		{
+			scanline_tracker_ = scanline;
+			irq_dec();
+		}
 	}
 }
