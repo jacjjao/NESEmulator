@@ -123,7 +123,7 @@ std::optional<u8> Mapper001::cpuMapRead(const u16 addr)
 	}
 	if (prg_bank_mode_ <= 1) // 32KB mode
 	{
-		return cart_.PRGRom()[prg32_bank_ * 32_KB + (addr & 0x7FFF)];
+		return cart_.PRGRom()[prg32_bank_ * 16_KB + (addr & 0x7FFF)];
 	}
 	if (addr < 0xC000)
 	{
@@ -160,5 +160,5 @@ std::optional<u8> Mapper001::ppuMapRead(const u16 addr)
 		}
 		return cart_.CHRMem()[chr4_bank_high_ * 4_KB + (addr & 0x0FFF)];
 	}
-	return cart_.CHRMem()[chr8_bank_ * 8_KB + addr];
+	return cart_.CHRMem()[chr8_bank_ * 4_KB + addr];
 }
