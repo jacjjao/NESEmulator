@@ -19,8 +19,9 @@ public:
 
 	void reset();
 
-	void irq();
 	void nmi();
+
+	void requestInterrupt();
 
 private:
 	struct Instruction
@@ -110,6 +111,8 @@ private:
 
 	bool pageCrossed(u16 addr1, u16 addr2);
 
+	void irq();
+
 	struct Registers
 	{
 		u8 A = 0;
@@ -140,4 +143,6 @@ private:
 		Operate,
 		WaitForPenalty
 	} cycle_state_ = CycleState::Fetch;
+
+	int interrupt_request_ = 0;
 };

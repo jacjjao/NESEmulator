@@ -437,10 +437,13 @@ CPU6502::CPU6502()
 
 void CPU6502::cycle()
 {
+	if (interrupt_request_ > 0)
+		irq();
+
 	switch (cycle_state_)
 	{
 	case CycleState::Fetch:
-		opcode_ = getByteFromPC();
+		opcode_ = read(reg_.PC);
 		cycle_remained_ = instrs_[opcode_].cycles - 1;
 		cycle_state_ = CycleState::Operate;
 		break;
@@ -449,6 +452,7 @@ void CPU6502::cycle()
 		--cycle_remained_;
 		if (cycle_remained_ <= 0)
 		{
+			opcode_ = getByteFromPC();
 #ifdef EMUCPULOG
 			log_regs = reg_;
 			log_cycles = total_cycles_ + 1;
@@ -503,7 +507,7 @@ void CPU6502::reset()
 	reg_.PC = getTwoBytesFromMem(0xFFFC);
 	reg_.SP = 0xFD;
 	setInterruptDisableFlag(true);
-	penalty_ += 8;
+	penalty_ = 8;
 	cycle_state_ = CycleState::WaitForPenalty;
 }
 
@@ -511,32 +515,31 @@ void CPU6502::irq()
 {
 	if (getInterruptDisableFlag())
 		return;
-	if (cycle_state_ == CycleState::Operate)
-	{
-		--reg_.PC;
-	}
+	--interrupt_request_;
+	assert(interrupt_request_ >= 0);
 	pushStack(reg_.PC);
 	pushStack(reg_.Status);
 	setInterruptDisableFlag(true);
 	reg_.PC = getTwoBytesFromMem(0xFFFE);
-	penalty_ += 7;
+	penalty_ = 7;
 	cycle_state_ = CycleState::WaitForPenalty;
 }
 
 void CPU6502::nmi()
 {
-	if (cycle_state_ == CycleState::Operate)
-	{
-		--reg_.PC; 
-	}
 	pushStack(reg_.PC);
 	setBreakFlag(false);
 	setBitN(reg_.Status, 5, true);
 	setInterruptDisableFlag(true);
 	pushStack(reg_.Status);
 	reg_.PC = getTwoBytesFromMem(0xFFFA);
-	penalty_ += 8;
+	penalty_ = 8;
 	cycle_state_ = CycleState::WaitForPenalty;
+}
+
+void CPU6502::requestInterrupt()
+{
+	++interrupt_request_;
 }
 
 void CPU6502::ADC()

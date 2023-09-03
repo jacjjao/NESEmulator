@@ -224,7 +224,7 @@ void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, 
 		}
 		if (irq_counter_ <= 0 && irq_enable_)
 		{
-			Bus::instance().cpu.irq();
+			Bus::instance().cpu.requestInterrupt();
 		}
 	};
 
