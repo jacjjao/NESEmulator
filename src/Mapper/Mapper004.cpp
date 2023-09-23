@@ -207,11 +207,11 @@ std::optional<u8> Mapper004::ppuMapRead(const u16 addr)
 	return chr_2kbanks_[1][addr & 0x07FF];
 }
 
-void Mapper004::updateIRQCounter(const u8 PPUCTRL, const unsigned sprite_count, const unsigned scanline, const unsigned cycle)
+void Mapper004::updateIRQCounter(const u8 control_, const unsigned sprite_count, const unsigned scanline, const unsigned cycle)
 {
-	const bool sp_addr = getBitN(PPUCTRL, 3);
-	const bool bg_addr = getBitN(PPUCTRL, 4);
-	const bool sp_size = getBitN(PPUCTRL, 5);
+	const bool sp_addr = getBitN(control_, 3);
+	const bool bg_addr = getBitN(control_, 4);
+	const bool sp_size = getBitN(control_, 5);
 	const auto irq_dec = [this] {
 		if (reload_flag_ || irq_counter_ <= 0)
 		{

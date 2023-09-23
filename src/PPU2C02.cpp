@@ -22,30 +22,28 @@ PPU2C02::PPU2C02() :
 
 void PPU2C02::reset()
 {
-	PPUCTRL.reg = 0;
-	PPUMASK.reg = 0;
-	PPUSTATUS.reg = 0;
-	vram_addr_.reg = 0;
-	tvram_addr_.reg = 0;
+	control_.setValue(u8{ 0 });
+	mask_.setValue(u8{ 0 });
+	status_.setValue(u8{ 0 });
+	vram_addr_.setValue(u16{ 0 });
+	tvram_addr_.setValue(u16{ 0 });
 	write_latch_ = false;
-	PPUSCROLL = 0;
-	PPUDATA = 0;
 	scanline_ = cycle_ = 0;
 }
 
 void PPU2C02::cycle()
 {
 	const auto fetchName = [this] {
-		const u16 next_tile_addr = 0x2000 | (vram_addr_.reg & 0x0FFF);
+		const u16 next_tile_addr = 0x2000 | (vram_addr_.getValueAs<u16>() & 0x0FFF);
 		bg_latches_.tile_name = memRead(next_tile_addr);
 	};
 	const auto fetchAttribute = [this] {
-		const u16 v = vram_addr_.reg;
+		const auto v = vram_addr_.getValueAs<u16>();
 		u16 next_attr_addr = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
 
 		const u8 data = memRead(next_attr_addr);
-		const bool is_top = (vram_addr_.scroll.coarse_y & 0x03) < 2;
-		const bool is_left = (vram_addr_.scroll.coarse_x & 0x03) < 2;
+		const bool is_top = (vram_addr_.bit.coarse_y & 0x03) < 2;
+		const bool is_left = (vram_addr_.bit.coarse_x & 0x03) < 2;
 		u8 offset = 0;
 		if (is_top)
 		{
@@ -74,17 +72,17 @@ void PPU2C02::cycle()
 		bg_latches_.attr_high = (getBitN(pal, 1) ? 0xFF : 0x00);
 	};
 	const auto fetchLowerPattern = [this] {
-		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
+		u16 next_pat_addr = control_.bit.bg_patterntb_addr;
 		next_pat_addr = (next_pat_addr << 8) | bg_latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x00;
-		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
+		next_pat_addr = (next_pat_addr << 3) | vram_addr_.bit.fine_y;
 		bg_latches_.pat_low = memRead(next_pat_addr);
 	};
 	const auto fetchUpperPattern = [this] {
-		u16 next_pat_addr = PPUCTRL.bit.bg_patterntb_addr;
+		u16 next_pat_addr = control_.bit.bg_patterntb_addr;
 		next_pat_addr = (next_pat_addr << 8) | bg_latches_.tile_name;
 		next_pat_addr = (next_pat_addr << 1) | 0x01;
-		next_pat_addr = (next_pat_addr << 3) | vram_addr_.scroll.fine_y;
+		next_pat_addr = (next_pat_addr << 3) | vram_addr_.bit.fine_y;
 		bg_latches_.pat_high = memRead(next_pat_addr);
 	};
 	const auto loadRegisters = [this] {
@@ -110,46 +108,46 @@ void PPU2C02::cycle()
 		shift_reg_.attr_low  <<= 1;
 	};
 	const auto incCoarseX = [this] {
-		if (vram_addr_.scroll.coarse_x == 31)
+		if (vram_addr_.bit.coarse_x == 31)
 		{
-			vram_addr_.scroll.coarse_x = 0;
-			vram_addr_.scroll.nametable_x = ~vram_addr_.scroll.nametable_x;
+			vram_addr_.bit.coarse_x = 0;
+			vram_addr_.bit.nametable_x = ~vram_addr_.bit.nametable_x;
 		}
 		else
-			++vram_addr_.scroll.coarse_x;
+			++vram_addr_.bit.coarse_x;
 	};
 	const auto incY = [this] {
 		if (cycle_ != 256) return;
-		if (vram_addr_.scroll.fine_y < 7)
-			++vram_addr_.scroll.fine_y;
+		if (vram_addr_.bit.fine_y < 7)
+			++vram_addr_.bit.fine_y;
 		else
 		{
-			vram_addr_.scroll.fine_y = 0;
-			u8 y = vram_addr_.scroll.coarse_y;
+			vram_addr_.bit.fine_y = 0;
+			u8 y = vram_addr_.bit.coarse_y;
 			if (y == 29)
 			{
 				y = 0;
-				vram_addr_.scroll.nametable_y = ~vram_addr_.scroll.nametable_y;
+				vram_addr_.bit.nametable_y = ~vram_addr_.bit.nametable_y;
 			}
 			else if (y == 31)
 				y = 0;
 			else
 				++y;
-			vram_addr_.scroll.coarse_y = y;
+			vram_addr_.bit.coarse_y = y;
 		}
 	};
 	const auto transferTtoV = [&] {
 		if (cycle_ == 257)
 		{
 			loadRegisters();
-			vram_addr_.scroll.nametable_x = tvram_addr_.scroll.nametable_x;
-			vram_addr_.scroll.coarse_x = tvram_addr_.scroll.coarse_x;
+			vram_addr_.bit.nametable_x = tvram_addr_.bit.nametable_x;
+			vram_addr_.bit.coarse_x = tvram_addr_.bit.coarse_x;
 		}
 		if (scanline_ == 261 && (280 <= cycle_ && cycle_ <= 304))
 		{
-			vram_addr_.scroll.fine_y = tvram_addr_.scroll.fine_y;
-			vram_addr_.scroll.nametable_y = tvram_addr_.scroll.nametable_y;
-			vram_addr_.scroll.coarse_y = tvram_addr_.scroll.coarse_y;
+			vram_addr_.bit.fine_y = tvram_addr_.bit.fine_y;
+			vram_addr_.bit.nametable_y = tvram_addr_.bit.nametable_y;
+			vram_addr_.bit.coarse_y = tvram_addr_.bit.coarse_y;
 		}
 	};
 	const auto fetch = [&] {
@@ -198,9 +196,9 @@ void PPU2C02::cycle()
 			u8 tile_pos = (scanline_ - y_coord) & 0x0F;
 			if (flip_vert)
 			{
-				tile_pos ^= (PPUCTRL.bit.sp_size ? 0x0F : 0x07);
+				tile_pos ^= (control_.bit.sp_size ? 0x0F : 0x07);
 			}
-			if (PPUCTRL.bit.sp_size) // 8x16
+			if (control_.bit.sp_size) // 8x16
 			{
 				u16 tile_pat_addr = (tile_index & 0x01) * 0x1000;
 				tile_index &= 0x00FE;
@@ -215,7 +213,7 @@ void PPU2C02::cycle()
 			}
 			else // 8x8
 			{
-				const u16 tile_pat_addr = PPUCTRL.bit.sp_patterntb_addr * 0x1000 + (tile_index << 4) + tile_pos;
+				const u16 tile_pat_addr = control_.bit.sp_patterntb_addr * 0x1000 + (tile_index << 4) + tile_pos;
 				sprite.pat_low = memRead(tile_pat_addr);
 				sprite.pat_high = memRead(tile_pat_addr + 8);
 			}
@@ -243,13 +241,13 @@ void PPU2C02::cycle()
 			u8 sprite_addr = oam_n * 4 + oam_m;
 			const u8 y_coord = primary_oam_[sprite_addr];
 			const int diff = static_cast<int>(scanline_) - static_cast<int>(y_coord);
-			const bool sprite_in_range = (diff >= 0 && diff < (PPUCTRL.bit.sp_size ? 16 : 8));
+			const bool sprite_in_range = (diff >= 0 && diff < (control_.bit.sp_size ? 16 : 8));
 			const bool second_oam_full = (second_oam_.size() >= 32);
 			if (second_oam_full)
 			{
 				if (sprite_in_range)
 				{
-					PPUSTATUS.bit.sp_overflow = 1;
+					status_.bit.sp_overflow = 1;
 				}
 				else
 				{
@@ -347,18 +345,18 @@ void PPU2C02::cycle()
 
 			if (sprite_hit_potential_ && sprite_idx == 0)
 			{
-				if (!PPUMASK.bit.render_bg_lm_8pixels && !PPUMASK.bit.render_sp_lm_8pixels)
+				if (!mask_.bit.render_bg_lm_8pixels && !mask_.bit.render_sp_lm_8pixels)
 				{
 					if (cycle_ >= 9)
 					{
-						PPUSTATUS.bit.sp0_hit = 1;
+						status_.bit.sp0_hit = 1;
 					}
 				}
 				else
 				{
 					if (cycle_ >= 1)
 					{
-						PPUSTATUS.bit.sp0_hit = 1;
+						status_.bit.sp0_hit = 1;
 					}
 				}
 			}
@@ -380,8 +378,8 @@ void PPU2C02::cycle()
 	{
 		if (scanline_ == 241 && cycle_ == 1)
 		{
-			PPUSTATUS.bit.vb_start = 1;
-			if (PPUCTRL.bit.gen_nmi)
+			status_.bit.vb_start = 1;
+			if (control_.bit.gen_nmi)
 			{
 				Bus::instance().cpu.nmi();
 			}
@@ -391,19 +389,19 @@ void PPU2C02::cycle()
 	{
 		if (scanline_ == 261 && cycle_ == 1)
 		{
-			PPUSTATUS.bit.vb_start = 0;
-			PPUSTATUS.bit.sp0_hit = 0;
-			PPUSTATUS.bit.sp_overflow = 0;
+			status_.bit.vb_start = 0;
+			status_.bit.sp0_hit = 0;
+			status_.bit.sp_overflow = 0;
 			sprite_buf_.clear();
 		}
 
 		u8 bg_pat = 0, bg_pal = 0;
-		if (PPUMASK.bit.render_bg)
+		if (mask_.bit.render_bg)
 		{
 			fetch();
 			incY();
 			transferTtoV();
-			if (PPUMASK.bit.render_bg_lm_8pixels || cycle_ > 8)
+			if (mask_.bit.render_bg_lm_8pixels || cycle_ > 8)
 			{
 				drawBGPixel(bg_pal, bg_pat);
 			}
@@ -411,9 +409,9 @@ void PPU2C02::cycle()
 		u8 sp_pat = 0, sp_pal = 0;
 		bool sp_priority = false;
 		usize sprite_index = 0;
-		if (PPUMASK.bit.render_sp)
+		if (mask_.bit.render_sp)
 		{
-			if (PPUMASK.bit.render_sp_lm_8pixels || cycle_ > 8)
+			if (mask_.bit.render_sp_lm_8pixels || cycle_ > 8)
 			{
 				drawSprite(sp_pal, sp_pat, sp_priority, sprite_index);
 			}
@@ -422,11 +420,11 @@ void PPU2C02::cycle()
 		
 		muxColor(bg_pat, bg_pal, sp_pat, sp_pal, sp_priority, sprite_index);
 
-		if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
+		if (mask_.bit.render_bg | mask_.bit.render_sp)
 		{
 			spriteEval();
 			createSprites();
-			Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
+			Bus::instance().cartridge().updateIRQCounter(control_.getValueAs<u8>(), sprite_buf_.size(), scanline_, cycle_);
 		}
 	}
 
@@ -443,45 +441,7 @@ void PPU2C02::cycle()
 		}
 	}
 }
-/*
-#ifdef EMU_DEBUG
-void PPU2C02::dummyUpdate()
-{
-	if (scanline_ == 241 && cycle_ == 1)
-	{
-		PPUSTATUS.bit.vb_start = 1;
-		if (PPUCTRL.bit.gen_nmi)
-		{
-			Bus::instance().cpu.nmi();
-		}
-	}
 
-	if (scanline_ == 261 && cycle_ == 1)
-	{
-		PPUSTATUS.bit.vb_start = 0;
-		PPUSTATUS.bit.sp0_hit = 0;
-		PPUSTATUS.bit.sp_overflow = 0;
-	}
-
-	if (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp)
-	{
-		Bus::instance().cartridge().updateIRQCounter(PPUCTRL.reg, sprite_buf_.size(), scanline_, cycle_);
-	}
-
-	++cycle_;
-	if (cycle_ > 340)
-	{
-		cycle_ = 0;
-		++scanline_;
-		if (scanline_ > 261)
-		{
-			frame_complete = true;
-			scanline_ = 0;
-		}
-	}
-}
-#endif
-*/
 u8 PPU2C02::regRead(const u16 addr)
 {
 	assert(addr <= 7);
@@ -491,25 +451,29 @@ u8 PPU2C02::regRead(const u16 addr)
 	switch (addr)
 	{
 	case 0x02:
-		data = (0xE0 & PPUSTATUS.reg) | (0x1F & data_buf_);
-		PPUSTATUS.bit.vb_start = 0;
+		data = (0xE0 & status_.getValueAs<u8>()) | (0x1F & data_buf_);
+		status_.bit.vb_start = 0;
 		write_latch_ = false;
 		break;
 
 	case 0x04:
-		data = primary_oam_[oam_addr_]; 
+		data = primary_oam_[oam_addr_];
 		break;
 
 	case 0x07:
+	{
 		data = data_buf_;
-		data_buf_ = memRead(vram_addr_.reg);
-		if (vram_addr_.reg >= 0x3F00)
+		auto vram = vram_addr_.getValueAs<u16>();
+		data_buf_ = memRead(vram);
+		if (vram >= 0x3F00)
 		{
 			data = data_buf_;
-			data_buf_ = memRead(vram_addr_.reg & 0x2FFF); // hardware bug
+			data_buf_ = memRead(vram & 0x2FFF); // hardware bug
 		}
-		vram_addr_.reg += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
+		vram += (control_.bit.vram_addr_inc ? 32 : 1);
+		vram_addr_.setValue(vram);
 		break;
+	}
 	}
 
 	open_bus_ = data;
@@ -526,13 +490,13 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 	switch (addr)
 	{
 	case 0x00:
-		PPUCTRL.reg = data;
-		tvram_addr_.scroll.nametable_x = PPUCTRL.bit.nametable_x;
-		tvram_addr_.scroll.nametable_y = PPUCTRL.bit.nametable_y;
+		control_.setValue(data);
+		tvram_addr_.bit.nametable_x = control_.bit.nametable_x;
+		tvram_addr_.bit.nametable_y = control_.bit.nametable_y;
 		break;
 
 	case 0x01:
-		PPUMASK.reg = data;
+		mask_.setValue(data);
 		break;
 
 	case 0x03:
@@ -547,34 +511,44 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 	case 0x05:
 		if (!write_latch_) // first write
 		{
-			tvram_addr_.scroll.coarse_x = (data >> 3);
+			tvram_addr_.bit.coarse_x = (data >> 3);
 			fine_x = data & 0x07;
 		}
 		else // second write
 		{
-			tvram_addr_.scroll.coarse_y = (data >> 3);
-			tvram_addr_.scroll.fine_y = (data & 0x07);
+			tvram_addr_.bit.coarse_y = (data >> 3);
+			tvram_addr_.bit.fine_y = (data & 0x07);
 		}
 		write_latch_ = !write_latch_;
 		break;
 
 	case 0x06:
+	{
 		if (!write_latch_) // first write
 		{
-			tvram_addr_.reg = (static_cast<u16>(data & 0x3F) << 8) | (tvram_addr_.reg & 0x00FF);
+			auto tvram = tvram_addr_.getValueAs<u16>();
+			const u16 ntvram_addr = (static_cast<u16>(data & 0x3F) << 8) | (tvram & 0x00FF);
+			tvram_addr_.setValue(ntvram_addr);
 		}
 		else // second write
 		{
-			tvram_addr_.reg = (tvram_addr_.reg & 0xFF00) | data;
+			auto tvram = tvram_addr_.getValueAs<u16>();
+			tvram = (tvram & 0xFF00) | data;
+			tvram_addr_.setValue(tvram);
 			vram_addr_ = tvram_addr_;
 		}
 		write_latch_ = !write_latch_;
 		break;
+	}
 
 	case 0x07:
-		memWrite(vram_addr_.reg, data);
-		vram_addr_.reg += (PPUCTRL.bit.vram_addr_inc ? 32 : 1);
+	{
+		auto vram = vram_addr_.getValueAs<u16>();
+		memWrite(vram, data);
+		vram += (control_.bit.vram_addr_inc ? 32 : 1);
+		vram_addr_.setValue(vram);
 		break;
+	}
 	}
 }
 
@@ -660,7 +634,7 @@ u8* PPU2C02::mirroring(u16 addr)
 
 bool PPU2C02::renderEnable() const
 {
-	return (PPUMASK.bit.render_bg | PPUMASK.bit.render_sp);
+	return (mask_.bit.render_bg | mask_.bit.render_sp);
 }
 
 sf::Color PPU2C02::getColorFromPaletteRam(const bool sprite, const u16 palette, const u16 pixel)

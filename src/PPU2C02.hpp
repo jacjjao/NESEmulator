@@ -4,6 +4,7 @@
 #include "Tile.hpp"
 #include "Palette.hpp"
 #include "Mapper/Mapper.hpp"
+#include "common/BitField.hpp"
 #include <SFML/Graphics/Vertex.hpp>
 #include <vector>
 
@@ -32,7 +33,6 @@ public:
 
 #ifdef EMU_DEBUG
 public: // for debug
-	// void dummyUpdate();
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);
 	void dbgDrawNametb(u8 which);
 	const std::vector<sf::Vertex>& dbgGetFramePalette(u8 index);
@@ -47,73 +47,57 @@ private:
 	static constexpr std::size_t primary_oam_size = 256;
 	static constexpr std::size_t second_oam_size = 8 * 4;
 	static constexpr std::size_t resolution = 256 * 240;
-
-	union
+	
+	struct PPUCtrl
 	{
-		struct Foo
-		{
-			u8 nametable_x : 1;
-			u8 nametable_y : 1;
-			u8 vram_addr_inc : 1;
-			u8 sp_patterntb_addr : 1;
-			u8 bg_patterntb_addr : 1;
-			u8 sp_size : 1;
-			u8 master_slave_select : 1;
-			u8 gen_nmi : 1;
-		} bit;
-		u8 reg;
-	} PPUCTRL;
-	static_assert(sizeof(PPUCTRL) == 1);
+		u8 nametable_x : 1;
+		u8 nametable_y : 1;
+		u8 vram_addr_inc : 1;
+		u8 sp_patterntb_addr : 1;
+		u8 bg_patterntb_addr : 1;
+		u8 sp_size : 1;
+		u8 master_slave_select : 1;
+		u8 gen_nmi : 1;
+	};
+	BitField<PPUCtrl> control_{};
+	static_assert(sizeof(control_) == 1);
 
-	union
+	struct PPUMask
 	{
-		struct Foo
-		{
-			u8 grey_sacle : 1;
-			u8 render_bg_lm_8pixels : 1;
-			u8 render_sp_lm_8pixels : 1;
-			u8 render_bg : 1;
-			u8 render_sp : 1;
-			u8 empha_red : 1;
-			u8 empha_green : 1;
-			u8 empha_blue : 1;
-		} bit;
-		u8 reg;
-	} PPUMASK;
-	static_assert(sizeof(PPUMASK) == 1);
+		u8 grey_sacle : 1;
+		u8 render_bg_lm_8pixels : 1;
+		u8 render_sp_lm_8pixels : 1;
+		u8 render_bg : 1;
+		u8 render_sp : 1;
+		u8 empha_red : 1;
+		u8 empha_green : 1;
+		u8 empha_blue : 1;
+	};
+	BitField<PPUMask> mask_{};
+	static_assert(sizeof(mask_) == 1);
 
-	union
+	struct PPUStatus
 	{
-		struct Foo
-		{
-			u8 open_bus : 5;
-			u8 sp_overflow : 1;
-			u8 sp0_hit : 1;
-			u8 vb_start : 1;
-		} bit;
-		u8 reg;
-	} PPUSTATUS;
-	static_assert(sizeof(PPUSTATUS) == 1);
+		u8 open_bus : 5;
+		u8 sp_overflow : 1;
+		u8 sp0_hit : 1;
+		u8 vb_start : 1;
+	};
+	BitField<PPUStatus> status_{};
+	static_assert(sizeof(status_) == 1);
 
-	union
+	struct PPUScroll
 	{
-		struct Foo
-		{
-			u16 coarse_x : 5;
-			u16 coarse_y : 5;
-			u16 nametable_x : 1;
-			u16 nametable_y : 1;
-			u16 fine_y : 3;
-		} scroll;
-		u16 reg;
-	} vram_addr_, tvram_addr_;
+		u16 coarse_x : 5;
+		u16 coarse_y : 5;
+		u16 nametable_x : 1;
+		u16 nametable_y : 1;
+		u16 fine_y : 3;
+	};
+	BitField<PPUScroll> vram_addr_{};
+	BitField<PPUScroll> tvram_addr_{};
 	static_assert(sizeof(vram_addr_) == 2);
-
-	u8 OAMADDR = 0;
-	u8 OAMDATA = 0;
-	u8 PPUSCROLL = 0;
-	u8 PPUADDR = 0;
-	u8 PPUDATA = 0;
+	static_assert(sizeof(tvram_addr_) == 2);
 
 	bool write_latch_ = false;
 
