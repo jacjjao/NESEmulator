@@ -37,7 +37,7 @@ std::unique_ptr<Mapper> createCartridge(const std::filesystem::path& path)
     default:
     {
         char err_msg[50] = "";
-        std::sprintf(err_msg, "Unsupport mapper %03d", (int)mapper_type);
+        std::snprintf(err_msg, 50, "Unsupport mapper %03d", (int)mapper_type);
         throw std::runtime_error{ err_msg };
     }
     }

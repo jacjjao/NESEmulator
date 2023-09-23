@@ -9,7 +9,7 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-                "CMAKE_CXX_FLAGS_INIT": "/analyze /W4 /MP /fsanitize=address /MDd /Od"
+                "CMAKE_CXX_FLAGS": "/analyze /W4 /MP /fsanitize=address /MDd /Od /EHsc"
             },
             "toolchainFile": "C:\\Users\\user\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
         },
@@ -20,7 +20,7 @@
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS_INIT": "/analyze /W4 /MP /MD /O2"
+                "CMAKE_CXX_FLAGS": "/analyze /W4 /MP /MD /O2 /EHsc"
             },
             "toolchainFile": "C:\\Users\\user\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
         }
