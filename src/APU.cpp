@@ -15,57 +15,67 @@ void APU::clock()
 		noise_.clockLenCnt();
 	};
 	
+	++cpu_cycle_count_;
 	if (!frame_sequencer_mode_)
 	{
-		if (frame_sequencer_step_ == 0)
+		if (cpu_cycle_count_ == 3728)
 		{
 			// TODO
 		}
-		else if (frame_sequencer_step_ == 1)
+		else if (cpu_cycle_count_ == 7456)
 		{
 			updateLenCnts();
 		}
-		else if (frame_sequencer_step_ == 2)
+		else if (cpu_cycle_count_ == 11185)
 		{
 			// TODO
 		}
-		else
+		else if (cpu_cycle_count_ == 14914)
 		{
 			updateLenCnts();
 			if (irq_inhibit_flag_)
 			{
 				Bus::instance().cpu.requestInterrupt();
 			}
-			frame_sequencer_step_ = 0;
+			cpu_cycle_count_ = 0;
 			return;
+		}
+
+		if (cpu_cycle_count_ >= 14915)
+		{
+			cpu_cycle_count_ = 0;
 		}
 	}
 	else
 	{
-		if (frame_sequencer_step_ == 0)
+		if (cpu_cycle_count_ == 3728)
 		{
 			// TODO
 		}
-		else if (frame_sequencer_step_ == 1)
+		else if (cpu_cycle_count_ == 7456)
 		{
 			updateLenCnts();
 		}
-		else if (frame_sequencer_step_ == 2)
+		else if (cpu_cycle_count_ == 11185)
 		{
 			// TODO
 		}
-		else if (frame_sequencer_step_ == 3)
+		else if (cpu_cycle_count_ == 14914)
 		{
 
 		}
-		else
+		else if (cpu_cycle_count_ == 18640)
 		{
 			updateLenCnts();
-			frame_sequencer_step_ = 0;
+			cpu_cycle_count_ = 0;
 			return;
 		}
+
+		if (cpu_cycle_count_ >= 18641)
+		{
+			cpu_cycle_count_ = 0;
+		}
 	}
-	++frame_sequencer_step_;
 }
 
 void APU::regWrite(const u16 addr, const u8 data)
@@ -106,7 +116,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 		// TODO implement delay write
 		frame_sequencer_mode_ = getBitN(data, 7);
 		irq_inhibit_flag_ = getBitN(data, 6);
-		frame_sequencer_step_ = 0;
+		cpu_cycle_count_ = 0;
 		break;
 	}
 }

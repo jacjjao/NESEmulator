@@ -73,10 +73,7 @@ void Bus::clock()
 
 	if (cycle_ % 3 == 0)
 	{
-		if (cycle_ % 24 == 0)
-		{
-			apu.clock();
-		}
+		apu.clock();
 
 		if (dma_transfer)
 		{

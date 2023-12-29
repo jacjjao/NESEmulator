@@ -35,8 +35,8 @@ private:
 	u8 status_ = 0;
 	bool frame_sequencer_mode_ = false;
 	bool irq_inhibit_flag_ = false;
-	bool frame_interrupt = false;
-	int frame_sequencer_step_ = 0;
+	bool frame_interrupt_ = false;
+	int cpu_cycle_count_ = 0;
 
 	Channel pulse1_, pulse2_, triangle_, noise_;
 
