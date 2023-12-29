@@ -4,6 +4,7 @@
 #include "Cartridge.hpp"
 #include "PPU2C02.hpp"
 #include "CPU6502.hpp"
+#include "APU.hpp"
 #include "Controller/StandardController.hpp"
 #include "Mapper/Mapper.hpp"
 #include <vector>
@@ -23,6 +24,7 @@ public:
 
 	PPU2C02 ppu;
 	CPU6502 cpu;
+	APU apu;
 	StandardController joystick;
 	Mapper& cartridge();
 

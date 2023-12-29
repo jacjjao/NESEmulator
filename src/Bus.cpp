@@ -31,6 +31,10 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 		oam_addr = ppu.getOAMAddr();
 		dma_start = false;
 	}
+	else if (addr == 0x4003 || addr == 0x4007 || addr == 0x400B || addr == 0x400F || addr == 0x4015 || addr == 0x4017)
+	{
+		apu.regWrite(addr, data);
+	}
 	else if (addr == 0x4016)
 	{
 		joystick.setStrobe(data);
@@ -52,6 +56,10 @@ u8 Bus::cpuRead(const u16 addr)
 	{
 		return ppu.regRead(addr & 0x0007);
 	}
+	else if (addr == 0x4015)
+	{
+		return apu.regRead(addr);
+	}
 	else if (addr == 0x4016)
 	{
 		return joystick_cache_.report();
@@ -65,6 +73,11 @@ void Bus::clock()
 
 	if (cycle_ % 3 == 0)
 	{
+		if (cycle_ % 24 == 0)
+		{
+			apu.clock();
+		}
+
 		if (dma_transfer)
 		{
 			if (!dma_start)

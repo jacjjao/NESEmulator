@@ -424,7 +424,7 @@ void PPU2C02::cycle()
 		{
 			spriteEval();
 			createSprites();
-			Bus::instance().cartridge().updateIRQCounter(control_.getValueAs<u8>(), sprite_buf_.size(), scanline_, cycle_);
+			Bus::instance().cartridge().updateIRQCounter(control_.getValueAs<u8>(), static_cast<unsigned>(sprite_buf_.size()), scanline_, cycle_);
 		}
 	}
 
