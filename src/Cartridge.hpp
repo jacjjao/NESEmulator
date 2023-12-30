@@ -1,8 +1,6 @@
 #pragma once
 
-#include "common/type.hpp"
-#include <filesystem>
-#include <vector>
+#include "pch.hpp"
 
 
 constexpr usize operator ""_KB(unsigned long long val)

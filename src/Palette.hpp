@@ -1,8 +1,6 @@
 #pragma once
 
-#include "common/type.hpp"
-#include <vector>
-#include <SFML/Graphics/Color.hpp>
+#include "pch.hpp"
 
 
 class Palette

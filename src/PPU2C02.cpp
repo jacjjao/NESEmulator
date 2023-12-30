@@ -1,7 +1,5 @@
 #include "PPU2C02.hpp"
-#include "common/bitHelper.hpp"
 #include "Bus.hpp"
-#include <cassert>
 
 
 PPU2C02::PPU2C02() :

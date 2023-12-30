@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include "pch.hpp"
 #include "Bus.hpp"
 
 #ifdef EMU_DEBUG

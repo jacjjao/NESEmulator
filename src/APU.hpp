@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common/type.hpp"
-#include <array>
+#include "pch.hpp"
 
 
 class Channel
@@ -35,6 +34,7 @@ public:
 	void reset();
 
 private:
+	void clockFrameCounter();
 	void clockChannelsLen();
 
 	u8 status_ = 0;

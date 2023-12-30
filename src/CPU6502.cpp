@@ -1,8 +1,5 @@
 #include "CPU6502.hpp"
 #include "Bus.hpp"
-#include "common/bitHelper.hpp"
-
-#include <cassert>
 
 #ifdef EMUCPULOG
 #include <fstream>

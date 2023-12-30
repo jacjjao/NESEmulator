@@ -1,72 +1,15 @@
 #include "APU.hpp"
-#include "common/bitHelper.hpp"
 #include "Bus.hpp"
-
-#include <cassert>
 
 
 void APU::clock()
 {
 	// clock frame sequencer
+	if (cpu_cycle_count_ % 2 == 0)
+	{
+		clockFrameCounter();
+	}
 	++cpu_cycle_count_;
-	if (!frame_sequencer_mode_)
-	{
-		if (cpu_cycle_count_ == 3728)
-		{
-		}
-		else if (cpu_cycle_count_ == 7456)
-		{
-			clockChannelsLen();
-		}
-		else if (cpu_cycle_count_ == 11185)
-		{
-			// TODO
-		}
-		else if (cpu_cycle_count_ == 14914)
-		{
-			clockChannelsLen();
-			if (!irq_inhibit_flag_)
-			{
-				Bus::instance().cpu.requestInterrupt();
-			}
-			cpu_cycle_count_ = 0;
-			return;
-		}
-
-		if (cpu_cycle_count_ >= 14914)
-		{
-			cpu_cycle_count_ = 0;
-		}
-	}
-	else
-	{
-		if (cpu_cycle_count_ == 3728)
-		{
-		}
-		else if (cpu_cycle_count_ == 7456)
-		{
-			clockChannelsLen();
-		}
-		else if (cpu_cycle_count_ == 11185)
-		{
-			// TODO
-		}
-		else if (cpu_cycle_count_ == 14914)
-		{
-
-		}
-		else if (cpu_cycle_count_ == 18640)
-		{
-			clockChannelsLen();
-			cpu_cycle_count_ = 0;
-			return;
-		}
-
-		if (cpu_cycle_count_ >= 18640)
-		{
-			cpu_cycle_count_ = 0;
-		}
-	}
 }
 
 void APU::regWrite(const u16 addr, const u8 data)
@@ -121,12 +64,16 @@ void APU::regWrite(const u16 addr, const u8 data)
 
 	case 0x4017:
 		// TODO implement delay write
-		frame_sequencer_mode_ = getBitN(data, 7);
+		frame_sequencer_mode_ = data & 0x80;
 		if (frame_sequencer_mode_)
 		{
 			clockChannelsLen();
 		}
-		irq_inhibit_flag_ = getBitN(data, 6);
+		if (irq_inhibit_flag_ != static_cast<bool>(data & 0x40))
+		{
+			frame_interrupt_ = false; // reset the flag
+		}
+		irq_inhibit_flag_ = data & 0x40;
 		cpu_cycle_count_ = 0;
 		break;
 	}
@@ -146,6 +93,8 @@ u8 APU::regRead(u16 addr)
 		data = (data << 1 | static_cast<u8>(!triangle_.isSilenced()));
 		data = (data << 1 | static_cast<u8>(!pulse2_.isSilenced()));
 		data = (data << 1 | static_cast<u8>(!pulse1_.isSilenced()));
+		data |= (static_cast<u8>(frame_interrupt_) << 6);
+		frame_interrupt_ = false;
 		break;
 	}
 	}
@@ -154,6 +103,69 @@ u8 APU::regRead(u16 addr)
 
 void APU::reset()
 {
+}
+
+void APU::clockFrameCounter()
+{
+	if (!frame_sequencer_mode_)
+	{
+		if (cpu_cycle_count_ == 3728)
+		{
+		}
+		else if (cpu_cycle_count_ == 7456)
+		{
+			clockChannelsLen();
+		}
+		else if (cpu_cycle_count_ == 11186)
+		{
+			// TODO
+		}
+		else if (cpu_cycle_count_ == 14914)
+		{
+			clockChannelsLen();
+			if (!irq_inhibit_flag_)
+			{
+				frame_interrupt_ = true;
+				Bus::instance().cpu.requestInterrupt();
+			}
+			cpu_cycle_count_ = 0;
+			return;
+		}
+
+		if (cpu_cycle_count_ >= 14914)
+		{
+			cpu_cycle_count_ = 0;
+		}
+	}
+	else
+	{
+		if (cpu_cycle_count_ == 3728)
+		{
+		}
+		else if (cpu_cycle_count_ == 7456)
+		{
+			clockChannelsLen();
+		}
+		else if (cpu_cycle_count_ == 11186)
+		{
+			// TODO
+		}
+		else if (cpu_cycle_count_ == 14914)
+		{
+
+		}
+		else if (cpu_cycle_count_ == 18640)
+		{
+			clockChannelsLen();
+			cpu_cycle_count_ = 0;
+			return;
+		}
+
+		if (cpu_cycle_count_ >= 18640)
+		{
+			cpu_cycle_count_ = 0;
+		}
+	}
 }
 
 void APU::clockChannelsLen()

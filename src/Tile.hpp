@@ -1,8 +1,6 @@
 #pragma once
 
-#include <SFML/Graphics/Vertex.hpp>
-#include <vector>
-#include <array>
+#include "pch.hpp"
 
 
 class Pixel // This is actually a rectangle with 1 pixel width and 1 pixel height

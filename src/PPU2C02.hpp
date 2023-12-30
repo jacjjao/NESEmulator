@@ -1,12 +1,9 @@
 #pragma once
 
-#include "common/type.hpp"
 #include "Tile.hpp"
 #include "Palette.hpp"
 #include "Mapper/Mapper.hpp"
-#include "common/BitField.hpp"
-#include <SFML/Graphics/Vertex.hpp>
-#include <vector>
+#include "pch.hpp"
 
 
 class PPU2C02

@@ -1,13 +1,12 @@
 #pragma once
 
-#include "common/type.hpp"
+#include "pch.hpp"
 #include "Cartridge.hpp"
 #include "PPU2C02.hpp"
 #include "CPU6502.hpp"
 #include "APU.hpp"
 #include "Controller/StandardController.hpp"
 #include "Mapper/Mapper.hpp"
-#include <vector>
 
 
 class Bus

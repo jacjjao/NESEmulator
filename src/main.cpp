@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include "pch.hpp"
 #include "NES.hpp"
 #include "Mapper/AllMapper.hpp"
 
@@ -50,11 +50,11 @@ int main()
     try
     {      
         NES nes;
-        nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/apu_test_rom/apu_test/rom_singles/3-irq_flag.nes"));
+        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/apu_test_rom/apu_test/apu_test.nes"));
         // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/branch_timing_tests/3.Forward_Branch.nes"));
         // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/oam_stress.nes"));
         // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/mapper_test_rom/mmc3_test_2/5-MMC3.nes"));
-        // nes.bus.insertCartridge(createCartridge("../../../Donkey Kong.nes"));
+        nes.bus.insertCartridge(createCartridge("../../../Super Mario Bros.nes"));
         nes.run();
     }
     catch (std::exception& e)
