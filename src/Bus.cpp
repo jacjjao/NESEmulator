@@ -31,7 +31,7 @@ void Bus::cpuWrite(const u16 addr, const u8 data)
 		oam_addr = ppu.getOAMAddr();
 		dma_start = false;
 	}
-	else if (addr == 0x4003 || addr == 0x4007 || addr == 0x400B || addr == 0x400F || addr == 0x4015 || addr == 0x4017)
+	else if (addr <= 0x4013 || addr == 0x4015 || addr == 0x4017)
 	{
 		apu.regWrite(addr, data);
 	}

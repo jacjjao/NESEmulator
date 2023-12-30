@@ -8,23 +8,15 @@
 void APU::clock()
 {
 	// clock frame sequencer
-	const auto updateLenCnts = [this] {
-		pulse1_.clockLenCnt();
-		pulse2_.clockLenCnt();
-		triangle_.clockLenCnt();
-		noise_.clockLenCnt();
-	};
-	
 	++cpu_cycle_count_;
 	if (!frame_sequencer_mode_)
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
-			// TODO
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
-			updateLenCnts();
+			clockChannelsLen();
 		}
 		else if (cpu_cycle_count_ == 11185)
 		{
@@ -32,8 +24,8 @@ void APU::clock()
 		}
 		else if (cpu_cycle_count_ == 14914)
 		{
-			updateLenCnts();
-			if (irq_inhibit_flag_)
+			clockChannelsLen();
+			if (!irq_inhibit_flag_)
 			{
 				Bus::instance().cpu.requestInterrupt();
 			}
@@ -41,7 +33,7 @@ void APU::clock()
 			return;
 		}
 
-		if (cpu_cycle_count_ >= 14915)
+		if (cpu_cycle_count_ >= 14914)
 		{
 			cpu_cycle_count_ = 0;
 		}
@@ -50,11 +42,10 @@ void APU::clock()
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
-			// TODO
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
-			updateLenCnts();
+			clockChannelsLen();
 		}
 		else if (cpu_cycle_count_ == 11185)
 		{
@@ -66,12 +57,12 @@ void APU::clock()
 		}
 		else if (cpu_cycle_count_ == 18640)
 		{
-			updateLenCnts();
+			clockChannelsLen();
 			cpu_cycle_count_ = 0;
 			return;
 		}
 
-		if (cpu_cycle_count_ >= 18641)
+		if (cpu_cycle_count_ >= 18640)
 		{
 			cpu_cycle_count_ = 0;
 		}
@@ -89,16 +80,32 @@ void APU::regWrite(const u16 addr, const u8 data)
 
 	switch (addr)
 	{
+	case 0x4000:
+		pulse1_.setLenCntHalt(data & 0x20);
+		break;
+
 	case 0x4003:
 		pulse1_.loadLenCnt(getLenCntValue(data));
+		break;
+
+	case 0x4004:
+		pulse2_.setLenCntHalt(data & 0x20);
 		break;
 
 	case 0x4007:
 		pulse2_.loadLenCnt(getLenCntValue(data));
 		break;
 
+	case 0x4008:
+		triangle_.setLenCntHalt(data & 0x80);
+		break;
+
 	case 0x400B:
 		triangle_.loadLenCnt(getLenCntValue(data));
+		break;
+
+	case 0x400C:
+		noise_.setLenCntHalt(data & 0x20);
 		break;
 
 	case 0x400F:
@@ -115,6 +122,10 @@ void APU::regWrite(const u16 addr, const u8 data)
 	case 0x4017:
 		// TODO implement delay write
 		frame_sequencer_mode_ = getBitN(data, 7);
+		if (frame_sequencer_mode_)
+		{
+			clockChannelsLen();
+		}
 		irq_inhibit_flag_ = getBitN(data, 6);
 		cpu_cycle_count_ = 0;
 		break;
@@ -131,10 +142,10 @@ u8 APU::regRead(u16 addr)
 	{
 	case 0x15:
 	{
-		data = (data << 1 | static_cast<u8>(!noise_.isHalted()));
-		data = (data << 1 | static_cast<u8>(!triangle_.isHalted()));
-		data = (data << 1 | static_cast<u8>(!pulse2_.isHalted()));
-		data = (data << 1 | static_cast<u8>(!pulse1_.isHalted()));
+		data = (data << 1 | static_cast<u8>(!noise_.isSilenced()));
+		data = (data << 1 | static_cast<u8>(!triangle_.isSilenced()));
+		data = (data << 1 | static_cast<u8>(!pulse2_.isSilenced()));
+		data = (data << 1 | static_cast<u8>(!pulse1_.isSilenced()));
 		break;
 	}
 	}
@@ -145,9 +156,17 @@ void APU::reset()
 {
 }
 
+void APU::clockChannelsLen()
+{
+	pulse1_.clockLenCnt();
+	pulse2_.clockLenCnt();
+	triangle_.clockLenCnt();
+	noise_.clockLenCnt();
+}
+
 void Channel::clockLenCnt()
 {
-	if (!isHalted())
+	if (!isSilenced() && !len_cnt_halt_)
 	{
 		--len_cnt_;
 	}
@@ -156,9 +175,18 @@ void Channel::clockLenCnt()
 void Channel::setEnable(bool set)
 {
 	enable_ = set;
+	if (!enable_)
+	{
+		len_cnt_ = 0;
+	}
 }
 
-bool Channel::isHalted() const
+void Channel::setLenCntHalt(bool set)
+{
+	len_cnt_halt_ = set;
+}
+
+bool Channel::isSilenced() const
 {
 	return !enable_ || len_cnt_ <= 0;
 }

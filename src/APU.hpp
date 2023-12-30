@@ -11,13 +11,16 @@ public:
 
 	void setEnable(bool set);
 
-	bool isHalted() const;
+	void setLenCntHalt(bool set);
+
+	bool isSilenced() const;
 
 	void loadLenCnt(u8 value);
 
 private:
 	u8 len_cnt_ = 0;
 	bool enable_ = false;
+	bool len_cnt_halt_ = false;
 };
 
 class APU
@@ -32,6 +35,8 @@ public:
 	void reset();
 
 private:
+	void clockChannelsLen();
+
 	u8 status_ = 0;
 	bool frame_sequencer_mode_ = false;
 	bool irq_inhibit_flag_ = false;
