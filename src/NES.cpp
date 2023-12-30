@@ -20,7 +20,7 @@ NES::~NES()
 
 void NES::run()
 {
-    static sf::Clock clock;
+    static sf::Clock clock, sound_clock;
     static constexpr float frame_time_interval = 1.0f / 60.0f;
 
     while (window_->isOpen())
@@ -35,6 +35,13 @@ void NES::run()
             clock.restart();
             onUpdate(0.0f);
             onDraw();
+        }
+
+        if (sound_clock.getElapsedTime().asMilliseconds() >= 50)
+        {
+            //sound_.setBuffer(bus.apu.getBuffer());
+            //sound_.play();
+            sound_clock.restart();
         }
     }
 }

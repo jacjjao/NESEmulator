@@ -8,7 +8,10 @@ void APU::clock()
 	if (cpu_cycle_count_ % 2 == 0)
 	{
 		clockFrameCounter();
+		pulse1_.clock();
+		pulse2_.clock();
 	}
+	mix();
 	++cpu_cycle_count_;
 }
 
@@ -25,6 +28,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 	{
 	case 0x4000:
 		pulse1_.setLenCntHalt(data & 0x20);
+		pulse1_.setDuty((data & 0xC0) >> 6);
 		break;
 
 	case 0x4003:
@@ -33,6 +37,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 
 	case 0x4004:
 		pulse2_.setLenCntHalt(data & 0x20);
+		pulse1_.setDuty((data & 0xC0) >> 6);
 		break;
 
 	case 0x4007:
@@ -103,6 +108,20 @@ u8 APU::regRead(u16 addr)
 
 void APU::reset()
 {
+}
+
+APU::APU() : 
+	audio_buf_(44100 / 20)
+{
+}
+
+sf::SoundBuffer& APU::getBuffer()
+{
+	bufs_.loadSamples(audio_buf_.data(), audio_buf_.size());
+	auto& buf = bufs_.getBuffer();
+	bufs_.swapBuffer();
+	audio_buf_p_ = 0;
+	return buf;
 }
 
 void APU::clockFrameCounter()
@@ -176,6 +195,15 @@ void APU::clockChannelsLen()
 	noise_.clockLenCnt();
 }
 
+void APU::mix()
+{
+	float p1 = pulse1_.getOutput();
+	float p2 = pulse2_.getOutput();
+	
+	if (audio_buf_p_ < audio_buf_.size())
+		audio_buf_[audio_buf_p_++] = static_cast<sf::Int16>(10000.0f * PulseChannel::table[p1 + p2]);
+}
+
 void Channel::clockLenCnt()
 {
 	if (!isSilenced() && !len_cnt_halt_)
@@ -209,4 +237,37 @@ void Channel::loadLenCnt(const u8 value)
 	{
 		len_cnt_ = value;
 	}
+}
+
+void APUBuffers::loadSamples(sf::Int16* buf, size_t count)
+{
+	static constexpr unsigned CHANNEL_COUNT = 1;
+	static constexpr unsigned SAMPLE_RATE = 44100;
+	if (!getBuffer().loadFromSamples(buf, count, CHANNEL_COUNT, SAMPLE_RATE))
+	{
+		std::fprintf(stderr, "Failed to load samples\n");
+	}
+}
+
+void APUBuffers::swapBuffer()
+{
+	latch_ = !latch_;
+}
+
+sf::SoundBuffer& APUBuffers::getBuffer()
+{
+	return latch_ ? buf1_ : buf2_;
+}
+
+float PulseChannel::getOutput()
+{
+	static u8 sequences[4][8] =
+	{
+		{ 0, 1, 0, 0, 0, 0, 0, 0 }, // 12.5%
+		{ 0, 1, 1, 0, 0, 0, 0, 0 }, // 25%
+		{ 0, 1, 1, 1, 1, 0, 0, 0 }, // 50%
+		{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 25% negated
+	};
+
+	return sequences[duty_][step_];
 }

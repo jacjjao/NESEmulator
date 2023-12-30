@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+#include <SFML/System.hpp>
 
 #include <vector>
 #include <array>
@@ -15,6 +16,7 @@
 #include <fstream>
 #include <functional>
 #include <optional>
+#include <chrono>
 
 #include "common/BitField.hpp"
 #include "common/bitHelper.hpp"

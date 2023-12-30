@@ -24,6 +24,7 @@ target_include_directories(${PROJECT_NAME}
 		sfml-network 
 		sfml-graphics 
 		sfml-window
+		sfml-audio
 )
 
 target_link_libraries(${PROJECT_NAME} 
@@ -32,4 +33,5 @@ target_link_libraries(${PROJECT_NAME}
 		sfml-network 
 		sfml-graphics 
 		sfml-window
+		sfml-audio
 )

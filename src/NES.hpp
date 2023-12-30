@@ -27,5 +27,7 @@ private:
 	sf::RenderWindow* window_ = nullptr;
 	sf::Event event_{};
 
+	sf::Sound sound_;
+
 	bool pause_ = false;
 };
