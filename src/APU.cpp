@@ -201,7 +201,8 @@ void APU::mix()
 	float p2 = pulse2_.getOutput();
 	
 	if (audio_buf_p_ < audio_buf_.size())
-		audio_buf_[audio_buf_p_++] = static_cast<sf::Int16>(10000.0f * PulseChannel::table[p1 + p2]);
+		audio_buf_[audio_buf_p_++] = static_cast<sf::Int16>(400.0f * (p1 + p2));
+		//audio_buf_[audio_buf_p_++] = static_cast<sf::Int16>(10000.0f * PulseChannel::table[p1 + p2]);
 }
 
 void Channel::clockLenCnt()
@@ -268,6 +269,9 @@ float PulseChannel::getOutput()
 		{ 0, 1, 1, 1, 1, 0, 0, 0 }, // 50%
 		{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 25% negated
 	};
+
+	if (isSilenced())
+		return 0.0f;
 
 	return sequences[duty_][step_];
 }
