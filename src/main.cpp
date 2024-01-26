@@ -45,23 +45,41 @@ std::unique_ptr<Mapper> createCartridge(const std::filesystem::path& path)
     return mapper;
 }
 
-int main()
-{   
-    try
-    {      
-        NES nes;
-        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/apu_test_rom/apu_test/apu_test.nes"));
-        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/cpu_test_rom/branch_timing_tests/3.Forward_Branch.nes"));
-        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/ppu_test_rom/oam_stress.nes"));
-        // nes.bus.insertCartridge(createCartridge("C:/Users/user/Desktop/hi/C++/NESEmulator/mapper_test_rom/mmc3_test_2/5-MMC3.nes"));
-        nes.bus.insertCartridge(createCartridge("../../../The Legend of Zelda 2.nes"));
-        nes.run();
-    }
-    catch (std::exception& e)
-    {
-        std::fprintf(stderr, "%s\n", e.what());
-        return EXIT_FAILURE;
-    }
+void trimPath(std::string& path)
+{
+    int start = 0;
+    while (start < path.size() && !std::isalpha(path[start]))
+        start++;
+    int end = path.size() - 1;
+    while (end >= start && !std::isalpha(path[end]))
+        end--;
+    if (start <= end)
+        path = path.substr(start, end - start + 1);
+}
 
-    return EXIT_SUCCESS;
+int main()
+{      
+    std::string cmd;
+    while (true)
+    {
+        std::cout << "Input rom directory or type \"exit\" to exit the program: ";
+        std::getline(std::cin, cmd);
+
+        if (cmd == "exit")
+            break;
+
+        trimPath(cmd);
+
+        try
+        {
+            NES nes;
+            nes.bus.insertCartridge(createCartridge(cmd));
+            nes.run();
+        }
+        catch (std::exception& e)
+        {
+            std::fprintf(stderr, "%s\n", e.what());
+        }
+    }
+    return 0;
 }

@@ -3,13 +3,10 @@
 
 u8 Cartridge::loadiNESFile(const std::filesystem::path& path)
 {
-	std::ifstream file{path, std::ios::binary};
-    if (!file.is_open())
-    {
-        throw std::runtime_error{ "Cannot open the file" };
-    }
-
+	std::ifstream file;
     file.exceptions(std::ios::failbit | std::ios::badbit);
+
+    file.open(path, std::ios::binary);
 
     std::vector<u8> data(std::istreambuf_iterator<char>(file), {});
     if (data.size() < 16)
