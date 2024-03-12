@@ -4,25 +4,22 @@
         {
             "name": "x64-windows-debug",
             "displayName": "Debug",
-            "binaryDir": "${sourceDir}/out/build/debug",
+            "binaryDir": "${sourceDir}/build/debug",
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "CMAKE_CXX_FLAGS": "/analyze /W4 /MP /fsanitize=address /MDd /Od /EHsc"
-            },
-            "toolchainFile": "C:\\Users\\user\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+            }
         },
         {
             "name": "x64-windows-release",
             "displayName": "Release",
-            "binaryDir": "${sourceDir}/out/build/release",
+            "binaryDir": "${sourceDir}/build/release",
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_FLAGS": "/analyze /W4 /MP /MD /O2 /EHsc"
-            },
-            "toolchainFile": "C:\\Users\\user\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+            }
         }
     ]
 }
