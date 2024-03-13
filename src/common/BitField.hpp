@@ -1,7 +1,5 @@
 #pragma once
 
-#include <bit>
-
 template<class T>
 class BitField
 {
@@ -11,12 +9,24 @@ public:
     template<class U>
     U getValueAs() const
     {
-        return std::bit_cast<U>(bit);
+        return bit_cast<U>(bit);
     }
 
     template<class U>
     void setValue(const U& value)
     {
-        bit = std::bit_cast<T>(value);
+        bit = bit_cast<T>(value);
+    }
+
+private:
+    template<typename T, typename U>
+    static T bit_cast(U& bit) 
+    {
+        static_assert(sizeof(T) == sizeof(U));
+        static_assert(std::is_pod_v<T>);
+        static_assert(std::is_pod_v<U>);
+        T val{};
+        std::memcpy(std::addressof(val), std::addressof(bit), sizeof(T));
+        return val;
     }
 };
