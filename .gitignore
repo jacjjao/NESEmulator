@@ -17,8 +17,6 @@
 
 !ppu_test_rom/**
 
-!CMakePresets.json
-
 !/nestest.nes
 
 !.gitignore
