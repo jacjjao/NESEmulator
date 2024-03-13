@@ -7,3 +7,15 @@ Prerequisites: CMake, C++ compiler, OpenGL, OpenAL
 cmake -S . -B build
 cmake --build build --config Release
 ```
+
+## Manual
+![NES Controller 圖例](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Nintendo-Entertainment-System-NES-Controller-FL.jpg/1920px-Nintendo-Entertainment-System-NES-Controller-FL.jpg)
+UP-W  
+DOWN-S  
+LEFT-A  
+RIGHT-D  
+SELECT-G  
+START-H  
+B-J  
+A-K  
+RESET-DELETE
