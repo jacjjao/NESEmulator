@@ -422,7 +422,10 @@ void PPU2C02::cycle()
 		{
 			spriteEval();
 			createSprites();
-			Bus::instance().cartridge().updateIRQCounter(control_.getValueAs<u8>(), static_cast<unsigned>(sprite_buf_.size()), scanline_, cycle_);
+			if (cycle_ == 260 && scanline_ < 240)
+			{
+				Bus::instance().cartridge().updateIRQCounter();
+			}
 		}
 	}
 
@@ -534,7 +537,7 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 			tvram = (tvram & 0xFF00) | data;
 			tvram_addr_.setValue(tvram);
 			vram_addr_ = tvram_addr_;
-		}
+		} 
 		write_latch_ = !write_latch_;
 		break;
 	}

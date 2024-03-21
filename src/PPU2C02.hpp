@@ -142,5 +142,5 @@ private:
 
 	u8 open_bus_ = 0;
 
-	bool odd_frame_ = true;
+	bool odd_frame_ = true; 
 };

@@ -509,7 +509,6 @@ bool CPU6502::irq()
 {
 	if (getInterruptDisableFlag())
 		return false;
-	assert(interrupt_request_ >= 0);
 	pushStack(reg_.PC);
 	pushStack(reg_.Status);
 	setInterruptDisableFlag(true);
