@@ -5,7 +5,8 @@
 
 !lib/**
 
-!src/**
+!src/*.hpp
+!src/*.cpp
 
 !tests/**
 

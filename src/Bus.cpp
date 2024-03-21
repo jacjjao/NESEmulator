@@ -99,6 +99,10 @@ void Bus::clock()
 		}
 		else
 		{
+			if (cart_->irq && cpu.irq()) 
+			{
+				cart_->irq = false;
+			}
 			cpu.cycle();
 		}
 	}

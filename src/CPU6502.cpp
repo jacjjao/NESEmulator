@@ -434,9 +434,6 @@ CPU6502::CPU6502()
 
 void CPU6502::cycle()
 {
-	if (interrupt_request_ > 0)
-		irq();
-
 	switch (cycle_state_)
 	{
 	case CycleState::Fetch:
@@ -508,11 +505,10 @@ void CPU6502::reset()
 	cycle_state_ = CycleState::WaitForPenalty;
 }
 
-void CPU6502::irq()
+bool CPU6502::irq()
 {
 	if (getInterruptDisableFlag())
-		return;
-	--interrupt_request_;
+		return false;
 	assert(interrupt_request_ >= 0);
 	pushStack(reg_.PC);
 	pushStack(reg_.Status);
@@ -520,6 +516,7 @@ void CPU6502::irq()
 	reg_.PC = getTwoBytesFromMem(0xFFFE);
 	penalty_ = 7;
 	cycle_state_ = CycleState::WaitForPenalty;
+	return true;
 }
 
 void CPU6502::nmi()
@@ -532,11 +529,6 @@ void CPU6502::nmi()
 	reg_.PC = getTwoBytesFromMem(0xFFFA);
 	penalty_ = 8;
 	cycle_state_ = CycleState::WaitForPenalty;
-}
-
-void CPU6502::requestInterrupt()
-{
-	++interrupt_request_;
 }
 
 void CPU6502::ADC()

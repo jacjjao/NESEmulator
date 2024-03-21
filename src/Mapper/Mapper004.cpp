@@ -1,5 +1,4 @@
 #include "Mapper004.hpp"
-#include "../Bus.hpp"
 #include "../common/bitHelper.hpp"
 #include <cassert>	
 
@@ -224,7 +223,7 @@ void Mapper004::updateIRQCounter(const u8 control_, const unsigned sprite_count,
 		}
 		if (irq_counter_ <= 0 && irq_enable_)
 		{
-			Bus::instance().cpu.requestInterrupt();
+			irq = true;
 		}
 	};
 

@@ -22,6 +22,8 @@ public:
 
 	MirrorType getMirrorType();
 
+	bool irq = false;
+
 protected:
 	Cartridge cart_;
 };

@@ -145,7 +145,7 @@ void APU::clockFrameCounter()
 			if (!irq_inhibit_flag_)
 			{
 				frame_interrupt_ = true;
-				Bus::instance().cpu.requestInterrupt();
+				// Bus::instance().cpu.requestInterrupt();
 			}
 			cpu_cycle_count_ = 0;
 			return;
