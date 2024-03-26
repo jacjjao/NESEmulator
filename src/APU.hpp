@@ -28,20 +28,6 @@ private:
 	bool len_cnt_halt_ = false;
 };
 
-class APUBuffers
-{
-public:
-	void loadSamples(sf::Int16* buf, size_t count);
-
-	void swapBuffer();
-
-	sf::SoundBuffer& getBuffer();
-
-private:
-	bool latch_;
-	sf::SoundBuffer buf1_, buf2_;
-};
-
 class PulseTable
 {
 public:
@@ -77,11 +63,23 @@ private:
 	int step_ = 0;
 };
 
+class AudioBuffer
+{
+public:
+	AudioBuffer() { samples_.reserve(30000); }
+
+	void write(i16 value);
+
+	void copyAll(std::vector<i16>& buf);
+
+private:
+	std::vector<i16> samples_;
+	std::mutex mutex_;
+};
+
 class APU
 {
 public:
-	APU();
-
 	void clock();
 	
 	void regWrite(u16 addr, u8 data);
@@ -90,9 +88,9 @@ public:
 
 	void reset();
 
-	sf::SoundBuffer& getBuffer();
-
 	void mix();
+
+	void getSamples(std::vector<i16>& buf);
 
 private:
 	void clockFrameCounter();
@@ -113,8 +111,5 @@ private:
 		12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
 	};
 
-	std::vector<sf::Int16> audio_buf_;
-	size_t audio_buf_p_ = 0;
-
-	APUBuffers bufs_;
+	AudioBuffer audio_buf_;
 };

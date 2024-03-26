@@ -16,6 +16,7 @@
 #include <functional>
 #include <optional>
 #include <chrono>
+#include <mutex>
 
 #include "common/BitField.hpp"
 #include "common/bitHelper.hpp"

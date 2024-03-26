@@ -4,25 +4,28 @@ NES::NES() :
     bus{ Bus::instance() }
 {
 #ifdef DEBUG_WINDOW
-	window_ = new sf::RenderWindow(sf::VideoMode(256 + 150, 240 + 50), "NES", sf::Style::Titlebar | sf::Style::Close);
-	window_->setSize(sf::Vector2u(1024 + 600, 960 + 200));
+	window_ = new sf::RenderWindow(sf::VideoMode(s_dbg_nes_width, s_dbg_nes_height), "NES", sf::Style::Titlebar | sf::Style::Close);
 #else 
-    window_ = new sf::RenderWindow(sf::VideoMode(256, 240), "NES", sf::Style::Titlebar | sf::Style::Close);
-    window_->setSize(sf::Vector2u(256 * 5, 240 * 5));
+    window_ = new sf::RenderWindow(sf::VideoMode(s_nes_width, s_nes_height), "NES", sf::Style::Titlebar | sf::Style::Close);
 #endif
-    window_->setPosition({ 100, 100 });
+    scaleWindow();
+
+    constexpr unsigned channel_count = 1;
+    initialize(channel_count, s_sample_rate);
+    setProcessingInterval(sf::Time::Zero);
 }
 
 NES::~NES()
 {
+    stop();
 	delete window_;
 }
 
 void NES::run()
 {
-    static sf::Clock clock, sound_clock;
-    static constexpr float frame_time_interval = 1.0f / 50.0f;
-
+    constexpr float update_interval = 1.0f / static_cast<float>(s_frame_rate);
+    sf::Clock clock;
+    play();
     while (window_->isOpen())
     {
         while (window_->pollEvent(event_))
@@ -30,23 +33,16 @@ void NES::run()
             onEvent();
         }
 
-        if (clock.getElapsedTime().asSeconds() >= frame_time_interval)
-        {
-            clock.restart();
-            onUpdate(0.0f);
-            onDraw();
-        }
+        onUpdate();
+        onDraw();
 
-        if (sound_clock.getElapsedTime().asMilliseconds() >= 50)
-        {
-            //sound_.setBuffer(bus.apu.getBuffer());
-            //sound_.play();
-            sound_clock.restart();
-        }
+        auto dt = clock.restart();
+        while (dt.asSeconds() < update_interval)
+            dt += clock.restart();
     }
 }
 
-bool NES::onUpdate(float)
+bool NES::onUpdate()
 {
     if (pause_) return true;
 
@@ -130,6 +126,16 @@ void NES::onKeyPressed()
         bus.joystick.setBotton(Botton::B, true);
     else if (event_.key.code == sf::Keyboard::K)
         bus.joystick.setBotton(Botton::A, true);
+    else if (event_.key.code == sf::Keyboard::PageUp)
+    {
+        win_scale_ = std::min(win_scale_ + 1u, 10u);
+        scaleWindow();
+    }
+    else if (event_.key.code == sf::Keyboard::PageDown)
+    {
+        win_scale_ = std::max(win_scale_ - 1u, 1u);
+        scaleWindow();
+    }
 }
 
 void NES::onKeyReleased()
@@ -150,4 +156,37 @@ void NES::onKeyReleased()
          bus.joystick.setBotton(Botton::B, false);
      else if (event_.key.code == sf::Keyboard::K)
          bus.joystick.setBotton(Botton::A, false);
+}
+
+bool NES::onGetData(Chunk& data)
+{
+    static std::vector<i16> samples(1000);
+    bus.apu.getSamples(samples);
+    if (samples.empty())
+    {
+        constexpr int n = s_sample_rate / s_frame_rate;
+        std::fill_n(std::back_inserter(samples), n, 0);
+    }
+    data.samples = samples.data();
+    data.sampleCount = samples.size();
+    return true;
+}
+
+void NES::onSeek(sf::Time)
+{
+    /* empty */
+}
+
+void NES::scaleWindow()
+{
+#ifdef DEBUG_WINDOW
+    auto size = sf::Vector2u(s_dbg_nes_width, s_dbg_nes_height);
+#else 
+    auto size = sf::Vector2u(s_nes_width, s_nes_height);
+#endif
+    size *= win_scale_;
+    window_->setSize(size);
+    const auto desktop = sf::VideoMode::getDesktopMode();
+    sf::Vector2i pos(desktop.width / 2 - size.x / 2, desktop.height / 2 - size.y / 2);
+    window_->setPosition(pos);
 }
