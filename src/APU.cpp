@@ -4,6 +4,7 @@
 
 void APU::clock()
 {
+	/*
 	// clock frame sequencer
 	if (cpu_cycle_count_ % 2 == 0)
 	{
@@ -13,6 +14,7 @@ void APU::clock()
 	}
 	mix();
 	++cpu_cycle_count_;
+	*/
 }
 
 void APU::regWrite(const u16 addr, const u8 data)
@@ -245,8 +247,25 @@ float PulseChannel::getOutput()
 
 void AudioBuffer::write(const i16 value)
 {
-	std::lock_guard lock{ mutex_ };
-	samples_.push_back(value);
+	static int max_sample_count = 40;
+	static int sample_count = 0;
+	static double sample_sum = 0.0;
+
+	sample_sum += static_cast<double>(value);
+	++sample_count;
+	if (sample_count >= max_sample_count)
+	{
+		sample_sum /= static_cast<double>(sample_count);
+
+		{
+			std::lock_guard lock{ mutex_ };
+			samples_.push_back(sample_sum);
+		}
+
+		sample_count = 0;
+		sample_sum = 0.0;
+		max_sample_count = (max_sample_count == 40) ? 41 : 40;
+	}
 }
 
 void AudioBuffer::copyAll(std::vector<i16>& buf)
