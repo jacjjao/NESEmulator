@@ -25,6 +25,9 @@ void NES::run()
 {
     constexpr float update_interval = 1.0f / static_cast<float>(s_frame_rate);
     sf::Clock clock;
+
+    onUpdate();
+
     play();
     while (window_->isOpen())
     {
@@ -33,8 +36,8 @@ void NES::run()
             onEvent();
         }
 
-        onUpdate();
         onDraw();
+        onUpdate();
 
         auto dt = clock.restart();
         while (dt.asSeconds() < update_interval)
