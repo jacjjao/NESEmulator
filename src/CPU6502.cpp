@@ -614,11 +614,13 @@ void CPU6502::BPL()
 
 void CPU6502::BRK()
 {
-	const u8 status = reg_.Status | 0x30;
+	const u8 status = reg_.Status | 0x10;
+	++reg_.PC;
 	pushStack(reg_.PC);
 	pushStack(status);
 	reg_.PC = getTwoBytesFromMem(0xFFFE);
 	setBreakFlag(true);
+	setInterruptDisableFlag(true);
 }
 
 void CPU6502::BVC()
