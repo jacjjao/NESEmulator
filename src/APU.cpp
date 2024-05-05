@@ -4,17 +4,17 @@
 
 void APU::clock()
 {
-	/*
-	// clock frame sequencer
+	/*clock frame sequencer*/
 	if (cpu_cycle_count_ % 2 == 0)
 	{
 		clockFrameCounter();
 		pulse1_.clock();
 		pulse2_.clock();
 	}
+
 	mix();
 	++cpu_cycle_count_;
-	*/
+	
 }
 
 void APU::regWrite(const u16 addr, const u8 data)
@@ -29,20 +29,44 @@ void APU::regWrite(const u16 addr, const u8 data)
 	switch (addr)
 	{
 	case 0x4000:
+		pulse1_.is_constant = (data >> 4) & 1;
+		pulse1_.constant_volume = data & 0xF;
+		pulse1_.envelope_.is_looping_ = (data >> 5) & 1;
+		pulse1_.envelope_.reset_level_ = data & 0xF;
 		pulse1_.setLenCntHalt(data & 0x20);
 		pulse1_.setDuty((data & 0xC0) >> 6);
 		break;
 
+	case 0x4002:
+		pulse1_.timer_reset = (pulse1_.timer_reset & 0x700) | data;
+		break;
+
 	case 0x4003:
+		pulse1_.timer_reset = (pulse1_.timer_reset & 0xFF) | ((data & 0x7) << 8);
+		pulse1_.timer = pulse1_.timer_reset;
+		pulse1_.envelope_.start_flag_ = true;
+		//pulse1_.step_ = 0;
 		pulse1_.loadLenCnt(getLenCntValue(data));
 		break;
 
 	case 0x4004:
+		pulse2_.is_constant = (data >> 4) & 1;
+		pulse2_.constant_volume = data & 0xF;
+		pulse2_.envelope_.is_looping_ = (data >> 5) & 1;
+		pulse2_.envelope_.reset_level_ = data & 0xF;
 		pulse2_.setLenCntHalt(data & 0x20);
-		pulse1_.setDuty((data & 0xC0) >> 6);
+		pulse2_.setDuty((data & 0xC0) >> 6);
+		break;
+
+	case 0x4006:
+		pulse2_.timer_reset = (pulse2_.timer_reset & 0x700) | data;
 		break;
 
 	case 0x4007:
+		pulse2_.timer_reset = (pulse2_.timer_reset & 0xFF) | ((data & 0x7) << 8);
+		pulse2_.timer = pulse2_.timer_reset;
+		pulse2_.envelope_.start_flag_ = true;
+		//pulse2_.step_ = 0;
 		pulse2_.loadLenCnt(getLenCntValue(data));
 		break;
 
@@ -75,6 +99,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 		if (frame_sequencer_mode_)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
 		}
 		if (irq_inhibit_flag_ != static_cast<bool>(data & 0x40))
 		{
@@ -123,18 +148,21 @@ void APU::clockFrameCounter()
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
-			// TODO
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 14914)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
 			if (!irq_inhibit_flag_)
 			{
 				frame_interrupt_ = true;
@@ -153,14 +181,16 @@ void APU::clockFrameCounter()
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
+			clockEnvelopes();
 			clockChannelsLen();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
-			// TODO
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 14914)
 		{
@@ -168,6 +198,7 @@ void APU::clockFrameCounter()
 		}
 		else if (cpu_cycle_count_ == 18640)
 		{
+			clockEnvelopes();
 			clockChannelsLen();
 			cpu_cycle_count_ = 0;
 			return;
@@ -188,10 +219,17 @@ void APU::clockChannelsLen()
 	noise_.clockLenCnt();
 }
 
+void APU::clockEnvelopes(){
+	pulse1_.clockEnvelope();
+	pulse2_.clockEnvelope();
+}
+
 void APU::mix()
 {
-	float p1 = pulse1_.getOutput();
-	float p2 = pulse2_.getOutput();
+	uint8_t p1 = pulse1_.getOutput();
+	uint8_t p2 = pulse2_.getOutput();
+	float value = pulse1_.table[(p1 + p2) & 0x1F];
+	audio_buf_.write(static_cast<i16>(value * 32767.0f));
 }
 
 void Channel::clockLenCnt()
@@ -229,7 +267,7 @@ void Channel::loadLenCnt(const u8 value)
 	}
 }
 
-float PulseChannel::getOutput()
+uint8_t PulseChannel::getOutput()
 {
 	static u8 sequences[4][8] =
 	{
@@ -242,7 +280,13 @@ float PulseChannel::getOutput()
 	if (isSilenced())
 		return 0.0f;
 
-	return sequences[duty_][step_];
+	if (is_constant){
+		return constant_volume;
+	}
+	else{
+		return envelope_.decay_level_;
+	}
+	//return sequences[duty_][step_];
 }
 
 void AudioBuffer::write(const i16 value)
@@ -262,6 +306,11 @@ void AudioBuffer::write(const i16 value)
 			samples_.push_back(sample_sum);
 		}
 
+		// for(int i = 0; i < samples_.size(); i++){
+		// 	std::cout<<samples_[i]<<" "<<std::endl;
+		// }
+		// std::cout<<"================================"<<std::endl;
+
 		sample_count = 0;
 		sample_sum = 0.0;
 		max_sample_count = (max_sample_count == 40) ? 41 : 40;
@@ -274,4 +323,32 @@ void AudioBuffer::copyAll(std::vector<i16>& buf)
 	std::lock_guard lock{ mutex_ };
 	buf.assign(samples_.cbegin(), samples_.cend());
 	samples_.clear();
+}
+
+void PulseChannel::clockEnvelope(){
+	envelope_.clock();
+}
+
+void Envelope::clock(){
+	if (start_flag_){
+		decay_level_ = 15;
+		divider_step_ = reset_level_;
+		start_flag_ = false;
+	}
+	else{
+		if (divider_step_ > 0){
+			divider_step_ -= 1;
+		}
+		else{
+			divider_step_ = reset_level_;
+			if (decay_level_ > 0){
+				decay_level_ -= 1;
+			}
+			else{
+				if (is_looping_){
+					decay_level_ = 15;
+				}
+			}
+		}
+	}
 }

@@ -2,7 +2,6 @@
 
 #include "pch.hpp"
 
-
 class Channel
 {
 public:
@@ -18,7 +17,7 @@ public:
 
 	void loadLenCnt(u8 value);
 
-	virtual float getOutput() { return 0.0f; };
+	virtual uint8_t getOutput() { return 0; };
 
 	virtual void clock() {};
 
@@ -26,6 +25,18 @@ private:
 	u8 len_cnt_ = 0;
 	bool enable_ = false;
 	bool len_cnt_halt_ = false;
+};
+
+class Envelope{
+	public:
+		void clock();
+
+		bool start_flag_ = false;
+
+		uint8_t decay_level_ = 0;
+		uint8_t divider_step_ = 0;
+		uint8_t reset_level_ = 0;
+		bool is_looping_ = false;
 };
 
 class PulseTable
@@ -50,13 +61,28 @@ class PulseChannel : public Channel
 public:
 	~PulseChannel() override = default;
 
-	float getOutput() override;
+	uint8_t getOutput() override;
 
 	static inline PulseTable table;
 
 	void setDuty(u8 duty) { assert(duty < 4); duty_ = duty; };
 
-	void clock() override { step_ = (step_ + 1) % 8; }
+	void clock() override { 
+		timer--;
+		if (timer == 0) {
+			timer = timer_reset;
+			step_ = (step_ + 1) % 8;
+		}
+	}
+
+	void clockEnvelope();
+	
+	bool is_constant = true;
+	uint8_t constant_volume = 0;
+	uint16_t timer = 0;
+	uint16_t timer_reset = 0;
+
+	Envelope envelope_;
 
 private:
 	u8 duty_ = 0;
@@ -95,6 +121,7 @@ public:
 private:
 	void clockFrameCounter();
 	void clockChannelsLen();
+	void clockEnvelopes();
 
 	u8 status_ = 0;
 	bool frame_sequencer_mode_ = false;
