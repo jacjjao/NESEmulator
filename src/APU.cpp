@@ -5,6 +5,7 @@
 void APU::clock()
 {
 	/*clock frame sequencer*/
+	triangle_.clock();
 	if (cpu_cycle_count_ % 2 == 0)
 	{
 		clockFrameCounter();
@@ -71,11 +72,19 @@ void APU::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x4008:
+		triangle_.counter_on_ = (data & 0x80) == 0;
+		triangle_.counter_reload_value_ = data & 0x7F;
 		triangle_.setLenCntHalt(data & 0x80);
 		break;
 
+	case 0x400A:
+		triangle_.timer_reset = (triangle_.timer_reset & 0x700) | data;
+		break;
+
 	case 0x400B:
-		triangle_.loadLenCnt(getLenCntValue(data));
+		triangle_.timer_reset = (triangle_.timer_reset & 0x00FF) | ((data & 0x7) << 8);
+		triangle_.counter_reload_flag_ = true;
+		triangle_.loadLenCnt(getLenCntValue(data & 0xF8));
 		break;
 
 	case 0x400C:
@@ -222,13 +231,15 @@ void APU::clockChannelsLen()
 void APU::clockEnvelopes(){
 	pulse1_.clockEnvelope();
 	pulse2_.clockEnvelope();
+	triangle_.ClockLinearCounter();
 }
 
 void APU::mix()
 {
 	uint8_t p1 = pulse1_.getOutput();
 	uint8_t p2 = pulse2_.getOutput();
-	float value = pulse1_.table[(p1 + p2) & 0x1F];
+	uint8_t t = triangle_.getOutput();
+	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t];
 	audio_buf_.write(static_cast<i16>(value * 32767.0f));
 }
 
@@ -289,6 +300,14 @@ uint8_t PulseChannel::getOutput()
 	//return sequences[duty_][step_];
 }
 
+uint8_t TriangleChannel::getOutput(){
+	if (counter_value == 0 || isSilenced()){
+		return 0;
+	}
+
+	return sequence[position];
+}
+
 void AudioBuffer::write(const i16 value)
 {
 	static int max_sample_count = 40;
@@ -327,6 +346,18 @@ void AudioBuffer::copyAll(std::vector<i16>& buf)
 
 void PulseChannel::clockEnvelope(){
 	envelope_.clock();
+}
+
+void TriangleChannel::ClockLinearCounter(){
+	if (counter_reload_flag_){
+		counter_value = counter_reload_value_;
+	}
+	else if (counter_value > 0){
+		counter_value -= 1;
+	}
+	if (counter_on_){
+		counter_reload_flag_ = false;
+	}
 }
 
 void Envelope::clock(){
