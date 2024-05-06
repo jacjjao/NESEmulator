@@ -46,7 +46,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 		pulse1_.timer_reset = (pulse1_.timer_reset & 0xFF) | ((data & 0x7) << 8);
 		pulse1_.timer = pulse1_.timer_reset;
 		pulse1_.envelope_.start_flag_ = true;
-		//pulse1_.step_ = 0;
+		pulse1_.setStepReset();
 		pulse1_.loadLenCnt(getLenCntValue(data));
 		break;
 
@@ -67,7 +67,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 		pulse2_.timer_reset = (pulse2_.timer_reset & 0xFF) | ((data & 0x7) << 8);
 		pulse2_.timer = pulse2_.timer_reset;
 		pulse2_.envelope_.start_flag_ = true;
-		//pulse2_.step_ = 0;
+		pulse2_.setStepReset();
 		pulse2_.loadLenCnt(getLenCntValue(data));
 		break;
 
@@ -288,7 +288,7 @@ uint8_t PulseChannel::getOutput()
 		{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 25% negated
 	};
 
-	if (isSilenced())
+	if (isSilenced() || !(sequences[duty_][step_]))
 		return 0.0f;
 
 	if (is_constant){

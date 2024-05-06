@@ -93,6 +93,8 @@ public:
 	}
 
 	void clockEnvelope();
+
+	void setStepReset() { step_ = 0; }
 	
 	bool is_constant = true;
 	uint8_t constant_volume = 0;
