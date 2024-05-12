@@ -37,6 +37,14 @@ void APU::regWrite(const u16 addr, const u8 data)
 		pulse1_.setLenCntHalt(data & 0x20);
 		pulse1_.setDuty((data & 0xC0) >> 6);
 		break;
+	
+	case 0x4001:
+		pulse1_.sweep_.enabled_ = (data >> 7) & 1;
+		pulse1_.sweep_.divider_period_ = (data >> 4) & 7;
+		pulse1_.sweep_.negate_ = (data >> 3) & 1;
+		pulse1_.sweep_.shift_count_ = data & 7;
+		pulse1_.sweep_.reload_flag_ = true;
+		break;
 
 	case 0x4002:
 		pulse1_.timer_reset = (pulse1_.timer_reset & 0x700) | data;
@@ -57,6 +65,14 @@ void APU::regWrite(const u16 addr, const u8 data)
 		pulse2_.envelope_.reset_level_ = data & 0xF;
 		pulse2_.setLenCntHalt(data & 0x20);
 		pulse2_.setDuty((data & 0xC0) >> 6);
+		break;
+
+	case 0x4005:
+		pulse2_.sweep_.enabled_ = (data >> 7) & 1;
+		pulse2_.sweep_.divider_period_ = (data >> 4) & 7;
+		pulse2_.sweep_.negate_ = (data >> 3) & 1;
+		pulse2_.sweep_.shift_count_ = data & 7;
+		pulse2_.sweep_.reload_flag_ = true;
 		break;
 
 	case 0x4006:
@@ -109,6 +125,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 		{
 			clockChannelsLen();
 			clockEnvelopes();
+			clockSweeps();
 		}
 		if (irq_inhibit_flag_ != static_cast<bool>(data & 0x40))
 		{
@@ -163,6 +180,7 @@ void APU::clockFrameCounter()
 		{
 			clockChannelsLen();
 			clockEnvelopes();
+			clockSweeps();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
@@ -172,6 +190,7 @@ void APU::clockFrameCounter()
 		{
 			clockChannelsLen();
 			clockEnvelopes();
+			clockSweeps();
 			if (!irq_inhibit_flag_)
 			{
 				frame_interrupt_ = true;
@@ -196,6 +215,7 @@ void APU::clockFrameCounter()
 		{
 			clockEnvelopes();
 			clockChannelsLen();
+			clockSweeps();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
@@ -209,6 +229,7 @@ void APU::clockFrameCounter()
 		{
 			clockEnvelopes();
 			clockChannelsLen();
+			clockSweeps();
 			cpu_cycle_count_ = 0;
 			return;
 		}
@@ -232,6 +253,11 @@ void APU::clockEnvelopes(){
 	pulse1_.clockEnvelope();
 	pulse2_.clockEnvelope();
 	triangle_.ClockLinearCounter();
+}
+
+void APU::clockSweeps(){
+	pulse1_.clockSweep();
+	pulse2_.clockSweep();
 }
 
 void APU::mix()
@@ -381,5 +407,37 @@ void Envelope::clock(){
 				}
 			}
 		}
+	}
+}
+
+void PulseChannel::clockSweep(){
+	if (sweep_.reload_flag_){
+		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+		sweep_.reload_flag_ = false;
+	}
+	else if (sweep_.divider_counter_ > 0){
+		sweep_.divider_counter_ -= 1;
+	}
+	else{
+		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+		if (sweep_.enabled_) {
+			calculateSweepPeriod();
+		}
+	}
+}
+
+void PulseChannel::calculateSweepPeriod(){
+	uint16_t delta = timer_reset >> sweep_.shift_count_;
+
+	if (sweep_.negate_){
+		if (is_channel_1){
+			timer_reset -= delta + 1;
+		}
+		else{
+			timer_reset -= delta;
+		}
+	}
+	else{
+		timer_reset += delta;
 	}
 }

@@ -39,6 +39,16 @@ class Envelope{
 		bool is_looping_ = false;
 };
 
+class Sweep{
+	public:
+		bool enabled_ = false;
+		uint8_t divider_period_ = 0;
+		uint8_t divider_counter_ = 0;
+		bool negate_ = false;
+		uint8_t shift_count_ = 0;
+		bool reload_flag_ = false;
+};
+
 class PulseTable
 {
 public:
@@ -76,6 +86,7 @@ private:
 class PulseChannel : public Channel
 {
 public:
+	PulseChannel(bool is_channel_1){this->is_channel_1 = is_channel_1;}
 	~PulseChannel() override = default;
 
 	uint8_t getOutput() override;
@@ -93,8 +104,12 @@ public:
 	}
 
 	void clockEnvelope();
+	void clockSweep();
 
 	void setStepReset() { step_ = 0; }
+
+	void calculateSweepPeriod();
+	bool isSweepMuted();
 	
 	bool is_constant = true;
 	uint8_t constant_volume = 0;
@@ -103,9 +118,13 @@ public:
 
 	Envelope envelope_;
 
+	Sweep sweep_;
+
+
 private:
 	u8 duty_ = 0;
 	int step_ = 0;
+	bool is_channel_1 = false;
 };
 
 class TriangleChannel : public Channel
@@ -172,6 +191,7 @@ private:
 	void clockFrameCounter();
 	void clockChannelsLen();
 	void clockEnvelopes();
+	void clockSweeps();
 
 	u8 status_ = 0;
 	bool frame_sequencer_mode_ = false;
@@ -179,7 +199,7 @@ private:
 	bool frame_interrupt_ = false;
 	int cpu_cycle_count_ = 0;
 
-	PulseChannel pulse1_, pulse2_;
+	PulseChannel pulse1_ = PulseChannel(true), pulse2_ = PulseChannel(false);
 
 	TriangleChannel triangle_;
 
