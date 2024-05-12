@@ -100,7 +100,7 @@ void APU::regWrite(const u16 addr, const u8 data)
 	case 0x400B:
 		triangle_.timer_reset = (triangle_.timer_reset & 0x00FF) | ((data & 0x7) << 8);
 		triangle_.counter_reload_flag_ = true;
-		triangle_.loadLenCnt(getLenCntValue(data & 0xF8));
+		triangle_.loadLenCnt(getLenCntValue(data));
 		break;
 
 	case 0x400C:
@@ -271,7 +271,7 @@ void APU::mix()
 
 void Channel::clockLenCnt()
 {
-	if (!isSilenced() && !len_cnt_halt_)
+	if (len_cnt_ > 0 && !len_cnt_halt_)
 	{
 		--len_cnt_;
 	}
