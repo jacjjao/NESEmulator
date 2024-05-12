@@ -109,7 +109,9 @@ public:
 	void setStepReset() { step_ = 0; }
 
 	void calculateSweepPeriod();
-	bool isSweepMuted();
+	bool isSweepMuted(){
+		return timer < 8 || timer_reset > 0x7FF;
+	}
 	
 	bool is_constant = true;
 	uint8_t constant_volume = 0;

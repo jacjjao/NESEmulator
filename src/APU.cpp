@@ -314,7 +314,7 @@ uint8_t PulseChannel::getOutput()
 		{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 25% negated
 	};
 
-	if (isSilenced() || !(sequences[duty_][step_]))
+	if (isSilenced() || !(sequences[duty_][step_]) || isSweepMuted())
 		return 0.0f;
 
 	if (is_constant){
