@@ -8,9 +8,9 @@ void APU::clock()
 	triangle_.clock();
 	if (cpu_cycle_count_ % 2 == 0)
 	{
-		clockFrameCounter();
 		pulse1_.clock();
 		pulse2_.clock();
+		clockFrameCounter();
 	}
 
 	mix();
@@ -39,10 +39,10 @@ void APU::regWrite(const u16 addr, const u8 data)
 		break;
 	
 	case 0x4001:
-		pulse1_.sweep_.enabled_ = (data >> 7) & 1;
-		pulse1_.sweep_.divider_period_ = (data >> 4) & 7;
-		pulse1_.sweep_.negate_ = (data >> 3) & 1;
-		pulse1_.sweep_.shift_count_ = data & 7;
+		pulse1_.sweep_.enabled_ = data & 0x80;
+		pulse1_.sweep_.divider_period_ = (data & 0x70) >> 4;
+		pulse1_.sweep_.negate_ = data & 0x08;
+		pulse1_.sweep_.shift_count_ = data & 0x07;
 		pulse1_.sweep_.reload_flag_ = true;
 		break;
 
@@ -68,10 +68,10 @@ void APU::regWrite(const u16 addr, const u8 data)
 		break;
 
 	case 0x4005:
-		pulse2_.sweep_.enabled_ = (data >> 7) & 1;
-		pulse2_.sweep_.divider_period_ = (data >> 4) & 7;
-		pulse2_.sweep_.negate_ = (data >> 3) & 1;
-		pulse2_.sweep_.shift_count_ = data & 7;
+		pulse2_.sweep_.enabled_ = data & 0x80;
+		pulse2_.sweep_.divider_period_ = (data & 0x70) >> 4;
+		pulse2_.sweep_.negate_ = data & 0x08;
+		pulse2_.sweep_.shift_count_ = data & 0x07;
 		pulse2_.sweep_.reload_flag_ = true;
 		break;
 
@@ -411,33 +411,61 @@ void Envelope::clock(){
 }
 
 void PulseChannel::clockSweep(){
-	if (sweep_.reload_flag_){
+	calculateSweepPeriod();
+
+	if (sweep_.divider_counter_ == 0 && sweep_.enabled_ && sweep_.shift_count_ > 0){
+		if (!isSweepMuted()){
+			timer_reset = target_period;
+		}
+		else{
+			sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+		}
+	}
+	if(sweep_.divider_counter_ == 0 || sweep_.reload_flag_){
 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
 		sweep_.reload_flag_ = false;
 	}
-	else if (sweep_.divider_counter_ > 0){
+	else{
 		sweep_.divider_counter_ -= 1;
 	}
-	else{
-		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
-		if (sweep_.enabled_) {
-			calculateSweepPeriod();
-		}
-	}
+
+	// if (sweep_.enabled_){
+	// 	if (sweep_.reload_flag_){
+	// 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+	// 		sweep_.reload_flag_ = false;
+	// 	}
+	// 	if (sweep_.divider_counter_ > 0){
+	// 		sweep_.divider_counter_ -= 1;
+	// 	}
+	// 	else{
+	// 		if (!isSweepMuted()){
+	// 			std::cout<<timer_reset<<std::endl;
+	// 			timer_reset = target_period;
+	// 		}
+	// 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+	// 	}
+	// }
 }
 
 void PulseChannel::calculateSweepPeriod(){
-	uint16_t delta = timer_reset >> sweep_.shift_count_;
+	uint16_t current_period = timer_reset;
+	uint16_t delta = current_period >> sweep_.shift_count_;
 
 	if (sweep_.negate_){
 		if (is_channel_1){
-			timer_reset -= delta + 1;
+			target_period = current_period - (delta + 1);
+			//timer_reset -= delta + 1;
 		}
 		else{
-			timer_reset -= delta;
+			target_period = current_period - delta;
+			//timer_reset -= delta;
 		}
 	}
 	else{
-		timer_reset += delta;
+		target_period = current_period + delta;
+		//timer_reset += delta;
+	}
+	if (target_period < 0){
+		target_period = 0;
 	}
 }

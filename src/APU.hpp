@@ -110,13 +110,14 @@ public:
 
 	void calculateSweepPeriod();
 	bool isSweepMuted(){
-		return timer < 8 || timer_reset > 0x7FF;
+		return timer_reset < 8 || target_period > 0x7FF;
 	}
 	
 	bool is_constant = true;
 	uint8_t constant_volume = 0;
 	uint16_t timer = 0;
 	uint16_t timer_reset = 0;
+	int target_period = 0;
 
 	Envelope envelope_;
 
