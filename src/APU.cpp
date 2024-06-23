@@ -9,7 +9,8 @@ void APU::clock()
 	if (cpu_cycle_count_ % 2 == 0)
 	{
 		pulse1_.clock();
-		pulse2_.clock();
+		pulse2_.clock();		
+		noise_.clock();
 		clockFrameCounter();
 	}
 
@@ -105,9 +106,19 @@ void APU::regWrite(const u16 addr, const u8 data)
 
 	case 0x400C:
 		noise_.setLenCntHalt(data & 0x20);
+		noise_.envelope_.is_looping_ = (data >> 5) & 1;
+		noise_.envelope_.reset_level_ = data & 0xF;
+		noise_.is_constant = (data >> 4) & 1;
+		noise_.constant_volume = data & 0xF;
+		break;
+	
+	case 0x400E:
+		noise_.mode_ = data & 0x80;
+		noise_.timer_reset = noise_.noisePeriodTable[data & 0xF];
 		break;
 
 	case 0x400F:
+		noise_.envelope_.start_flag_ = true;
 		noise_.loadLenCnt(getLenCntValue(data));
 		break;
 
@@ -253,6 +264,7 @@ void APU::clockEnvelopes(){
 	pulse1_.clockEnvelope();
 	pulse2_.clockEnvelope();
 	triangle_.ClockLinearCounter();
+	noise_.clockEnvelope();
 }
 
 void APU::clockSweeps(){
@@ -265,7 +277,9 @@ void APU::mix()
 	uint8_t p1 = pulse1_.getOutput();
 	uint8_t p2 = pulse2_.getOutput();
 	uint8_t t = triangle_.getOutput();
-	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t];
+	uint8_t n = noise_.getOutput();
+	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t + 2 * n];
+	//float value = triangle_.table[2 * n];
 	audio_buf_.write(static_cast<i16>(value * 32767.0f));
 }
 
@@ -334,6 +348,18 @@ uint8_t TriangleChannel::getOutput(){
 	return sequence[position];
 }
 
+uint8_t NoiseChannel::getOutput(){
+	if (isSilenced() || lfsr_ & 1){
+		return 0;
+	}
+	else if (is_constant){
+		return constant_volume;
+	}
+	else{
+		return envelope_.decay_level_;
+	}
+}
+
 void AudioBuffer::write(const i16 value)
 {
 	static int max_sample_count = 40;
@@ -371,6 +397,10 @@ void AudioBuffer::copyAll(std::vector<i16>& buf)
 }
 
 void PulseChannel::clockEnvelope(){
+	envelope_.clock();
+}
+
+void NoiseChannel::clockEnvelope(){
 	envelope_.clock();
 }
 
@@ -428,7 +458,24 @@ void PulseChannel::clockSweep(){
 	else{
 		sweep_.divider_counter_ -= 1;
 	}
-
+//===============================================
+	// if (sweep_.reload_flag_){
+	// 	if (sweep_.enabled_ && sweep_.divider_counter_ == 0){
+	// 		timer_reset = target_period;
+	// 	}
+	// 	sweep_.reload_flag_ = false;
+	// 	sweep_.divider_counter_ = sweep_.divider_period_;
+	// }
+	// else if (sweep_.divider_counter_ > 0){
+	// 	sweep_.divider_counter_ -= 1;
+	// }
+	// else{
+	// 	if (sweep_.enabled_){
+	// 		timer_reset = target_period;
+	// 	}
+	// 	sweep_.divider_counter_ = sweep_.divider_period_;
+	// }
+//===============================================
 	// if (sweep_.enabled_){
 	// 	if (sweep_.reload_flag_){
 	// 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;

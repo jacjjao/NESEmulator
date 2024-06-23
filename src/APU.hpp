@@ -161,6 +161,45 @@ public:
     uint8_t position=0;
 };
 
+class NoiseChannel : public Channel
+{
+public:
+	~NoiseChannel() override = default;
+
+	uint8_t getOutput() override;
+
+	void clock() override { 
+		timer--;
+		if (timer == 0) {
+			timer = timer_reset;
+
+			feedback = (lfsr_ & 1) ^ ((mode_ ? (lfsr_ >> 6) : (lfsr_ >> 1)) & 1);
+			lfsr_ = (lfsr_ >> 1) | (feedback << 14);
+		}
+	}
+
+	void clockEnvelope();
+
+	bool is_constant = true;
+	bool mode_ = false;
+
+	uint8_t constant_volume = 0;
+
+	uint16_t timer = 0;
+	uint16_t timer_reset = 0;
+	uint16_t shift_reg = 1;
+	uint16_t lfsr_ = 1;
+
+	int feedback = 0;
+
+
+	Envelope envelope_;
+	const uint16_t noisePeriodTable[16] = {
+    	4, 8, 16, 32, 64, 96, 128, 160,
+    	202, 254, 380, 508, 762, 1016, 2034, 4068};
+
+};
+
 class AudioBuffer
 {
 public:
@@ -206,7 +245,7 @@ private:
 
 	TriangleChannel triangle_;
 
-	Channel noise_;
+	NoiseChannel noise_;
 
 	static constexpr std::array<u8, 32> LEN_CNT_TABLE = {
 		10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
