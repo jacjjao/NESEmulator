@@ -472,6 +472,9 @@ u8 PPU2C02::regRead(const u16 addr)
 			data_buf_ = memRead(vram & 0x2FFF); // hardware bug
 		}
 		vram += (control_.bit.vram_addr_inc ? 32 : 1);
+		if (a12_toggle(vram_addr_.getValueAs<u16>(), vram)) {
+			Bus::instance().cartridge().updateIRQCounter();
+		}
 		vram_addr_.setValue(vram);
 		break;
 	}
@@ -536,6 +539,9 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 			auto tvram = tvram_addr_.getValueAs<u16>();
 			tvram = (tvram & 0xFF00) | data;
 			tvram_addr_.setValue(tvram);
+			if(a12_toggle(vram_addr_.getValueAs<u16>(), tvram_addr_.getValueAs<u16>())) {
+				Bus::instance().cartridge().updateIRQCounter();
+			}
 			vram_addr_ = tvram_addr_;
 		} 
 		write_latch_ = !write_latch_;
@@ -547,10 +553,17 @@ void PPU2C02::regWrite(const u16 addr, const u8 data)
 		auto vram = vram_addr_.getValueAs<u16>();
 		memWrite(vram, data);
 		vram += (control_.bit.vram_addr_inc ? 32 : 1);
+		if(a12_toggle(vram_addr_.getValueAs<u16>(), vram)) {
+			Bus::instance().cartridge().updateIRQCounter();
+		}
 		vram_addr_.setValue(vram);
 		break;
 	}
 	}
+}
+
+bool PPU2C02::a12_toggle(u16 old_addr, u16 addr) {
+	return getBitN(addr, 12) && !getBitN(old_addr, 12);
 }
 
 u8 PPU2C02::memRead(u16 addr)

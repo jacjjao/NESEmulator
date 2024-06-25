@@ -41,6 +41,7 @@ private:
 	sf::Color getColorFromPaletteRam(bool sprite, u16 palette, u16 pixel);
 	u8* mirroring(u16 addr);
 	bool renderEnable() const;
+	bool a12_toggle(u16 old_addr, u16 addr);
 
 	static constexpr std::size_t mem_size = 16 * 1024; // 16kB
 	static constexpr std::size_t primary_oam_size = 256;
