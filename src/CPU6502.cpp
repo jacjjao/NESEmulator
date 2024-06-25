@@ -507,7 +507,7 @@ void CPU6502::reset()
 
 bool CPU6502::irq()
 {
-	if (getInterruptDisableFlag())
+	if (cycle_state_ != CycleState::Fetch || getInterruptDisableFlag())
 		return false;
 	pushStack(reg_.PC);
 	pushStack(reg_.Status);
@@ -518,8 +518,10 @@ bool CPU6502::irq()
 	return true;
 }
 
-void CPU6502::nmi()
+bool CPU6502::nmi()
 {
+	if (cycle_state_ != CycleState::Fetch)
+		return false;
 	pushStack(reg_.PC);
 	setBreakFlag(false);
 	setBitN(reg_.Status, 5, true);
@@ -528,6 +530,7 @@ void CPU6502::nmi()
 	reg_.PC = getTwoBytesFromMem(0xFFFA);
 	penalty_ = 8;
 	cycle_state_ = CycleState::WaitForPenalty;
+	return true;
 }
 
 void CPU6502::ADC()

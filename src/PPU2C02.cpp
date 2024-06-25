@@ -379,7 +379,7 @@ void PPU2C02::cycle()
 			status_.bit.vb_start = 1;
 			if (control_.bit.gen_nmi)
 			{
-				Bus::instance().cpu.nmi();
+				nmi = true;
 			}
 		}
 	}

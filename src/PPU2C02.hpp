@@ -28,6 +28,8 @@ public:
 
 	u8 getOAMAddr() const;
 
+	bool nmi = false;
+
 #ifdef EMU_DEBUG
 public: // for debug
 	const std::vector<sf::Vertex>& dbgGetPatterntb(int i, u8 palette);

@@ -16,7 +16,7 @@ public:
 
 	void reset();
 
-	void nmi();
+	bool nmi();
 
 	bool irq();
 
