@@ -200,6 +200,106 @@ public:
 
 };
 
+class DMAReader
+{
+public:
+	void writeSampleAddr(u8 data);
+	
+	void writeSampleLen(u8 data);
+
+	void setLoop(bool loop);
+
+	void setIrqEnable(bool enable);
+
+	u8 getSample();
+
+	bool isEmpty() const;
+
+	bool irq();
+
+	void clear();
+
+	void restart();
+
+private:
+	u16 sample_addr_ = 0, cur_addr_ = 0;
+	u16 sample_len_ = 0, cur_len_ = 0;
+	bool loop_ = true;
+	bool irq_enable_ = false;
+	bool irq_ = false;
+	bool disable_ = false;
+};
+
+class DMCOutputUnit
+{
+public:
+	void update();
+
+	void setVolume(u8 volume);
+
+	u8 getOutput() const;
+
+	DMAReader reader_;
+
+	void restart();
+
+private:
+	u8 shift_reg_ = 0;
+	u8 volume_ = 0;
+	int counter_ = 8;
+	bool silence_ = false;
+	bool restart_ = false;
+};
+
+class Divider
+{
+public:
+	bool clock();
+
+	void setPeriod(u16 reload);
+
+	void reset();
+
+	void reset(u16 reload);
+
+	u16 getPeriod() const;
+
+private:
+	u16 period_ = 0, counter_ = 0;
+};
+
+class DMC
+{
+public:
+	void clock();
+
+	void writeFlags(u8 data);
+
+	void writeLoad(u8 data);
+
+	void writeSampleAddr(u8 data);
+	
+	void writeSampleLen(u8 data);
+
+	void setEnable(bool enable);
+
+	u8 getOutput() const;
+
+	bool isSilenced() const;
+
+	bool irq();
+
+private:
+	static constexpr u16 s_period_table[] = 
+	{
+		428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54
+	};
+
+	Divider divider_;
+
+	DMCOutputUnit output_;
+};
+
 class AudioBuffer
 {
 public:
@@ -229,6 +329,8 @@ public:
 
 	void getSamples(std::vector<i16>& buf);
 
+	bool dmc_irq = false;
+
 private:
 	void clockFrameCounter();
 	void clockChannelsLen();
@@ -246,6 +348,8 @@ private:
 	TriangleChannel triangle_;
 
 	NoiseChannel noise_;
+
+	DMC dmc_;
 
 	static constexpr std::array<u8, 32> LEN_CNT_TABLE = {
 		10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,

@@ -6,6 +6,7 @@ void APU::clock()
 {
 	/*clock frame sequencer*/
 	triangle_.clock();
+	dmc_.clock();
 	if (cpu_cycle_count_ % 2 == 0)
 	{
 		pulse1_.clock();
@@ -122,11 +123,28 @@ void APU::regWrite(const u16 addr, const u8 data)
 		noise_.loadLenCnt(getLenCntValue(data));
 		break;
 
+	case 0x4010:
+		dmc_.writeFlags(data);
+		break;
+
+	case 0x4011:
+		dmc_.writeLoad(data);
+		break;
+
+	case 0x4012:
+		dmc_.writeSampleAddr(data);
+		break;
+
+	case 0x4013:
+		dmc_.writeSampleLen(data);
+		break;
+
 	case 0x4015:
 		noise_.setEnable(data & 0x8);
 		triangle_.setEnable(data & 0x4);
 		pulse2_.setEnable(data & 0x2);
 		pulse1_.setEnable(data & 0x1);
+		dmc_.setEnable(getBitN(data, 4));
 		break;
 
 	case 0x4017:
@@ -163,6 +181,8 @@ u8 APU::regRead(u16 addr)
 		data = (data << 1 | static_cast<u8>(!pulse2_.isSilenced()));
 		data = (data << 1 | static_cast<u8>(!pulse1_.isSilenced()));
 		data |= (static_cast<u8>(frame_interrupt_) << 6);
+		setBitN(data, 7, dmc_.irq());
+		setBitN(data, 4, dmc_.isSilenced());
 		frame_interrupt_ = false;
 		break;
 	}
@@ -278,7 +298,8 @@ void APU::mix()
 	uint8_t p2 = pulse2_.getOutput();
 	uint8_t t = triangle_.getOutput();
 	uint8_t n = noise_.getOutput();
-	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t + 2 * n];
+	uint8_t d = dmc_.getOutput();
+	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t + 2 * n + d];
 	//float value = triangle_.table[2 * n];
 	audio_buf_.write(static_cast<i16>(value * 32767.0f));
 }
@@ -515,4 +536,205 @@ void PulseChannel::calculateSweepPeriod(){
 	if (target_period < 0){
 		target_period = 0;
 	}
+}
+
+void DMAReader::writeSampleAddr(const u8 data)
+{
+	const auto A = static_cast<u16>(data);
+	sample_addr_ = cur_addr_ = 0xC000 + (A * 64);
+}
+
+void DMAReader::writeSampleLen(const u8 data)
+{
+	const auto L = static_cast<u16>(data);
+	sample_len_ = cur_len_ = (L * 16) + 1;
+}
+
+void DMAReader::setLoop(const bool loop)
+{
+	loop_ = loop;
+}
+
+void DMAReader::setIrqEnable(const bool enable)
+{
+	irq_enable_ = true;
+}
+
+u8 DMAReader::getSample()
+{
+	const auto sample = Bus::instance().cpuRead(cur_addr_);
+	if (cur_len_ > 0)
+	{
+		if (cur_addr_ == 0xFFFF)
+			cur_addr_ = 0x8000;
+		else
+			++cur_addr_;
+		--cur_len_;
+	}
+	else if (loop_)
+	{
+		restart();
+	}
+	else if (!disable_)
+	{
+		irq_ = true;
+		Bus::instance().apu.dmc_irq = true;
+	}
+	return sample;
+}
+
+bool DMAReader::isEmpty() const
+{
+	return cur_len_ == 0;
+}
+
+bool DMAReader::irq()
+{
+	auto b = irq_;
+	irq_ = false;
+	return b;
+}
+
+void DMAReader::clear()
+{
+	loop_ = false;
+	disable_ = true;
+}
+
+void DMAReader::restart()
+{
+	cur_addr_ = sample_addr_;
+	cur_len_ = sample_len_;
+	disable_ = false;
+}
+
+void DMCOutputUnit::update()
+{
+	if (!silence_)
+	{
+		bool b0 = getBitN(shift_reg_, 0);
+		if (b0 && volume_ + 2 <= 127)
+		{
+			volume_ += 2;
+		}
+		else if (!b0 && volume_ >= 2)
+		{
+			volume_ -= 2;
+		}
+	}
+	shift_reg_ >>= 1;
+	--counter_;
+	if (counter_ <= 0)
+	{
+		counter_ = 8;
+		if (reader_.isEmpty())
+		{
+			if (restart_)
+				reader_.restart();
+			else
+				silence_ = true;
+		}
+		else
+		{
+			silence_ = false;
+			shift_reg_ = reader_.getSample();
+		}
+	}
+}
+
+void DMCOutputUnit::setVolume(const u8 volume)
+{
+	volume_ = volume;
+}
+
+u8 DMCOutputUnit::getOutput() const
+{
+	return silence_ ? 0 : volume_;
+}
+
+void DMCOutputUnit::restart()
+{
+	restart_ = true;
+}
+
+bool Divider::clock()
+{
+	if (counter_ == 0)
+	{
+		counter_ = period_;
+		return true;
+	}
+	--counter_;
+	return false;
+}
+
+void Divider::setPeriod(const u16 period)
+{
+	period_ = period;
+}
+
+void Divider::reset()
+{
+	counter_ = period_;
+}
+
+void Divider::reset(const u16 period)
+{
+	counter_ = period_ = period;
+}
+
+u16 Divider::getPeriod() const
+{
+	return period_;
+}
+
+void DMC::clock()
+{
+	if (divider_.clock())
+		output_.update();
+}
+
+void DMC::writeFlags(const u8 data)
+{
+	output_.reader_.setIrqEnable(getBitN(data, 7));
+	output_.reader_.setLoop(getBitN(data, 6));
+	divider_.reset(s_period_table[data & 0x0F] - 1);
+}
+
+void DMC::writeLoad(const u8 data)
+{
+	output_.setVolume(data & 0x7F);
+}
+
+void DMC::writeSampleAddr(const u8 data)
+{
+	output_.reader_.writeSampleAddr(data);
+}
+
+void DMC::writeSampleLen(const u8 data)
+{
+	output_.reader_.writeSampleLen(data);
+}
+
+void DMC::setEnable(const bool enable)
+{
+	if (!enable)
+		output_.reader_.clear();
+	else
+		output_.reader_.restart();
+}
+
+u8 DMC::getOutput() const
+{
+	return output_.getOutput();
+}
+
+bool DMC::isSilenced() const
+{
+	return output_.reader_.isEmpty();
+}
+
+bool DMC::irq()
+{
+	return output_.reader_.irq();
 }

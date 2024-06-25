@@ -103,6 +103,10 @@ void Bus::clock()
 			{
 				ppu.nmi = false;
 			}
+			if (apu.dmc_irq && cpu.irq()) 
+			{
+				apu.dmc_irq = false;
+			}
 			if (cart_->irq && cpu.irq()) 
 			{
 				cart_->irq = false;
