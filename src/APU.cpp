@@ -4,17 +4,19 @@
 
 void APU::clock()
 {
-	/*
-	// clock frame sequencer
+	/*clock frame sequencer*/
+	triangle_.clock();
 	if (cpu_cycle_count_ % 2 == 0)
 	{
-		clockFrameCounter();
 		pulse1_.clock();
-		pulse2_.clock();
+		pulse2_.clock();		
+		noise_.clock();
+		clockFrameCounter();
 	}
+
 	mix();
 	++cpu_cycle_count_;
-	*/
+	
 }
 
 void APU::regWrite(const u16 addr, const u8 data)
@@ -29,36 +31,94 @@ void APU::regWrite(const u16 addr, const u8 data)
 	switch (addr)
 	{
 	case 0x4000:
+		pulse1_.is_constant = (data >> 4) & 1;
+		pulse1_.constant_volume = data & 0xF;
+		pulse1_.envelope_.is_looping_ = (data >> 5) & 1;
+		pulse1_.envelope_.reset_level_ = data & 0xF;
 		pulse1_.setLenCntHalt(data & 0x20);
 		pulse1_.setDuty((data & 0xC0) >> 6);
 		break;
+	
+	case 0x4001:
+		pulse1_.sweep_.enabled_ = data & 0x80;
+		pulse1_.sweep_.divider_period_ = (data & 0x70) >> 4;
+		pulse1_.sweep_.negate_ = data & 0x08;
+		pulse1_.sweep_.shift_count_ = data & 0x07;
+		pulse1_.sweep_.reload_flag_ = true;
+		break;
+
+	case 0x4002:
+		pulse1_.timer_reset = (pulse1_.timer_reset & 0x700) | data;
+		break;
 
 	case 0x4003:
+		pulse1_.timer_reset = (pulse1_.timer_reset & 0xFF) | ((data & 0x7) << 8);
+		pulse1_.timer = pulse1_.timer_reset;
+		pulse1_.envelope_.start_flag_ = true;
+		pulse1_.setStepReset();
 		pulse1_.loadLenCnt(getLenCntValue(data));
 		break;
 
 	case 0x4004:
+		pulse2_.is_constant = (data >> 4) & 1;
+		pulse2_.constant_volume = data & 0xF;
+		pulse2_.envelope_.is_looping_ = (data >> 5) & 1;
+		pulse2_.envelope_.reset_level_ = data & 0xF;
 		pulse2_.setLenCntHalt(data & 0x20);
-		pulse1_.setDuty((data & 0xC0) >> 6);
+		pulse2_.setDuty((data & 0xC0) >> 6);
+		break;
+
+	case 0x4005:
+		pulse2_.sweep_.enabled_ = data & 0x80;
+		pulse2_.sweep_.divider_period_ = (data & 0x70) >> 4;
+		pulse2_.sweep_.negate_ = data & 0x08;
+		pulse2_.sweep_.shift_count_ = data & 0x07;
+		pulse2_.sweep_.reload_flag_ = true;
+		break;
+
+	case 0x4006:
+		pulse2_.timer_reset = (pulse2_.timer_reset & 0x700) | data;
 		break;
 
 	case 0x4007:
+		pulse2_.timer_reset = (pulse2_.timer_reset & 0xFF) | ((data & 0x7) << 8);
+		pulse2_.timer = pulse2_.timer_reset;
+		pulse2_.envelope_.start_flag_ = true;
+		pulse2_.setStepReset();
 		pulse2_.loadLenCnt(getLenCntValue(data));
 		break;
 
 	case 0x4008:
+		triangle_.counter_on_ = (data & 0x80) == 0;
+		triangle_.counter_reload_value_ = data & 0x7F;
 		triangle_.setLenCntHalt(data & 0x80);
 		break;
 
+	case 0x400A:
+		triangle_.timer_reset = (triangle_.timer_reset & 0x700) | data;
+		break;
+
 	case 0x400B:
+		triangle_.timer_reset = (triangle_.timer_reset & 0x00FF) | ((data & 0x7) << 8);
+		triangle_.counter_reload_flag_ = true;
 		triangle_.loadLenCnt(getLenCntValue(data));
 		break;
 
 	case 0x400C:
 		noise_.setLenCntHalt(data & 0x20);
+		noise_.envelope_.is_looping_ = (data >> 5) & 1;
+		noise_.envelope_.reset_level_ = data & 0xF;
+		noise_.is_constant = (data >> 4) & 1;
+		noise_.constant_volume = data & 0xF;
+		break;
+	
+	case 0x400E:
+		noise_.mode_ = data & 0x80;
+		noise_.timer_reset = noise_.noisePeriodTable[data & 0xF];
 		break;
 
 	case 0x400F:
+		noise_.envelope_.start_flag_ = true;
 		noise_.loadLenCnt(getLenCntValue(data));
 		break;
 
@@ -75,6 +135,8 @@ void APU::regWrite(const u16 addr, const u8 data)
 		if (frame_sequencer_mode_)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
+			clockSweeps();
 		}
 		if (irq_inhibit_flag_ != static_cast<bool>(data & 0x40))
 		{
@@ -123,18 +185,23 @@ void APU::clockFrameCounter()
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
+			clockSweeps();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
-			// TODO
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 14914)
 		{
 			clockChannelsLen();
+			clockEnvelopes();
+			clockSweeps();
 			if (!irq_inhibit_flag_)
 			{
 				frame_interrupt_ = true;
@@ -153,14 +220,17 @@ void APU::clockFrameCounter()
 	{
 		if (cpu_cycle_count_ == 3728)
 		{
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 7456)
 		{
+			clockEnvelopes();
 			clockChannelsLen();
+			clockSweeps();
 		}
 		else if (cpu_cycle_count_ == 11186)
 		{
-			// TODO
+			clockEnvelopes();
 		}
 		else if (cpu_cycle_count_ == 14914)
 		{
@@ -168,7 +238,9 @@ void APU::clockFrameCounter()
 		}
 		else if (cpu_cycle_count_ == 18640)
 		{
+			clockEnvelopes();
 			clockChannelsLen();
+			clockSweeps();
 			cpu_cycle_count_ = 0;
 			return;
 		}
@@ -188,15 +260,32 @@ void APU::clockChannelsLen()
 	noise_.clockLenCnt();
 }
 
+void APU::clockEnvelopes(){
+	pulse1_.clockEnvelope();
+	pulse2_.clockEnvelope();
+	triangle_.ClockLinearCounter();
+	noise_.clockEnvelope();
+}
+
+void APU::clockSweeps(){
+	pulse1_.clockSweep();
+	pulse2_.clockSweep();
+}
+
 void APU::mix()
 {
-	float p1 = pulse1_.getOutput();
-	float p2 = pulse2_.getOutput();
+	uint8_t p1 = pulse1_.getOutput();
+	uint8_t p2 = pulse2_.getOutput();
+	uint8_t t = triangle_.getOutput();
+	uint8_t n = noise_.getOutput();
+	float value = pulse1_.table[(p1 + p2) & 0x1F] + triangle_.table[3 * t + 2 * n];
+	//float value = triangle_.table[2 * n];
+	audio_buf_.write(static_cast<i16>(value * 32767.0f));
 }
 
 void Channel::clockLenCnt()
 {
-	if (!isSilenced() && !len_cnt_halt_)
+	if (len_cnt_ > 0 && !len_cnt_halt_)
 	{
 		--len_cnt_;
 	}
@@ -229,7 +318,7 @@ void Channel::loadLenCnt(const u8 value)
 	}
 }
 
-float PulseChannel::getOutput()
+uint8_t PulseChannel::getOutput()
 {
 	static u8 sequences[4][8] =
 	{
@@ -239,10 +328,36 @@ float PulseChannel::getOutput()
 		{ 1, 0, 0, 1, 1, 1, 1, 1 }  // 25% negated
 	};
 
-	if (isSilenced())
+	if (isSilenced() || !(sequences[duty_][step_]) || isSweepMuted())
 		return 0.0f;
 
-	return sequences[duty_][step_];
+	if (is_constant){
+		return constant_volume;
+	}
+	else{
+		return envelope_.decay_level_;
+	}
+	//return sequences[duty_][step_];
+}
+
+uint8_t TriangleChannel::getOutput(){
+	if (counter_value == 0 || isSilenced()){
+		return 0;
+	}
+
+	return sequence[position];
+}
+
+uint8_t NoiseChannel::getOutput(){
+	if (isSilenced() || lfsr_ & 1){
+		return 0;
+	}
+	else if (is_constant){
+		return constant_volume;
+	}
+	else{
+		return envelope_.decay_level_;
+	}
 }
 
 void AudioBuffer::write(const i16 value)
@@ -262,6 +377,11 @@ void AudioBuffer::write(const i16 value)
 			samples_.push_back(sample_sum);
 		}
 
+		// for(int i = 0; i < samples_.size(); i++){
+		// 	std::cout<<samples_[i]<<" "<<std::endl;
+		// }
+		// std::cout<<"================================"<<std::endl;
+
 		sample_count = 0;
 		sample_sum = 0.0;
 		max_sample_count = (max_sample_count == 40) ? 41 : 40;
@@ -274,4 +394,125 @@ void AudioBuffer::copyAll(std::vector<i16>& buf)
 	std::lock_guard lock{ mutex_ };
 	buf.assign(samples_.cbegin(), samples_.cend());
 	samples_.clear();
+}
+
+void PulseChannel::clockEnvelope(){
+	envelope_.clock();
+}
+
+void NoiseChannel::clockEnvelope(){
+	envelope_.clock();
+}
+
+void TriangleChannel::ClockLinearCounter(){
+	if (counter_reload_flag_){
+		counter_value = counter_reload_value_;
+	}
+	else if (counter_value > 0){
+		counter_value -= 1;
+	}
+	if (counter_on_){
+		counter_reload_flag_ = false;
+	}
+}
+
+void Envelope::clock(){
+	if (start_flag_){
+		decay_level_ = 15;
+		divider_step_ = reset_level_;
+		start_flag_ = false;
+	}
+	else{
+		if (divider_step_ > 0){
+			divider_step_ -= 1;
+		}
+		else{
+			divider_step_ = reset_level_;
+			if (decay_level_ > 0){
+				decay_level_ -= 1;
+			}
+			else{
+				if (is_looping_){
+					decay_level_ = 15;
+				}
+			}
+		}
+	}
+}
+
+void PulseChannel::clockSweep(){
+	calculateSweepPeriod();
+
+	if (sweep_.divider_counter_ == 0 && sweep_.enabled_ && sweep_.shift_count_ > 0){
+		if (!isSweepMuted()){
+			timer_reset = target_period;
+		}
+		else{
+			sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+		}
+	}
+	if(sweep_.divider_counter_ == 0 || sweep_.reload_flag_){
+		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+		sweep_.reload_flag_ = false;
+	}
+	else{
+		sweep_.divider_counter_ -= 1;
+	}
+//===============================================
+	// if (sweep_.reload_flag_){
+	// 	if (sweep_.enabled_ && sweep_.divider_counter_ == 0){
+	// 		timer_reset = target_period;
+	// 	}
+	// 	sweep_.reload_flag_ = false;
+	// 	sweep_.divider_counter_ = sweep_.divider_period_;
+	// }
+	// else if (sweep_.divider_counter_ > 0){
+	// 	sweep_.divider_counter_ -= 1;
+	// }
+	// else{
+	// 	if (sweep_.enabled_){
+	// 		timer_reset = target_period;
+	// 	}
+	// 	sweep_.divider_counter_ = sweep_.divider_period_;
+	// }
+//===============================================
+	// if (sweep_.enabled_){
+	// 	if (sweep_.reload_flag_){
+	// 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+	// 		sweep_.reload_flag_ = false;
+	// 	}
+	// 	if (sweep_.divider_counter_ > 0){
+	// 		sweep_.divider_counter_ -= 1;
+	// 	}
+	// 	else{
+	// 		if (!isSweepMuted()){
+	// 			std::cout<<timer_reset<<std::endl;
+	// 			timer_reset = target_period;
+	// 		}
+	// 		sweep_.divider_counter_ = sweep_.divider_period_ + 1;
+	// 	}
+	// }
+}
+
+void PulseChannel::calculateSweepPeriod(){
+	uint16_t current_period = timer_reset;
+	uint16_t delta = current_period >> sweep_.shift_count_;
+
+	if (sweep_.negate_){
+		if (is_channel_1){
+			target_period = current_period - (delta + 1);
+			//timer_reset -= delta + 1;
+		}
+		else{
+			target_period = current_period - delta;
+			//timer_reset -= delta;
+		}
+	}
+	else{
+		target_period = current_period + delta;
+		//timer_reset += delta;
+	}
+	if (target_period < 0){
+		target_period = 0;
+	}
 }
